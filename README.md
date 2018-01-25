@@ -213,6 +213,16 @@ Note: Not finished yet, still need some work.
 
 	cd lux
 
+	sudo sh install-dependencies.sh install
+
+	cd src/leveldb
+
+	chmod +x build_detect_platform
+
+	make clean && make libleveldb.a libmemenv.a
+
+	cd ..
+	
 	qmake USE_QRCODE=1
 
 	make
