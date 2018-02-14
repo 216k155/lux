@@ -56,11 +56,14 @@ MiningDialog::MiningDialog(QWidget* parent) : QMainWindow(parent),
    // ui->textBrowser->setTextColor( QColor( "red" ) );
 
     ui->poolComboBox->addItem(tr("pool.luxcore.com.au:3033"));
-    ui->poolComboBox->addItem(tr("eu1.altminer.net:6667"));
+    ui->poolComboBox->addItem(tr("eu1.altminer.net:6667"));    
     ui->poolComboBox->addItem(tr("yiimp.eu:8333"));
     ui->poolComboBox->addItem(tr("omegapool.cc:8003"));
     ui->poolComboBox->addItem(tr("pickaxe.pro:8333"));
-    ui->poolComboBox->addItem(tr("pool.ionik.fr:8333"));
+    ui->poolComboBox->addItem(tr("pool.ionik.fr:8333"));                                              
+    ui->poolComboBox->addItem(tr("phi.mine.zpool.ca:8333"));
+    ui->poolComboBox->addItem(tr("mine.zergpool.com:8333"));
+    ui->poolComboBox->addItem(tr("eu1.unimining.net:8533"));
     ui->poolComboBox->setCurrentIndex(0);
 
     connect(ui->benchmarkButton, SIGNAL(clicked()), this, SLOT(run_benchmark()));
