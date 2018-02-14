@@ -63,7 +63,7 @@ MiningDialog::MiningDialog(QWidget* parent) : QMainWindow(parent),
     ui->poolComboBox->addItem(tr("pool.ionik.fr:8333"));                                              
     ui->poolComboBox->addItem(tr("phi.mine.zpool.ca:8333"));
     ui->poolComboBox->addItem(tr("mine.zergpool.com:8333"));
-    ui->poolComboBox->addItem(tr("eu1.unimining.net:8533"));
+    ui->poolComboBox->addItem(tr("phi.eu1.unimining.net:8333"));
     ui->poolComboBox->addItem(tr("phi.minemoney.co:8333"));
     ui->poolComboBox->addItem(tr("s.antminepool.com:6667")); 
     ui->poolComboBox->setCurrentIndex(0);
