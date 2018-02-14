@@ -22,6 +22,8 @@ BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BOOST_CPPFLAGS) $(LEVELDB_CPP
 
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 
+BITCOIN_INCLUDES += -I/usr/local/cuda/include
+
 LIBBITCOIN_SERVER=libbitcoin_server.a
 LIBBITCOIN_WALLET=libbitcoin_wallet.a
 LIBBITCOIN_COMMON=libbitcoin_common.a
@@ -30,6 +32,7 @@ LIBBITCOIN_UTIL=libbitcoin_util.a
 LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.a
 LIBBITCOINQT=qt/libbitcoinqt.a
+#LIBBITCOINQT+=-L/usr/local/cuda/lib64
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -47,6 +50,7 @@ EXTRA_LIBRARIES = \
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
 EXTRA_LIBRARIES += libbitcoin_wallet.a
+#EXTRA_LIBRARIES += /usr/local/cuda/lib64/libcudadevrt.a
 endif
 
 if BUILD_BITCOIN_LIBS
@@ -341,6 +345,7 @@ luxd_LDADD = \
 
 if ENABLE_WALLET
 luxd_LDADD += libbitcoin_wallet.a
+luxd_LDADD += /usr/local/cuda/lib64/libcudadevrt.a
 endif
 luxd_SOURCES = luxd.cpp
 #

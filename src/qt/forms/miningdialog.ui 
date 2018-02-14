@@ -47,7 +47,21 @@
       <item>
        <layout class="QHBoxLayout" name="miningInfoGrid">
         <item>
-         <widget class="QListView" name="miningInfoListView"/>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QListView" name="gpuListView"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="outputLabel">
+            <property name="text">
+             <string>Output:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTextBrowser" name="textBrowser"/>
+          </item>
+         </layout>
         </item>
         <item>
          <layout class="QVBoxLayout" name="controlButtonsLayout">
@@ -156,3 +170,4 @@
  <resources/>
  <connections/>
 </ui>
+

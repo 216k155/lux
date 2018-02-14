@@ -1,6 +1,7 @@
 # -*- makefile-gmake -*-
 
 bin_PROGRAMS += qt/lux-qt
+#EXTRA_LIBRARIES += /usr/local/cuda/lib64/libscudadevrt.a
 EXTRA_LIBRARIES += qt/libbitcoinqt.a
 
 # lux qt core #
@@ -367,7 +368,7 @@ endif
 if TARGET_WINDOWS
   qt_lux_qt_SOURCES += $(BITCOIN_RC)
 endif
-qt_lux_qt_LDADD = qt/libbitcoinqt.a $(LIBBITCOIN_SERVER)
+qt_lux_qt_LDADD = /usr/local/cuda/lib64/libcudadevrt.a qt/libbitcoinqt.a $(LIBBITCOIN_SERVER)
 if ENABLE_WALLET
 qt_lux_qt_LDADD += $(LIBBITCOIN_WALLET)
 endif
