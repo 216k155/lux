@@ -17,6 +17,73 @@ BITCOIN_GUI_NAME=lux-qt
 BITCOIN_CLI_NAME=lux-cli
 BITCOIN_TX_NAME=lux-tx
 
+# initialize array index
+N="0"
+
+#=============The Luxcore Developer 2018========================
+
+# Setup default CUDA paths
+CUDA_INSTALL_PATH="/usr/local/cuda"
+CUDA_SDK_INSTALL_PATH="/usr/local/NVIDIA_GPU_Computing_SDK"
+
+# Check: enable CUDA?
+AC_MSG_CHECKING([whether to use CUDA library])
+AC_ARG_ENABLE(cuda,
+    [AS_HELP_STRING(--enable-cuda,enable CUDA support)],
+    cudaval="yes",
+    cudaval="no")
+AC_MSG_RESULT([$cudaval])
+
+# check to see if CUDA been selected
+if test "$cudaval" == "no"; then
+    AC_MSG_WARN([Not using CUDA!])
+fi
+
+# Setup custom CUDA paths
+AC_ARG_WITH([cuda],
+   [AS_HELP_STRING(
+        [--with-cuda=PATH],
+        [prefix where CUDA is installed @<:@default=auto@:>@])],
+   [CUDA_INSTALL_PATH=$withval],
+   [with_cuda=auto])
+AC_ARG_WITH([cuda-sdk],
+   [AS_HELP_STRING(
+        [--with-cuda-sdk=PATH],
+        [prefix where CUDA SDK is installed @<:@default=auto@:>@])],
+   [CUDA_SDK_INSTALL_PATH=$withval],
+   [with_cuda_sdk=auto])
+
+# Setup nvcc flags
+if test  "$cudaval" = "yes"; then
+    NVCCFLAGS="$NVCCFLAGS"
+    CUDA_CFLAGS="$CUDA_CFLAGS"
+    CUDA_CFLAGS="$CUDA_CFLAGS -I$CUDA_SDK_INSTALL_PATH/C/common/inc/"
+    CUDA_CFLAGS="$CUDA_CFLAGS -I$CUDA_INSTALL_PATH/include"
+    CUDA_LDFLAGS="-L$CUDA_INSTALL_PATH/lib64"
+    CUDA_LIBS="-lcuda -lcudart -lcufft"
+    NVCCFLAGS="$NVCCFLAGS $CUDA_CFLAGS $CUDA_LDFLAGS $CUDA_LIBS"
+    NVCC="nvcc"
+    AC_SUBST(NVCC)
+    AC_SUBST(NVCCFLAGS)
+    AC_DEFINE([_CUDA],[1],[Defined if CUDA should be used])
+    eval "ARRAY${N}='-D_CUDA'"
+    N=`expr $N + 1`
+fi
+
+#=================================================
+
+# construct compiler flags
+N=`expr $N - 1`
+TMP0=
+eval TMP0="\$ARRAY0"
+for i in $(seq 1 $N)
+do
+    eval TMP0="\$TMP0' '\$ARRAY${i}"
+done
+
+# set C compiler flags
+
+
 dnl Unless the user specified ARFLAGS, force it to be cr
 AC_ARG_VAR(ARFLAGS, [Flags for the archiver, defaults to <cr> if not set])
 if test "x${ARFLAGS+set}" != "xset"; then
@@ -649,7 +716,7 @@ if test x$use_tests = xyes; then
   dnl Determine if -DBOOST_TEST_DYN_LINK is needed
   AC_MSG_CHECKING([for dynamic linked boost test])
   TEMP_LIBS="$LIBS"
-  LIBS="$LIBS $BOOST_LDFLAGS $BOOST_UNIT_TEST_FRAMEWORK_LIB"
+  LIBS="$LIBS $BOOST_LDFLAGS $BOOST_UNIT_TEST_FRAMEWORK_LIB /usr/local/cuda/lib64/libcudart.so"
   TEMP_CPPFLAGS="$CPPFLAGS"
   CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
   AC_LINK_IFELSE([AC_LANG_SOURCE([
@@ -1001,7 +1068,7 @@ case ${OS} in
    ;;
 esac
 
-echo 
+echo
 echo "Options used to compile and link:"
 echo "  with wallet   = $enable_wallet"
 echo "  with gui / qt = $bitcoin_enable_qt"
@@ -1015,7 +1082,7 @@ echo "  with bench    = $use_bench"
 echo "  with upnp     = $use_upnp"
 echo "  debug enabled = $enable_debug"
 echo "  werror        = $enable_werror"
-echo 
+echo
 echo "  target os     = $TARGET_OS"
 echo "  build os      = $BUILD_OS"
 echo
@@ -1026,4 +1093,4 @@ echo "  CXX           = $CXX"
 echo "  CXXFLAGS      = $CXXFLAGS"
 echo "  LDFLAGS       = $LDFLAGS"
 echo "  ARFLAGS       = $ARFLAGS"
-echo 
+echo
