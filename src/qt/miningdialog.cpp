@@ -58,6 +58,9 @@ MiningDialog::MiningDialog(QWidget* parent) : QMainWindow(parent),
     ui->poolComboBox->addItem(tr("pool.luxcore.com.au:3033"));
     ui->poolComboBox->addItem(tr("eu1.altminer.net:6667"));
     ui->poolComboBox->addItem(tr("yiimp.eu:8333"));
+    ui->poolComboBox->addItem(tr("omegapool.cc:8003"));
+    ui->poolComboBox->addItem(tr("pickaxe.pro:8333"));
+    ui->poolComboBox->addItem(tr("pool.ionik.fr:8333"));
     ui->poolComboBox->setCurrentIndex(0);
 
     connect(ui->benchmarkButton, SIGNAL(clicked()), this, SLOT(run_benchmark()));
