@@ -128,8 +128,10 @@ CBlockIndex* pindexBestInvalid;
      * as good as our current tip or better. Entries may be failed, though.
      */
 set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
+
 /** Number of nodes with fSyncStarted. */
 int nSyncStarted = 0;
+
 /** All pairs A->B, where A (or one if its ancestors) misses transactions, but B has transactions. */
 multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
 
@@ -142,6 +144,7 @@ int nLastBlockFile = 0;
      * know which one to give priority in case of a fork.
      */
 CCriticalSection cs_nBlockSequenceId;
+
 /** Blocks loaded from disk are assigned id 0, so start the counter at 1. */
 uint32_t nBlockSequenceId = 1;
 
@@ -186,16 +189,19 @@ namespace
 struct CMainSignals {
     /** Notifies listeners of updated transaction data (transaction, and optionally the block it is found in. */
     boost::signals2::signal<void(const CTransaction&, const CBlock*)> SyncTransaction;
-    /** Notifies listeners of an erased transaction (currently disabled, requires transaction replacement). */
-//  boost::signals2::signal<void(const uint256&)> EraseTransaction;
+
     /** Notifies listeners of an updated transaction without new data (for now: a coinbase potentially becoming visible). */
     boost::signals2::signal<void(const uint256&)> UpdatedTransaction;
+
     /** Notifies listeners of a new active block chain. */
     boost::signals2::signal<void(const CBlockLocator&)> SetBestChain;
+
     /** Notifies listeners about an inventory item being seen on the network. */
     boost::signals2::signal<void(const uint256&)> Inventory;
+
     /** Tells listeners to broadcast their data. */
     boost::signals2::signal<void()> Broadcast;
+
     /** Notifies listeners of a block validation result */
     boost::signals2::signal<void(const CBlock&, const CValidationState&)> BlockChecked;
 } g_signals;
@@ -205,7 +211,6 @@ struct CMainSignals {
 void RegisterValidationInterface(CValidationInterface* pwalletIn)
 {
     g_signals.SyncTransaction.connect(boost::bind(&CValidationInterface::SyncTransaction, pwalletIn, _1, _2));
-//  g_signals.EraseTransaction.connect(boost::bind(&CValidationInterface::EraseFromWallet, pwalletIn, _1));
     g_signals.UpdatedTransaction.connect(boost::bind(&CValidationInterface::UpdatedTransaction, pwalletIn, _1));
     g_signals.SetBestChain.connect(boost::bind(&CValidationInterface::SetBestChain, pwalletIn, _1));
     g_signals.Inventory.connect(boost::bind(&CValidationInterface::Inventory, pwalletIn, _1));
@@ -220,7 +225,6 @@ void UnregisterValidationInterface(CValidationInterface* pwalletIn)
     g_signals.Inventory.disconnect(boost::bind(&CValidationInterface::Inventory, pwalletIn, _1));
     g_signals.SetBestChain.disconnect(boost::bind(&CValidationInterface::SetBestChain, pwalletIn, _1));
     g_signals.UpdatedTransaction.disconnect(boost::bind(&CValidationInterface::UpdatedTransaction, pwalletIn, _1));
-//  g_signals.EraseTransaction.disconnect(boost::bind(&CValidationInterface::EraseFromWallet, pwalletIn, _1));
     g_signals.SyncTransaction.disconnect(boost::bind(&CValidationInterface::SyncTransaction, pwalletIn, _1, _2));
 }
 
@@ -231,7 +235,6 @@ void UnregisterAllValidationInterfaces()
     g_signals.Inventory.disconnect_all_slots();
     g_signals.SetBestChain.disconnect_all_slots();
     g_signals.UpdatedTransaction.disconnect_all_slots();
-//  g_signals.EraseTransaction.disconnect_all_slots();
     g_signals.SyncTransaction.disconnect_all_slots();
 }
 
@@ -262,28 +265,39 @@ struct CBlockReject {
 struct CNodeState {
     //! The peer's address
     CService address;
+
     //! Whether we have a fully established connection.
     bool fCurrentlyConnected;
+
     //! Accumulated misbehaviour score for this peer.
     int nMisbehavior;
+
     //! Whether this peer should be disconnected and banned (unless whitelisted).
     bool fShouldBan;
+
     //! String name of this peer (debugging/logging purposes).
     std::string name;
+
     //! List of asynchronously-determined block rejections to notify this peer about.
     std::vector<CBlockReject> rejects;
+
     //! The best known block we know this peer has announced.
     CBlockIndex* pindexBestKnownBlock;
+
     //! The hash of the last unknown block this peer has announced.
     uint256 hashLastUnknownBlock;
+
     //! The last full block we both have.
     CBlockIndex* pindexLastCommonBlock;
+
     //! Whether we've started headers synchronization with this peer.
     bool fSyncStarted;
+
     //! Since when we're stalling block download progress (in microseconds), or 0.
     int64_t nStallingSince;
     list<QueuedBlock> vBlocksInFlight;
     int nBlocksInFlight;
+
     //! Whether we consider this a preferred download peer.
     bool fPreferredDownload;
 
@@ -482,12 +496,14 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
 
     std::vector<CBlockIndex*> vToFetch;
     CBlockIndex* pindexWalk = state->pindexLastCommonBlock;
+
     // Never fetch further than the best block we know the peer has, or more than BLOCK_DOWNLOAD_WINDOW + 1 beyond the last
     // linked block we have in common with this peer. The +1 is so we can detect stalling, namely if we would be able to
     // download that next block if the window were 1 larger.
     int nWindowEnd = state->pindexLastCommonBlock->nHeight + BLOCK_DOWNLOAD_WINDOW;
     int nMaxHeight = std::min<int>(state->pindexBestKnownBlock->nHeight, nWindowEnd + 1);
     NodeId waitingfor = -1;
+
     while (pindexWalk->nHeight < nMaxHeight) {
         // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
         // pindexBestKnownBlock) into vToFetch. We fetch 128, because CBlockIndex::GetAncestor may be as expensive
@@ -1266,14 +1282,6 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
     if (tx.IsCoinBase())
         return state.DoS(100, error("AcceptableInputs: : coinbase as individual tx"),
             REJECT_INVALID, "coinbase");
-
-    // Rather not work on nonstandard transactions (unless -testnet/-regtest)
-    string reason;
-    // for any real tx this will be checked on AcceptToMemoryPool anyway
-    //    if (Params().RequireStandard() && !IsStandardTx(tx, reason))
-    //        return state.DoS(0,
-    //                         error("AcceptableInputs : nonstandard transaction: %s", reason),
-    //                         REJECT_NONSTANDARD, reason);
 
     // is it already in the memory pool?
     uint256 hash = tx.GetHash();

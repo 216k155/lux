@@ -154,14 +154,6 @@ static bool FindModifierBlockFromCandidates(vector<pair<int64_t, uint256> >& vSo
         }
     }
 
-#   if defined(DEBUG_DUMP_STAKING_INFO) && false
-    if (GetBoolArg("-printstakemodifier", false))
-        LogPrintf("%s: selected block %d %s %s\n", __func__, 
-                  pindexSelected->nHeight,
-                  pindexSelected->GetBlockHash().GetHex(),
-                  hashBest.ToString());
-#   endif
-
     if (pindexSelected) {
         // add the selected block from candidates to selected list
         mSelectedBlocks.insert(make_pair(pindexSelected->GetBlockHash(), pindexSelected));
@@ -205,11 +197,6 @@ bool Stake::ComputeNextModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeM
     if (!GetLastStakeModifier(pindexPrev, nStakeModifier, nModifierTime))
         return error("%s: unable to get last modifier", __func__);
 
-#   if defined(DEBUG_DUMP_STAKING_INFO) && false
-    if (GetBoolArg("-printstakemodifier", false))
-        LogPrintf("%s: last modifier=%d time=%d\n", __func__, nStakeModifier, nModifierTime); // DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nModifierTime)
-#   endif
-
     auto const nPrevRounds = pindexPrev->GetBlockTime() / GetInterval();
     if (nModifierTime / GetInterval() >= nPrevRounds)
         return true;
@@ -228,10 +215,6 @@ bool Stake::ComputeNextModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeM
         pindex = pindex->pprev;
     }
 
-#   if defined(DEBUG_DUMP_STAKING_INFO) && false
-    int nHeightFirstCandidate = pindex ? (pindex->nHeight + 1) : 0;
-#   endif
-
     //reverse(vSortedCandidates.begin(), vSortedCandidates.end());
     sort(vSortedCandidates.begin(), vSortedCandidates.end());
 
@@ -248,89 +231,17 @@ bool Stake::ComputeNextModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeM
 
         // write the entropy bit of the selected block
         nStakeModifierNew |= (uint64_t(pindex->GetStakeEntropyBit()) << nRound);
-
-#       if defined(DEBUG_DUMP_STAKING_INFO) && false
-        if (fDebug || GetBoolArg("-printstakemodifier", false)) //DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nSelectionTime)
-            LogPrintf("%s: selected round %d stop=%s height=%d bit=%d\n", __func__,
-                      nRound, nSelectionTime, pindex->nHeight, pindex->GetStakeEntropyBit());
-#       endif
     }
-
-#   if defined(DEBUG_DUMP_STAKING_INFO) && false
-    // Print selection map for visualization of the selected blocks
-    if (fDebug || GetBoolArg("-printstakemodifier", false)) {
-        string strSelectionMap = "";
-        // '-' indicates proof-of-work blocks not selected
-        strSelectionMap.insert(0, pindexPrev->nHeight - nHeightFirstCandidate + 1, '-');
-        pindex = pindexPrev;
-        while (pindex && pindex->nHeight >= nHeightFirstCandidate) {
-            // '=' indicates proof-of-stake blocks not selected
-            if (pindex->IsProofOfStake())
-                strSelectionMap.replace(pindex->nHeight - nHeightFirstCandidate, 1, "=");
-            pindex = pindex->pprev;
-        }
-        for (auto &item : mSelectedBlocks) {
-            // 'S' indicates selected proof-of-stake blocks
-            // 'W' indicates selected proof-of-work blocks
-            strSelectionMap.replace(item.second->nHeight - nHeightFirstCandidate, 1, item.second->IsProofOfStake() ? "S" : "W");
-        }
-        LogPrintf("%s: selection height [%d, %d] map %s\n", __func__, nHeightFirstCandidate, pindexPrev->nHeight, strSelectionMap.c_str());
-    }
-    if (fDebug || GetBoolArg("-printstakemodifier", false)) {
-        LogPrintf("%s: new modifier=%d time=%s\n", __func__, nStakeModifierNew, pindexPrev->GetBlockTime()); // DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->GetBlockTime())
-    }
-#   endif
 
     nStakeModifier = nStakeModifierNew;
     fGeneratedStakeModifier = true;
     return true;
 }
 
-#if 0
-// The stake modifier used to hash for a stake kernel is chosen as the stake
-// modifier about a selection interval later than the coin generating the kernel
-bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64_t& nStakeModifier, int& nStakeModifierHeight, int64_t& nStakeModifierTime, bool fPrintProofOfStake)
-{
-    nStakeModifier = 0;
-    if (!mapBlockIndex.count(hashBlockFrom))
-        return error("GetKernelStakeModifier() : block not indexed");
-
-    const CBlockIndex* pindexFrom = mapBlockIndex[hashBlockFrom];
-    nStakeModifierHeight = pindexFrom->nHeight;
-    nStakeModifierTime = pindexFrom->GetBlockTime();
-
-    const int64_t nSelectionTime = GetSelectionTime();
-    const CBlockIndex* pindex = pindexFrom;
-    CBlockIndex* pindexNext = chainActive[pindexFrom->nHeight + 1];
-
-    // loop to find the stake modifier later by a selection time
-    while (nStakeModifierTime < pindexFrom->GetBlockTime() + nSelectionTime) {
-        if (!pindexNext) {
-            // Should never happen
-            return error("Null pindexNext\n");
-        }
-
-        pindex = pindexNext;
-        pindexNext = chainActive[pindexNext->nHeight + 1];
-        if (pindex->GeneratedStakeModifier()) {
-            nStakeModifierHeight = pindex->nHeight;
-            nStakeModifierTime = pindex->GetBlockTime();
-        }
-    }
-    nStakeModifier = pindex->nStakeModifier;
-    return true;
-}
-#endif
-
 bool MultiplyStakeTarget(uint256 &bnTarget, int nModifierHeight, int64_t nModifierTime, int64_t nWeight)
 {
     typedef std::pair<uint32_t, const char*> mult;
 
-#   if 0
-    static std::map<int, mult> stakeTargetMultipliers = boost::assign::map_list_of
-#       include "multipliers.i"
-        ;
-#   else
     static std::map<int, mult> stakeTargetMultipliers;
     if (stakeTargetMultipliers.empty()) {
         std::multimap<int, mult> mm = boost::assign::map_list_of
@@ -345,7 +256,6 @@ bool MultiplyStakeTarget(uint256 &bnTarget, int nModifierHeight, int64_t nModifi
             }
         }
     }
-#   endif
 
     if (stakeTargetMultipliers.count(nModifierHeight)) {
         const mult &m = stakeTargetMultipliers[nModifierHeight];
@@ -361,11 +271,11 @@ bool Stake::CheckHash(const CBlockIndex* pindexPrev, unsigned int nBits, const C
     unsigned int nTimeBlockFrom = blockFrom.GetBlockTime();
 
     if (nTimeTx < txPrev.nTime) {  // Transaction timestamp violation
-        return false; //error("%s: nTime violation (nTime=%d, nTimeTx=%d)", __func__, txPrev.nTime, nTimeTx);
+        return false;
     }
 
     if (GetStakeAge(nTimeBlockFrom) > nTimeTx) // Min age requirement
-        return false; //error("%s: min age violation (nBlockTime=%d, nTimeTx=%d)", __func__, nTimeBlockFrom, nTimeTx);
+        return false;
 
     // Base target
     uint256 bnTarget;
@@ -386,27 +296,13 @@ bool Stake::CheckHash(const CBlockIndex* pindexPrev, unsigned int nBits, const C
     hashProofOfStake = Hash(ss.begin(), ss.end());
 
     if (fDebug) {
-#       if 0
-        LogPrintf("%s: using modifier 0x%016x at height=%d timestamp=%s for block from timestamp=%s\n", __func__,
-                  nStakeModifier, nStakeModifierHeight,
-                  DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStakeModifierTime).c_str(),
-                  DateTimeStrFormat("%Y-%m-%d %H:%M:%S", blockFrom.GetBlockTime()).c_str());
-        LogPrintf("%s: check modifier=0x%016x nTimeBlockFrom=%u nTimeTxPrev=%u nPrevout=%u nTimeTx=%u hashProof=%s\n", __func__,
-                  nStakeModifier,
-                  blockFrom.GetBlockTime(), txPrev.nTime, prevout.n, nTimeTx,
-                  hashProofOfStake.ToString());
-#       endif
         DEBUG_DUMP_STAKING_INFO_CheckHash();
     }
 
     if (Params().NetworkID() == CBaseChainParams::MAIN && hashProofOfStake > bnTarget && nStakeModifierHeight < 174453 && nStakeModifierHeight <= LAST_MULTIPLIED_BLOCK) {
         DEBUG_DUMP_MULTIFIER();
         if (!MultiplyStakeTarget(bnTarget, nStakeModifierHeight, nStakeModifierTime, nValueIn)) {
-#           if 1
             return false;
-#           else
-            return error("%s: cant adjust stake target %s, %d, %d", __func__, bnTarget.GetHex(), nStakeModifierHeight, nStakeModifierTime);
-#           endif
         }
     }
 
@@ -450,15 +346,7 @@ bool Stake::CheckProof(CBlockIndex* const pindexPrev, const CBlock &block, uint2
         return error("%s: failed to find block", __func__);
 
     unsigned int nTime = block.nTime;
-#   if 0
-    if (!CheckHash(pindexPrev, block.nBits, prevBlock, txPrev, txin.prevout, nTime, hashProofOfStake))
-        // may occur during initial download or if behind on block chain sync
-        return error("%s: invalid coinstake %s, hashProof=%s", __func__, 
-                     tx.GetHash().ToString(), hashProofOfStake.ToString());
-    return true;
-#   else
     return CheckHash(pindexPrev, block.nBits, prevBlock, txPrev, txin.prevout, nTime, hashProofOfStake);
-#   endif
 }
 
 // Get stake modifier checksum
@@ -1010,25 +898,10 @@ void Stake::StakingThread(CWallet *wallet)
 
 void Stake::GenerateStakes(boost::thread_group &group, CWallet *wallet, int procs)
 {
-#if 0
-    static std::unique_ptr<boost::thread_group> StakingThreads(new boost::thread_group);
-    if (procs == 0) {
-        nStakingInterrupped = true;
-        StakingThreads->interrupt_all();
-        StakingThreads->join_all();
-        nStakingInterrupped = false;
-        return;
-    }
-
-    for (int i = 0; i < procs; ++i) {
-        StakingThreads->create_thread(boost::bind(&Stake::StakingThread, this, wallet));
-    }
-#else
     nStakingInterrupped = procs == 0;
     for (int i = 0; i < procs; ++i) {
         group.create_thread(boost::bind(&Stake::StakingThread, this, wallet));
     }
-#endif
 }
 
 Stake *Stake::Pointer() { return &kernel; }
