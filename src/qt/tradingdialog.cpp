@@ -221,8 +221,8 @@ QString tradingDialog::BuyLUX(QString OrderType, double Quantity, double Rate){
     QString URL = "https://www.cryptopia.co.nz/api/SubmitTrade";
 
     QJsonObject stats_obj;
-    stats_obj["Market"] = "LUX/BTC";
-    stats_obj["Type"] = "Buy";
+    stats_obj["Market"] = QStringLiteral("LUX/BTC");
+    stats_obj["Type"] = QStringLiteral("Buy");
     stats_obj["Amount"] = Quantity;
     stats_obj["Rate"] = Rate;
 
@@ -240,8 +240,8 @@ QString tradingDialog::SellLUX(QString OrderType, double Quantity, double Rate){
     QString URL = "https://www.cryptopia.co.nz/api/SubmitTrade";
 
     QJsonObject stats_obj;
-    stats_obj["Market"] = "LUX/BTC";
-    stats_obj["Type"] = "Sell";
+    stats_obj["Market"] = QStringLiteral("LUX/BTC");
+    stats_obj["Type"] = QStringLiteral("Sell");
     stats_obj["Amount"] = Quantity;
     stats_obj["Rate"] = Rate;
 
