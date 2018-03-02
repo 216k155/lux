@@ -902,7 +902,7 @@ int GetIXConfirmations(uint256 nTXHash)
         sigs = (*i).second.CountSignatures();
     }
     if (sigs >= INSTANTX_SIGNATURES_REQUIRED) {
-        return nSwiftTXDepth;
+        return nInstanTXDepth;
     }
     return 0;
 }
@@ -1110,7 +1110,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     if (pool.exists(hash))
         return false;
 
-    // ----------- swiftTX transaction scanning -----------
+    // ----------- INSTANTX transaction scanning -----------
 
     BOOST_FOREACH (const CTxIn& in, tx.vin) {
         if (mapLockedInputs.count(in.prevout)) {
@@ -1283,12 +1283,14 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
         return state.DoS(100, error("AcceptableInputs: : coinbase as individual tx"),
             REJECT_INVALID, "coinbase");
 
+    // Rather not work on nonstandard transactions (unless -testnet/-regtest)
+    string reason;
     // is it already in the memory pool?
     uint256 hash = tx.GetHash();
     if (pool.exists(hash))
         return false;
 
-    // ----------- swiftTX transaction scanning -----------
+    // ----------- INSTANTX transaction scanning -----------
 
     BOOST_FOREACH (const CTxIn& in, tx.vin) {
         if (mapLockedInputs.count(in.prevout)) {
@@ -1427,27 +1429,7 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
         if (!CheckInputs(tx, state, view, false, STANDARD_SCRIPT_VERIFY_FLAGS, true)) {
             return error("AcceptableInputs: : ConnectInputs failed %s", hash.ToString());
         }
-
-        // Check again against just the consensus-critical mandatory script
-        // verification flags, in case of bugs in the standard flags that cause
-        // transactions to pass as valid when they're actually invalid. For
-        // instance the STRICTENC flag was incorrectly allowing certain
-        // CHECKSIG NOT scripts to pass, even though they were invalid.
-        //
-        // There is a similar check in CreateNewBlock() to prevent creating
-        // invalid blocks, however allowing such transactions into the mempool
-        // can be exploited as a DoS attack.
-        // for any real tx this will be checked on AcceptToMemoryPool anyway
-        //        if (!CheckInputs(tx, state, view, false, MANDATORY_SCRIPT_VERIFY_FLAGS, true))
-        //        {
-        //            return error("AcceptableInputs: : BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags %s", hash.ToString());
-        //        }
-
-        // Store transaction in memory
-        // pool.addUnchecked(hash, entry);
     }
-
-    // SyncWithWallets(tx, NULL);
 
     return true;
 }
@@ -2103,10 +2085,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return true;
     }
 
-//    if (pindex->nHeight <= Params().LAST_POW_BLOCK() && block.IsProofOfStake())
-//        return state.DoS(100, error("%s: PoS period not active", __func__),
-//            REJECT_INVALID, "PoS-early");
-
     if (pindex->nHeight > Params().LAST_POW_BLOCK() && block.IsProofOfWork())
         return state.DoS(100, error("%s: PoW period ended", __func__),
             REJECT_INVALID, "PoW-ended");
@@ -2539,7 +2517,7 @@ bool DisconnectBlocksAndReprocess(int blocks)
 /*
     DisconnectBlockAndInputs
 
-    Remove conflicting blocks for successful SwiftTX transaction locks
+    Remove conflicting blocks for successful InstanTX transaction locks
     This should be very rare (Probably will never happen)
 */
 // ***TODO*** clean up here
@@ -3186,16 +3164,6 @@ bool CheckWork(const CBlock &block, CBlockIndex* const pindexPrev)
 
     unsigned int nBitsRequired = GetNextWorkRequired(pindexPrev, &block, block.IsProofOfStake());
 
-//    if (block.IsProofOfWork() && (pindexPrev->nHeight + 1 <= 68589)) {
-//        double n1 = ConvertBitsToDouble(block.nBits);
-//        double n2 = ConvertBitsToDouble(nBitsRequired);
-//
-//        if (abs(n1 - n2) > n1 * 0.5)
-//            return error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1 - n2), n1, n2, pindexPrev->nHeight + 1);
-//
-//        return true;
-//    }
-
     if (block.IsProofOfWork() && pindexPrev->nHeight + 1 > Params().LAST_POW_BLOCK())
         return error("%s: reject proof-of-work at height %d", __func__, pindexPrev->nHeight + 1);
 
@@ -3234,13 +3202,6 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     if (chainActive.Height() - nHeight >= Params().MaxReorganizationDepth())
         return state.DoS(1, error("%s: forked chain older than max reorganization depth (height %d)", __func__, nHeight));
 
-//    // Check timestamp against prev
-//    if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast()) {
-//        LogPrintf("Block time = %d , GetMedianTimePast = %d \n", block.GetBlockTime(), pindexPrev->GetMedianTimePast());
-//        return state.Invalid(error("%s : block's timestamp is too early", __func__),
-//            REJECT_INVALID, "time-too-old");
-//    }
-
     // Check that the block chain matches the known block chain up to a checkpoint
     if (!Checkpoints::CheckBlock(nHeight, hash))
         return state.DoS(100, error("%s : rejected by checkpoint lock-in at %d", __func__, nHeight),
@@ -3250,19 +3211,6 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint();
     if (pcheckpoint && nHeight < pcheckpoint->nHeight)
         return state.DoS(0, error("%s : forked chain older than last checkpoint (height %d)", __func__, nHeight));
-
-//    // Reject block.nVersion=1 blocks when 95% (75% on testnet) of the network has upgraded:
-//    if (block.nVersion < 2 &&
-//        CBlockIndex::IsSuperMajority(2, pindexPrev, Params().RejectBlockOutdatedMajority())) {
-//        return state.Invalid(error("%s : rejected nVersion=1 block", __func__),
-//            REJECT_OBSOLETE, "bad-version");
-//    }
-//
-//    // Reject block.nVersion=2 blocks when 95% (75% on testnet) of the network has upgraded:
-//    if (block.nVersion < 3 && CBlockIndex::IsSuperMajority(3, pindexPrev, Params().RejectBlockOutdatedMajority())) {
-//        return state.Invalid(error("%s : rejected nVersion=2 block", __func__),
-//            REJECT_OBSOLETE, "bad-version");
-//    }
 
     return true;
 }
@@ -3305,8 +3253,6 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, CBlockIndex
         pindex = miSelf->second;
         if (ppindex)
             *ppindex = pindex;
-//        if (pindex->nStatus & BLOCK_FAILED_MASK)
-//            return state.Invalid(error("%s : block is marked invalid", __func__), 0, "duplicate");
         return true;
     }
 
@@ -3322,8 +3268,6 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, CBlockIndex
         if (mi == mapBlockIndex.end())
             return state.DoS(0, error("%s : prev block %s not found", __func__, block.hashPrevBlock.GetHex()), 0, "bad-prevblk");
         pindexPrev = (*mi).second;
-//        if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
-//            return state.DoS(100, error("%s : prev block invalid", __func__), REJECT_INVALID, "bad-prevblk");
     }
 
     if (!ContextualCheckBlockHeader(block, state, pindexPrev))
@@ -3351,8 +3295,6 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, 
         if (mi == mapBlockIndex.end())
             return state.DoS(0, error("%s : prev block %s not found", __func__, block.hashPrevBlock.GetHex()), 0, "bad-prevblk");
         pindexPrev = (*mi).second;
-//        if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
-//            return state.DoS(100, error("%s : prev block invalid", __func__), REJECT_INVALID, "bad-prevblk");
     }
 
     if (block.GetHash() != Params().HashGenesisBlock() && !CheckWork(block, pindexPrev))
@@ -3363,7 +3305,6 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, 
 
     if (pindex->nStatus & BLOCK_HAVE_DATA) {
         // TODO: deal better with duplicate blocks.
-        // return state.DoS(20, error("AcceptBlock() : already have block %d %s", pindex->nHeight, pindex->GetBlockHash().GetHex()), REJECT_DUPLICATE, "duplicate");
         return true;
     }
 
@@ -3471,8 +3412,6 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
     // Duplicate stake allowed only when there is orphan child block
     if (pblock->IsProofOfStake() && stake->IsBlockStaked(pblock) && !mapBlockIndex.count(pblock->hashPrevBlock))
         return error("%s: duplicate proof-of-stake for block %s", __func__, pblock->GetHash().GetHex());
-
-#   if 1 // Shouldn't send messages here to sync, prev blocks should have to be existed.
     
     // Check if the prev block is our prev block, if not then request sync and return false
     else if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL) {
@@ -3482,8 +3421,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
             return false;
         }
     }
-    
-#   endif
+
 
     CBlockIndex* pindex = NULL;
     while (true) {
@@ -4168,7 +4106,6 @@ static void CheckBlockIndex()
         } else { // If this block does not have block data available, or all parents do, it cannot be in mapBlocksUnlinked.
             assert(!foundInUnlinked);
         }
-        // assert(pindex->GetBlockHash() == pindex->GetBlockHeader().GetHash()); // Perhaps too slow
         // End: actual consistency checks.
 
         // Try descending into the first subnode.
@@ -5223,20 +5160,10 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
     else {
         bool processed = false;
-#       if 0
-        if (!processed) obfuscationPool.ProcessMessage(pfrom, strCommand, vRecv, processed);
-        if (!processed) mnodeman.ProcessMessage(pfrom, strCommand, vRecv, processed);
-        if (!processed) budget.ProcessMessage(pfrom, strCommand, vRecv, processed);
-        if (!processed) masternodePayments.ProcessMessage(pfrom, strCommand, vRecv, processed);
-        if (!processed) ProcessSwiftTX(pfrom, strCommand, vRecv, processed);
-        if (!processed) ProcessSpork(pfrom, strCommand, vRecv, processed);
-        if (!processed) masternodeSync.ProcessMessage(pfrom, strCommand, vRecv, processed);
-#       else
-        if (!processed) ProcessLuxsend(pfrom, strCommand, vRecv, processed);
+        if (!processed) ProcessDarksend(pfrom, strCommand, vRecv, processed);
         if (!processed) ProcessMasternode(pfrom, strCommand, vRecv, processed);
         if (!processed) ProcessInstantX(pfrom, strCommand, vRecv, processed);
         if (!processed) ProcessSpork(pfrom, strCommand, vRecv, processed);
-#       endif
     }
 
     return true;
@@ -5277,11 +5204,6 @@ bool ProcessMessages(CNode* pfrom)
 
         // get next message
         CNetMessage& msg = *it;
-
-        //if (fDebug)
-        //    LogPrintf("ProcessMessages(message %u msgsz, %u bytes, complete:%s)\n",
-        //            msg.hdr.nMessageSize, msg.vRecv.size(),
-        //            msg.complete() ? "Y" : "N");
 
         // end, if an incomplete message is found
         if (!msg.complete())
@@ -5461,9 +5383,6 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             if (nSyncStarted == 0 || chainActive.Tip()->GetBlockTime() > GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
                 state.fSyncStarted = true;
                 nSyncStarted++;
-                //CBlockIndex *pindexStart = chainActive.Tip()->pprev ? chainActive.Tip()->pprev : chainActive.Tip();
-                //LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
-                //pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256(0));
                 pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
             }
         }
