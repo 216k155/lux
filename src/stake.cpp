@@ -18,16 +18,6 @@
 #include "timedata.h"
 #include <boost/thread.hpp>
 #include <atomic>
-#if defined(DEBUG_DUMP_STAKING_INFO)
-#  include "DEBUG_DUMP_STAKING_INFO.hpp"
-#endif
-
-#ifndef DEBUG_DUMP_STAKING_INFO_CheckHash
-#  define DEBUG_DUMP_STAKING_INFO_CheckHash() (void)0
-#endif
-#ifndef DEBUG_DUMP_MULTIFIER
-#  define DEBUG_DUMP_MULTIFIER() (void)0
-#endif
 
 using namespace std;
 
@@ -295,12 +285,7 @@ bool Stake::CheckHash(const CBlockIndex* pindexPrev, unsigned int nBits, const C
     ss << nStakeModifier << nTimeBlockFrom << txPrev.nTime << prevout.hash << prevout.n << nTimeTx;
     hashProofOfStake = Hash(ss.begin(), ss.end());
 
-    if (fDebug) {
-        DEBUG_DUMP_STAKING_INFO_CheckHash();
-    }
-
     if (Params().NetworkID() == CBaseChainParams::MAIN && hashProofOfStake > bnTarget && nStakeModifierHeight < 174453 && nStakeModifierHeight <= LAST_MULTIPLIED_BLOCK) {
-        DEBUG_DUMP_MULTIFIER();
         if (!MultiplyStakeTarget(bnTarget, nStakeModifierHeight, nStakeModifierTime, nValueIn)) {
             return false;
         }

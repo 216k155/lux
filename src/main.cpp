@@ -33,20 +33,9 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
-#if defined(DEBUG_DUMP_STAKING_INFO)
-#  include "DEBUG_DUMP_STAKING_INFO.hpp"
-#endif
 
 using namespace boost;
 using namespace std;
-
-#if defined(NDEBUG)
-#error "LUX cannot be compiled without assertions."
-#endif
-
-#ifndef DEBUG_DUMP_STAKING_INFO_AddToBlockIndex
-#  define DEBUG_DUMP_STAKING_INFO_AddToBlockIndex() (void)0
-#endif
 
 const int LAST_HEIGHT_FEE_BLOCK = 180000;
 
@@ -1153,9 +1142,6 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
             // only helps filling in pfMissingInputs (to determine missing vs spent).
             BOOST_FOREACH (const CTxIn txin, tx.vin) {
                 if (!view.HaveCoins(txin.prevout.hash)) {
-#                   if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_AcceptToMemoryPool)
-                    DEBUG_DUMP_AcceptToMemoryPool();
-#                   endif
                     if (pfMissingInputs)
                         *pfMissingInputs = true;
                     return false;
@@ -2912,8 +2898,6 @@ CBlockIndex* AddToBlockIndex(const CBlock& block)
         pindexNew->nStakeModifierChecksum = stake->GetModifierChecksum(pindexNew);
         if (!stake->CheckModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
             LogPrintf("%s: Rejected by stake modifier checkpoint height=%d, modifier=%s \n", __func__, pindexNew->nHeight, boost::lexical_cast<std::string>(nStakeModifier));
-
-        DEBUG_DUMP_STAKING_INFO_AddToBlockIndex();
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
@@ -4758,10 +4742,6 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         CValidationState state;
 
         mapAlreadyAskedFor.erase(inv);
-
-#       if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_Message_TX)
-        DEBUG_DUMP_Message_TX();
-#       endif
 
         if (AcceptToMemoryPool(mempool, state, tx, true, &fMissingInputs, false, ignoreFees)) {
             mempool.check(pcoinsTip);

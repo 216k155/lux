@@ -27,10 +27,6 @@
 
 #define SELECT_COINS_FROM_ACCOUNT true
 
-#if defined(DEBUG_DUMP_STAKING_INFO)
-#include "DEBUG_DUMP_STAKING_INFO.hpp"
-#endif
-
 using namespace std;
 
 /**
@@ -789,7 +785,7 @@ int CWallet::GetRealInputDarkSendRounds(CTxIn in, int rounds) const
         std::map<uint256, CMutableTransaction>::const_iterator mdwi = mDenomWtxes.find(hash);
         // not known yet, let's add it
         if (mdwi == mDenomWtxes.end()) {
-            LogPrint("obfuscation", "GetInputDarkSendRounds INSERTING %s\n", hash.ToString());
+            LogPrint("darksend", "GetInputDarkSendRounds INSERTING %s\n", hash.ToString());
             mDenomWtxes[hash] = CMutableTransaction(*wtx);
         }
         // found and it's not an initial value, just return it
@@ -801,13 +797,13 @@ int CWallet::GetRealInputDarkSendRounds(CTxIn in, int rounds) const
         // bounds check
         if (nout >= wtx->vout.size()) {
             // should never actually hit this
-            LogPrint("obfuscation", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, -4);
+            LogPrint("darksend", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, -4);
             return -4;
         }
 
         if (pwalletMain->IsCollateralAmount(wtx->vout[nout].nValue)) {
             mDenomWtxes[hash].vout[nout].nRounds = -3;
-            LogPrint("obfuscation", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            LogPrint("darksend", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
             return mDenomWtxes[hash].vout[nout].nRounds;
         }
 
@@ -815,7 +811,7 @@ int CWallet::GetRealInputDarkSendRounds(CTxIn in, int rounds) const
         if (/*rounds == 0 && */ !IsDenominatedAmount(wtx->vout[nout].nValue)) //NOT DENOM
         {
             mDenomWtxes[hash].vout[nout].nRounds = -2;
-            LogPrint("obfuscation", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            LogPrint("darksend", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
             return mDenomWtxes[hash].vout[nout].nRounds;
         }
 
@@ -826,7 +822,7 @@ int CWallet::GetRealInputDarkSendRounds(CTxIn in, int rounds) const
         // this one is denominated but there is another non-denominated output found in the same tx
         if (!fAllDenoms) {
             mDenomWtxes[hash].vout[nout].nRounds = 0;
-            LogPrint("obfuscation", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+            LogPrint("darksend", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
             return mDenomWtxes[hash].vout[nout].nRounds;
         }
 
@@ -846,7 +842,7 @@ int CWallet::GetRealInputDarkSendRounds(CTxIn in, int rounds) const
         mDenomWtxes[hash].vout[nout].nRounds = fDenomFound ? (nShortest >= 15 ? 16 : nShortest + 1) // good, we a +1 to the shortest one but only 16 rounds max allowed
                                                              :
                                                              0; // too bad, we are the fist one in that chain
-        LogPrint("obfuscation", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
+        LogPrint("darksend", "GetInputDarkSendRounds UPDATED   %s %3d %3d\n", hash.ToString(), nout, mDenomWtxes[hash].vout[nout].nRounds);
         return mDenomWtxes[hash].vout[nout].nRounds;
     }
 
@@ -1241,7 +1237,7 @@ CAmount CWallet::GetAnonymizedBalance() const
                     if(IsSpent(out.tx->GetHash(), i) || !IsMine(pcoin->vout[i]) || !IsDenominated(vin)) continue;
 //                    if(pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]) || !IsDenominated(vin)) continue;
 
-                    int rounds = GetInputLuxsendRounds(vin);
+                    int rounds = GetInputDarksendRounds(vin);
                     if(rounds >= nDarksendRounds){
                         nTotal += pcoin->vout[i].nValue;
                     }
@@ -1283,7 +1279,7 @@ double CWallet::GetAverageAnonymizedRounds() const
                     if(IsSpent(out.tx->GetHash(), i) || !IsMine(pcoin->vout[i]) || !IsDenominated(vin)) continue;
 //                    if(pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]) || !IsDenominated(vin)) continue;
 
-                    int rounds = GetInputLuxsendRounds(vin);
+                    int rounds = GetInputDarksendRounds(vin);
                     fTotal += (float)rounds;
                     fCount += 1;
                 }
@@ -1500,9 +1496,6 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                 if (mine && !(IsSpent(wtxid, i)) && !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue > 0 &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->IsSelected((*it).first, i))) {
                     COutput output(pcoin, i, nDepth, mine);
-#                   if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_AvailableCoins_Coin)
-                    DEBUG_DUMP_AvailableCoins_Coin();
-#                   endif
                     vCoins.push_back(output);
                 }
             }
@@ -1980,7 +1973,7 @@ bool CWallet::SelectCoinsDark(CAmount nValueMin, CAmount nValueMax, std::vector<
         if (nValueRet + out.tx->vout[out.i].nValue <= nValueMax) {
             CTxIn vin = CTxIn(out.tx->GetHash(), out.i);
 
-            int rounds = GetInputLuxsendRounds(vin);
+            int rounds = GetInputDarksendRounds(vin);
             if (rounds >= nDarksendRoundsMax) continue;
             if (rounds < nDarksendRoundsMin) continue;
 
@@ -2140,10 +2133,6 @@ bool CWallet::ConvertList(std::vector<CTxIn> vCoins, std::vector<int64_t>& vecAm
 
 bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay)
 {
-#   if defined(DEBUG_DUMP_STAKING_INFO) && defined(DEBUG_DUMP_CreateTransaction_1)
-    DEBUG_DUMP_CreateTransaction_1();
-#   endif
-
     if (useIX && nFeePay < CENT) nFeePay = CENT;
 
     CAmount nValue = 0;
@@ -2228,10 +2217,6 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
 
                     return false;
                 }
-
-#               if defined(DEBUG_DUMP_STAKING_INFO) && defined(DEBUG_DUMP_CreateTransaction_2)
-                DEBUG_DUMP_CreateTransaction_2();
-#               endif
 
                 BOOST_FOREACH (PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins) {
                     CAmount nCredit = pcoin.first->vout[pcoin.second].nValue;
@@ -2396,9 +2381,6 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std:
 {
     {
         LOCK2(cs_main, cs_wallet);
-#       if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_CommitTransaction)
-        DEBUG_DUMP_CommitTransaction();
-#       endif
         {
             // This is only to keep the database open to defeat the auto-flush for the
             // duration of this scope.  This is the only place where this optimization
@@ -2481,14 +2463,14 @@ int64_t CWallet::GetTotalValue(std::vector<CTxIn> vCoins)
     return nTotalValue;
 }
 
-std::string CWallet::PrepareLuxsendDenominate(int minRounds, int maxRounds)
+std::string CWallet::PrepareDarksendDenominate(int minRounds, int maxRounds)
 {
     if (IsLocked())
         return _("Error: Wallet locked, unable to create transaction!");
 
     if(darkSendPool.GetState() != POOL_STATUS_ERROR && darkSendPool.GetState() != POOL_STATUS_SUCCESS)
         if(darkSendPool.GetMyTransactionCount() > 0)
-            return _("Error: You already have pending entries in the Luxsend pool");
+            return _("Error: You already have pending entries in the Darksend pool");
 
     // ** find the coins we'll use
     std::vector<CTxIn> vCoins;
@@ -2507,7 +2489,7 @@ std::string CWallet::PrepareLuxsendDenominate(int minRounds, int maxRounds)
 
     // calculate total value out
     int64_t nTotalValue = GetTotalValue(vCoins);
-    LogPrintf("PrepareLuxsendDenominate - preparing darksend denominate . Got: %d \n", nTotalValue);
+    LogPrintf("PrepareDarksendDenominate - preparing darksend denominate . Got: %d \n", nTotalValue);
 
     //--------------
     BOOST_FOREACH(CTxIn v, vCoins)
@@ -2621,7 +2603,7 @@ std::string CWallet::PrepareLuxsendDenominate(int minRounds, int maxRounds)
     //randomize the output order
     std::random_shuffle (vOut.begin(), vOut.end());
 
-    darkSendPool.SendLuxsendDenominate(vCoins, vOut, nValueIn);
+    darkSendPool.SendDarksendDenominate(vCoins, vOut, nValueIn);
 
     return "";
 }
@@ -3541,7 +3523,7 @@ int CMerkleTx::GetDepthInMainChain(const CBlockIndex*& pindexRet, bool enableIX)
         if (nResult < 6) {
             int signatures = GetTransactionLockSignatures();
             if (signatures >= INSTANTX_SIGNATURES_REQUIRED) {
-                return nSwiftTXDepth + nResult;
+                return nInstanTXDepth + nResult;
             }
         }
     }
@@ -3567,7 +3549,7 @@ int CMerkleTx::GetTransactionLockSignatures() const
 {
     //if (fLargeWorkForkFound || fLargeWorkInvalidChainFound) return -2;
     if (!IsSporkActive(SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT)) return -3;
-    if (!fEnableSwiftTX) return -1;
+    if (!fEnableInstanTX) return -1;
 
     //compile consessus vote
     std::map<uint256, CTransactionLock>::iterator i = mapTxLocks.find(GetHash());
@@ -3580,7 +3562,7 @@ int CMerkleTx::GetTransactionLockSignatures() const
 
 bool CMerkleTx::IsTransactionLockTimedOut() const
 {
-    if (!fEnableSwiftTX) return 0;
+    if (!fEnableInstanTX) return 0;
 
     //compile consessus vote
     std::map<uint256, CTransactionLock>::iterator i = mapTxLocks.find(GetHash());
@@ -3591,11 +3573,11 @@ bool CMerkleTx::IsTransactionLockTimedOut() const
     return false;
 }
 
-bool CWallet::AddAdrenalineNodeConfig(CAdrenalineNodeConfig nodeConfig)
+bool CWallet::AddLuxNodeConfig(CLuxNodeConfig nodeConfig)
 {
-    bool rv = CWalletDB(strWalletFile).WriteAdrenalineNodeConfig(nodeConfig.sAlias, nodeConfig);
+    bool rv = CWalletDB(strWalletFile).WriteLuxNodeConfig(nodeConfig.sAlias, nodeConfig);
     if(rv)
-	uiInterface.NotifyAdrenalineNodeChanged(nodeConfig);
+	uiInterface.NotifyLuxNodeChanged(nodeConfig);
 
     return rv;
 }
