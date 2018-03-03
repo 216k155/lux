@@ -27,10 +27,6 @@
 
 #define SELECT_COINS_FROM_ACCOUNT true
 
-#if defined(DEBUG_DUMP_STAKING_INFO)
-#include "DEBUG_DUMP_STAKING_INFO.hpp"
-#endif
-
 using namespace std;
 
 /**
@@ -1500,9 +1496,6 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                 if (mine && !(IsSpent(wtxid, i)) && !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue > 0 &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->IsSelected((*it).first, i))) {
                     COutput output(pcoin, i, nDepth, mine);
-#                   if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_AvailableCoins_Coin)
-                    DEBUG_DUMP_AvailableCoins_Coin();
-#                   endif
                     vCoins.push_back(output);
                 }
             }
@@ -2140,10 +2133,6 @@ bool CWallet::ConvertList(std::vector<CTxIn> vCoins, std::vector<int64_t>& vecAm
 
 bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay)
 {
-#   if defined(DEBUG_DUMP_STAKING_INFO) && defined(DEBUG_DUMP_CreateTransaction_1)
-    DEBUG_DUMP_CreateTransaction_1();
-#   endif
-
     if (useIX && nFeePay < CENT) nFeePay = CENT;
 
     CAmount nValue = 0;
@@ -2228,10 +2217,6 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
 
                     return false;
                 }
-
-#               if defined(DEBUG_DUMP_STAKING_INFO) && defined(DEBUG_DUMP_CreateTransaction_2)
-                DEBUG_DUMP_CreateTransaction_2();
-#               endif
 
                 BOOST_FOREACH (PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins) {
                     CAmount nCredit = pcoin.first->vout[pcoin.second].nValue;
@@ -2396,9 +2381,6 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std:
 {
     {
         LOCK2(cs_main, cs_wallet);
-#       if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_CommitTransaction)
-        DEBUG_DUMP_CommitTransaction();
-#       endif
         {
             // This is only to keep the database open to defeat the auto-flush for the
             // duration of this scope.  This is the only place where this optimization
