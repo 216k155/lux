@@ -76,15 +76,15 @@ HEADERS += src/activemasternode.h \
            src/compressor.h \
            src/core_io.h \
            src/crypter.h \
-           src/obfuscation-relay.h \
-           src/obfuscation.h \
+           src/darksend-relay.h \
+           src/darksend.h \
            src/lux-config.h \
            src/db.h \
            src/eccryptoverify.h \
            src/ecwrapper.h \
            src/hash.h \
            src/init.h \
-           src/swifttx.h \
+           src/instantx.h \
            src/keepass.h \
            src/key.h \
            src/keystore.h \
@@ -175,7 +175,7 @@ HEADERS += src/activemasternode.h \
            src/qt/coincontroldialog.h \
            src/qt/coincontroltreewidget.h \
            src/qt/csvmodelwriter.h \
-           src/qt/obfuscationconfig.h \
+           src/qt/darksendconfig.h \
            src/qt/editaddressdialog.h \
            src/qt/guiconstants.h \
            src/qt/guiutil.h \
@@ -341,7 +341,7 @@ HEADERS += src/activemasternode.h \
 FORMS += src/qt/forms/addressbookpage.ui \
          src/qt/forms/askpassphrasedialog.ui \
          src/qt/forms/coincontroldialog.ui \
-         src/qt/forms/obfuscationconfig.ui \
+         src/qt/forms/darksendconfig.ui \
          src/qt/forms/editaddressdialog.ui \
          src/qt/forms/helpmessagedialog.ui \
          src/qt/forms/intro.ui \
@@ -372,8 +372,8 @@ SOURCES += src/activemasternode.cpp \
            src/core_read.cpp \
            src/core_write.cpp \
            src/crypter.cpp \
-           src/obfuscation-relay.cpp \
-           src/obfuscation.cpp \
+           src/darksend-relay.cpp \
+           src/darksend.cpp \
            src/lux-cli.cpp \
            src/lux-tx.cpp \
            src/lux.cpp \
@@ -383,7 +383,7 @@ SOURCES += src/activemasternode.cpp \
            src/editaddressdialog.cpp \
            src/hash.cpp \
            src/init.cpp \
-           src/swifttx.cpp \
+           src/instantx.cpp \
            src/keepass.cpp \
            src/key.cpp \
            src/keystore.cpp \
@@ -470,7 +470,7 @@ SOURCES += src/activemasternode.cpp \
            src/qt/coincontroldialog.cpp \
            src/qt/coincontroltreewidget.cpp \
            src/qt/csvmodelwriter.cpp \
-           src/qt/obfuscationconfig.cpp \
+           src/qt/darksendconfig.cpp \
            src/qt/lux.cpp \
            src/qt/luxstrings.cpp \
            src/qt/editaddressdialog.cpp \

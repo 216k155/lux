@@ -25,13 +25,13 @@ QT_FORMS_UI = \
   qt/forms/bip38tooldialog.ui \
   qt/forms/coincontroldialog.ui \
   qt/forms/blockexplorer.ui \
-  qt/forms/obfuscationconfig.ui \
+  qt/forms/darksendconfig.ui \
   qt/forms/editaddressdialog.ui \
   qt/forms/helpmessagedialog.ui \
   qt/forms/intro.ui \
   qt/forms/masternodemanager.ui \
-  qt/forms/addeditadrenalinenode.ui \
-  qt/forms/adrenalinenodeconfigdialog.ui \
+  qt/forms/addeditluxnode.ui \
+  qt/forms/luxnodeconfigdialog.ui \
   qt/forms/multisenddialog.ui \
   qt/forms/openuridialog.ui \
   qt/forms/optionsdialog.ui \
@@ -59,15 +59,15 @@ QT_MOC_CPP = \
   qt/moc_coincontroldialog.cpp \
   qt/moc_coincontroltreewidget.cpp \
   qt/moc_csvmodelwriter.cpp \
-  qt/moc_obfuscationconfig.cpp \
+  qt/moc_darksendconfig.cpp \
   qt/moc_editaddressdialog.cpp \
   qt/moc_guiutil.cpp \
   qt/moc_intro.cpp \
   qt/moc_macdockiconhandler.cpp \
   qt/moc_macnotificationhandler.cpp \
   qt/moc_masternodemanager.cpp \
-  qt/moc_addeditadrenalinenode.cpp \
-  qt/moc_adrenalinenodeconfigdialog.cpp \
+  qt/moc_addeditluxnode.cpp \
+  qt/moc_luxnodeconfigdialog.cpp \
   qt/moc_multisenddialog.cpp \
   qt/moc_notificator.cpp \
   qt/moc_openuridialog.cpp \
@@ -133,7 +133,7 @@ BITCOIN_QT_H = \
   qt/coincontroldialog.h \
   qt/coincontroltreewidget.h \
   qt/csvmodelwriter.h \
-  qt/obfuscationconfig.h \
+  qt/darksendconfig.h \
   qt/editaddressdialog.h \
   qt/guiconstants.h \
   qt/guiutil.h \
@@ -141,8 +141,8 @@ BITCOIN_QT_H = \
   qt/macdockiconhandler.h \
   qt/macnotificationhandler.h \
   qt/masternodemanager.h \
-  qt/addeditadrenalinenode.h \
-  qt/adrenalinenodeconfigdialog.h \
+  qt/addeditluxnode.h \
+  qt/luxnodeconfigdialog.h \
   qt/multisenddialog.h \
   qt/networkstyle.h \
   qt/notificator.h \
@@ -215,6 +215,7 @@ RES_ICONS = \
   qt/res/icons/lock_open.png \
   qt/res/icons/masternodes.png \
   qt/res/icons/overview.png \
+  qt/res/icons/smartcontract.png \
   qt/res/icons/qrcode.png \
   qt/res/icons/quit.png \
   qt/res/icons/receive.png \
@@ -249,8 +250,8 @@ BITCOIN_QT_CPP = \
   qt/guiutil.cpp \
   qt/intro.cpp \
   qt/masternodemanager.cpp \
-  qt/addeditadrenalinenode.cpp \
-  qt/adrenalinenodeconfigdialog.cpp \
+  qt/addeditluxnode.cpp \
+  qt/luxnodeconfigdialog.cpp \
   qt/networkstyle.cpp \
   qt/notificator.cpp \
   qt/optionsdialog.cpp \
@@ -274,11 +275,11 @@ BITCOIN_QT_CPP += \
   qt/blockexplorer.cpp \
   qt/coincontroldialog.cpp \
   qt/coincontroltreewidget.cpp \
-  qt/obfuscationconfig.cpp \
+  qt/darksendconfig.cpp \
   qt/editaddressdialog.cpp \
   qt/masternodemanager.cpp \
-  qt/addeditadrenalinenode.cpp \
-  qt/adrenalinenodeconfigdialog.cpp \
+  qt/addeditluxnode.cpp \
+  qt/luxnodeconfigdialog.cpp \
   qt/multisenddialog.cpp \
   qt/openuridialog.cpp \
   qt/overviewpage.cpp \

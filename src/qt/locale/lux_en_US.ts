@@ -999,8 +999,8 @@ Address: %4
         <translation>Please switch to "List mode" to use this function.</translation>
     </message>
     <message>
-        <source>Non-anonymized input selected. &lt;b&gt;Obfuscation will be disabled.&lt;/b&gt;&lt;br&gt;&lt;br&gt;If you still want to use Obfuscation, please deselect all non-nonymized inputs first and then check Obfuscation checkbox again.</source>
-        <translation>Non-anonymized input selected. &lt;b&gt;Obfuscation will be disabled.&lt;/b&gt;&lt;br&gt;&lt;br&gt;If you still want to use Obfuscation, please deselect all non-nonymized inputs first and then check Obfuscation checkbox again.</translation>
+        <source>Non-anonymized input selected. &lt;b&gt;Darksend will be disabled.&lt;/b&gt;&lt;br&gt;&lt;br&gt;If you still want to use Darksend, please deselect all non-nonymized inputs first and then check Darksend checkbox again.</source>
+        <translation>Non-anonymized input selected. &lt;b&gt;Darksend will be disabled.&lt;/b&gt;&lt;br&gt;&lt;br&gt;If you still want to use Darksend, please deselect all non-nonymized inputs first and then check Darksend checkbox again.</translation>
     </message>
     <message>
         <source>highest</source>
@@ -1538,10 +1538,10 @@ Please check the address and try again.</translation>
     </message>
 </context>
 <context>
-    <name>ObfuscationConfig</name>
+    <name>DarksendConfig</name>
     <message>
-        <source>Configure Obfuscation</source>
-        <translation>Configure Obfuscation</translation>
+        <source>Configure Darksend</source>
+        <translation>Configure Darksend</translation>
     </message>
     <message>
         <source>Basic Privacy</source>
@@ -1588,20 +1588,20 @@ Please check the address and try again.</translation>
         <translation>0.1 LUX per 10000 LUX you anonymize.</translation>
     </message>
     <message>
-        <source>Obfuscation Configuration</source>
-        <translation>Obfuscation Configuration</translation>
+        <source>Darksend Configuration</source>
+        <translation>Darksend Configuration</translation>
     </message>
     <message>
-        <source>Obfuscation was successfully set to basic (%1 and 2 rounds). You can change this at any time by opening LUX's configuration screen.</source>
-        <translation>Obfuscation was successfully set to basic (%1 and 2 rounds). You can change this at any time by opening LUX's configuration screen.</translation>
+        <source>Darksend was successfully set to basic (%1 and 2 rounds). You can change this at any time by opening LUX's configuration screen.</source>
+        <translation>Darksend was successfully set to basic (%1 and 2 rounds). You can change this at any time by opening LUX's configuration screen.</translation>
     </message>
     <message>
-        <source>Obfuscation was successfully set to high (%1 and 8 rounds). You can change this at any time by opening LUX's configuration screen.</source>
-        <translation>Obfuscation was successfully set to high (%1 and 8 rounds). You can change this at any time by opening LUX's configuration screen.</translation>
+        <source>Darksend was successfully set to high (%1 and 8 rounds). You can change this at any time by opening LUX's configuration screen.</source>
+        <translation>Darksend was successfully set to high (%1 and 8 rounds). You can change this at any time by opening LUX's configuration screen.</translation>
     </message>
     <message>
-        <source>Obfuscation was successfully set to maximum (%1 and 16 rounds). You can change this at any time by opening LUX's configuration screen.</source>
-        <translation>Obfuscation was successfully set to maximum (%1 and 16 rounds). You can change this at any time by opening LUX's configuration screen.</translation>
+        <source>Darksend was successfully set to maximum (%1 and 16 rounds). You can change this at any time by opening LUX's configuration screen.</source>
+        <translation>Darksend was successfully set to maximum (%1 and 16 rounds). You can change this at any time by opening LUX's configuration screen.</translation>
     </message>
 </context>
 <context>
@@ -1694,12 +1694,12 @@ Please check the address and try again.</translation>
         <translation>This setting determines the amount of individual masternodes that an input will be anonymized through.&lt;br/&gt;More rounds of anonymization gives a higher degree of privacy, but also costs more in fees.</translation>
     </message>
     <message>
-        <source>Obfuscation rounds to use</source>
-        <translation>Obfuscation rounds to use</translation>
+        <source>Darksend rounds to use</source>
+        <translation>Darksend rounds to use</translation>
     </message>
     <message>
-        <source>This amount acts as a threshold to turn off Obfuscation once it's reached.</source>
-        <translation>This amount acts as a threshold to turn off Obfuscation once it's reached.</translation>
+        <source>This amount acts as a threshold to turn off Darksend once it's reached.</source>
+        <translation>This amount acts as a threshold to turn off Darksend once it's reached.</translation>
     </message>
     <message>
         <source>Amount of LUX to keep anonymized</source>
@@ -1939,8 +1939,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Status:</translation>
     </message>
     <message>
-        <source>Obfuscation Balance:</source>
-        <translation>Obfuscation Balance:</translation>
+        <source>Darksend Balance:</source>
+        <translation>Darksend Balance:</translation>
     </message>
     <message>
         <source>0 LUX / 0 Rounds</source>
@@ -1951,16 +1951,16 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Enabled/Disabled</translation>
     </message>
     <message>
-        <source>Try to manually submit a Obfuscation request.</source>
-        <translation>Try to manually submit a Obfuscation request.</translation>
+        <source>Try to manually submit a Darksend request.</source>
+        <translation>Try to manually submit a Darksend request.</translation>
     </message>
     <message>
-        <source>Reset the current status of Obfuscation (can interrupt Obfuscation if it's in the process of Mixing, which can cost you money!)</source>
-        <translation>Reset the current status of Obfuscation (can interrupt Obfuscation if it's in the process of Mixing, which can cost you money!)</translation>
+        <source>Reset the current status of Darksend (can interrupt Darksend if it's in the process of Mixing, which can cost you money!)</source>
+        <translation>Reset the current status of Darksend (can interrupt Darksend if it's in the process of Mixing, which can cost you money!)</translation>
     </message>
     <message>
-        <source>Obfuscation</source>
-        <translation>Obfuscation</translation>
+        <source>Darksend</source>
+        <translation>Darksend</translation>
     </message>
     <message>
         <source>Completion:</source>
@@ -2039,38 +2039,38 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation><numerusform>Denominated inputs have %5 of %n rounds on average</numerusform><numerusform>Denominated inputs have %5 of %n rounds on average</numerusform></translation>
     </message>
     <message>
-        <source>Last Obfuscation message:
+        <source>Last Darksend message:
 </source>
-        <translation>Last Obfuscation message:
+        <translation>Last Darksend message:
 </translation>
     </message>
     <message>
-        <source>Obfuscation was successfully reset.</source>
-        <translation>Obfuscation was successfully reset.</translation>
+        <source>Darksend was successfully reset.</source>
+        <translation>Darksend was successfully reset.</translation>
     </message>
     <message>
-        <source>If you don't want to see internal Obfuscation fees/transactions select "Most Common" as Type on the "Transactions" tab.</source>
-        <translation>If you don't want to see internal Obfuscation fees/transactions select "Most Common" as Type on the "Transactions" tab.</translation>
+        <source>If you don't want to see internal Darksend fees/transactions select "Most Common" as Type on the "Transactions" tab.</source>
+        <translation>If you don't want to see internal Darksend fees/transactions select "Most Common" as Type on the "Transactions" tab.</translation>
     </message>
     <message>
-        <source>Obfuscation requires at least %1 to use.</source>
-        <translation>Obfuscation requires at least %1 to use.</translation>
+        <source>Darksend requires at least %1 to use.</source>
+        <translation>Darksend requires at least %1 to use.</translation>
     </message>
     <message>
-        <source>Wallet is locked and user declined to unlock. Disabling Obfuscation.</source>
-        <translation>Wallet is locked and user declined to unlock. Disabling Obfuscation.</translation>
+        <source>Wallet is locked and user declined to unlock. Disabling Darksend.</source>
+        <translation>Wallet is locked and user declined to unlock. Disabling Darksend.</translation>
     </message>
     <message>
         <source>Found enough compatible inputs to anonymize %1</source>
         <translation>Found enough compatible inputs to anonymize %1</translation>
     </message>
     <message>
-        <source>Start Obfuscation</source>
-        <translation>Start Obfuscation</translation>
+        <source>Start Luxsend</source>
+        <translation>Start Luxsend</translation>
     </message>
     <message>
-        <source>Stop Obfuscation</source>
-        <translation>Stop Obfuscation</translation>
+        <source>Stop Luxsend</source>
+        <translation>Stop Luxsend</translation>
     </message>
     <message>
         <source>Mixed</source>
@@ -2832,8 +2832,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Minimize</translation>
     </message>
     <message>
-        <source>Obfuscation</source>
-        <translation>Obfuscation</translation>
+        <source>Darksend</source>
+        <translation>Darksend</translation>
     </message>
     <message>
         <source>per kilobyte</source>
@@ -2916,8 +2916,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Add &amp;Recipient</translation>
     </message>
     <message>
-        <source>SwiftTX</source>
-        <translation>SwiftTX</translation>
+        <source>InstanTX</source>
+        <translation>InstanTX</translation>
     </message>
     <message>
         <source>Balance:</source>
@@ -2980,8 +2980,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>any available funds (not recommended)</translation>
     </message>
     <message>
-        <source>and SwiftTX</source>
-        <translation>and SwiftTX</translation>
+        <source>and InstanTX</source>
+        <translation>and InstanTX</translation>
     </message>
     <message>
         <source>%1 to %2</source>
@@ -3016,8 +3016,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>The recipient address is not valid, please recheck.</translation>
     </message>
     <message>
-        <source>(obfuscation requires this amount to be rounded up to the nearest %1).</source>
-        <translation>(obfuscation requires this amount to be rounded up to the nearest %1).</translation>
+        <source>(darksend requires this amount to be rounded up to the nearest %1).</source>
+        <translation>(darksend requires this amount to be rounded up to the nearest %1).</translation>
     </message>
     <message>
         <source> split into %1 outputs using the UTXO splitter.</source>
@@ -3342,16 +3342,16 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>conflicted</translation>
     </message>
     <message>
-        <source>%1/offline (verified via swifttx)</source>
-        <translation>%1/offline (verified via swifttx)</translation>
+        <source>%1/offline (verified via instantx)</source>
+        <translation>%1/offline (verified via instantx)</translation>
     </message>
     <message>
-        <source>%1/confirmed (verified via swifttx)</source>
-        <translation>%1/confirmed (verified via swifttx)</translation>
+        <source>%1/confirmed (verified via instantx)</source>
+        <translation>%1/confirmed (verified via instantx)</translation>
     </message>
     <message>
-        <source>%1 confirmations (verified via swifttx)</source>
-        <translation>%1 confirmations (verified via swifttx)</translation>
+        <source>%1 confirmations (verified via instantx)</source>
+        <translation>%1 confirmations (verified via instantx)</translation>
     </message>
     <message>
         <source>%1/offline</source>
@@ -3366,24 +3366,24 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>%1 confirmations</translation>
     </message>
     <message>
-        <source>%1/offline (SwiftTX verification in progress - %2 of %3 signatures)</source>
-        <translation>%1/offline (SwiftTX verification in progress - %2 of %3 signatures)</translation>
+        <source>%1/offline (InstanTX verification in progress - %2 of %3 signatures)</source>
+        <translation>%1/offline (InstanTX verification in progress - %2 of %3 signatures)</translation>
     </message>
     <message>
-        <source>%1/confirmed (SwiftTX verification in progress - %2 of %3 signatures )</source>
-        <translation>%1/confirmed (SwiftTX verification in progress - %2 of %3 signatures )</translation>
+        <source>%1/confirmed (InstanTX verification in progress - %2 of %3 signatures )</source>
+        <translation>%1/confirmed (InstanTX verification in progress - %2 of %3 signatures )</translation>
     </message>
     <message>
-        <source>%1 confirmations (SwiftTX verification in progress - %2 of %3 signatures)</source>
-        <translation>%1 confirmations (SwiftTX verification in progress - %2 of %3 signatures)</translation>
+        <source>%1 confirmations (InstanTX verification in progress - %2 of %3 signatures)</source>
+        <translation>%1 confirmations (InstanTX verification in progress - %2 of %3 signatures)</translation>
     </message>
     <message>
-        <source>%1/offline (SwiftTX verification failed)</source>
-        <translation>%1/offline (SwiftTX verification failed)</translation>
+        <source>%1/offline (InstanTX verification failed)</source>
+        <translation>%1/offline (InstanTX verification failed)</translation>
     </message>
     <message>
-        <source>%1/confirmed (SwiftTX verification failed)</source>
-        <translation>%1/confirmed (SwiftTX verification failed)</translation>
+        <source>%1/confirmed (InstanTX verification failed)</source>
+        <translation>%1/confirmed (InstanTX verification failed)</translation>
     </message>
     <message>
         <source>Status</source>
@@ -3588,24 +3588,24 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Received from</translation>
     </message>
     <message>
-        <source>Received via Obfuscation</source>
-        <translation>Received via Obfuscation</translation>
+        <source>Received via Darksend</source>
+        <translation>Received via Darksend</translation>
     </message>
     <message>
-        <source>Obfuscation Denominate</source>
-        <translation>Obfuscation Denominate</translation>
+        <source>Darksend Denominate</source>
+        <translation>Darksend Denominate</translation>
     </message>
     <message>
-        <source>Obfuscation Collateral Payment</source>
-        <translation>Obfuscation Collateral Payment</translation>
+        <source>Darksend Collateral Payment</source>
+        <translation>Darksend Collateral Payment</translation>
     </message>
     <message>
-        <source>Obfuscation Make Collateral Inputs</source>
-        <translation>Obfuscation Make Collateral Inputs</translation>
+        <source>Darksend Make Collateral Inputs</source>
+        <translation>Darksend Make Collateral Inputs</translation>
     </message>
     <message>
-        <source>Obfuscation Create Denominations</source>
-        <translation>Obfuscation Create Denominations</translation>
+        <source>Darksend Create Denominations</source>
+        <translation>Darksend Create Denominations</translation>
     </message>
     <message>
         <source>Sent to</source>
@@ -3628,8 +3628,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Mined</translation>
     </message>
     <message>
-        <source>Obfuscated</source>
-        <translation>Obfuscated</translation>
+        <source>Darksend</source>
+        <translation>Darksend</translation>
     </message>
     <message>
         <source>watch-only</source>
@@ -3707,24 +3707,24 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Sent to</translation>
     </message>
     <message>
-        <source>Obfuscated</source>
-        <translation>Obfuscated</translation>
+        <source>Darksend</source>
+        <translation>Darksend</translation>
     </message>
     <message>
-        <source>Obfuscation Make Collateral Inputs</source>
-        <translation>Obfuscation Make Collateral Inputs</translation>
+        <source>Darksend Make Collateral Inputs</source>
+        <translation>Darksend Make Collateral Inputs</translation>
     </message>
     <message>
-        <source>Obfuscation Create Denominations</source>
-        <translation>Obfuscation Create Denominations</translation>
+        <source>Darksend Create Denominations</source>
+        <translation>Darksend Create Denominations</translation>
     </message>
     <message>
-        <source>Obfuscation Denominate</source>
-        <translation>Obfuscation Denominate</translation>
+        <source>Darksend Denominate</source>
+        <translation>Darksend Denominate</translation>
     </message>
     <message>
-        <source>Obfuscation Collateral Payment</source>
-        <translation>Obfuscation Collateral Payment</translation>
+        <source>Darksend Collateral Payment</source>
+        <translation>Darksend Collateral Payment</translation>
     </message>
     <message>
         <source>To yourself</source>
@@ -3860,8 +3860,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Send Coins</translation>
     </message>
     <message>
-        <source>SwiftTX doesn't support sending values that high yet. Transactions are currently limited to %1 LUX.</source>
-        <translation>SwiftTX doesn't support sending values that high yet. Transactions are currently limited to %1 LUX.</translation>
+        <source>InstanTX doesn't support sending values that high yet. Transactions are currently limited to %1 LUX.</source>
+        <translation>InstanTX doesn't support sending values that high yet. Transactions are currently limited to %1 LUX.</translation>
     </message>
 </context>
 <context>
@@ -3950,20 +3950,20 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup</translation>
     </message>
     <message>
-        <source>Disable all LUX specific functionality (Masternodes, Obfuscation, SwiftTX, Budgeting) (0-1, default: %u)</source>
-        <translation>Disable all LUX specific functionality (Masternodes, Obfuscation, SwiftTX, Budgeting) (0-1, default: %u)</translation>
+        <source>Disable all LUX specific functionality (Masternodes, Darksend, InstanTX, Budgeting) (0-1, default: %u)</source>
+        <translation>Disable all LUX specific functionality (Masternodes, Darksend, InstanTX, Budgeting) (0-1, default: %u)</translation>
     </message>
     <message>
         <source>Distributed under the MIT software license, see the accompanying file COPYING or &lt;http://www.opensource.org/licenses/mit-license.php&gt;.</source>
         <translation>Distributed under the MIT software license, see the accompanying file COPYING or &lt;http://www.opensource.org/licenses/mit-license.php&gt;.</translation>
     </message>
     <message>
-        <source>Enable swifttx, show confirmations for locked transactions (bool, default: %s)</source>
-        <translation>Enable swifttx, show confirmations for locked transactions (bool, default: %s)</translation>
+        <source>Enable instantx, show confirmations for locked transactions (bool, default: %s)</source>
+        <translation>Enable instantx, show confirmations for locked transactions (bool, default: %s)</translation>
     </message>
     <message>
-        <source>Enable use of automated obfuscation for funds stored in this wallet (0-1, default: %u)</source>
-        <translation>Enable use of automated obfuscation for funds stored in this wallet (0-1, default: %u)</translation>
+        <source>Enable use of automated darksend for funds stored in this wallet (0-1, default: %u)</source>
+        <translation>Enable use of automated darksend for funds stored in this wallet (0-1, default: %u)</translation>
     </message>
     <message>
         <source>Enter regression test mode, which uses a special chain in which blocks can be solved instantly.</source>
@@ -4042,16 +4042,16 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Number of seconds to keep misbehaving peers from reconnecting (default: %u)</translation>
     </message>
     <message>
-        <source>Obfuscation uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.</source>
-        <translation>Obfuscation uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.</translation>
+        <source>Darksend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.</source>
+        <translation>Darksend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.</translation>
     </message>
     <message>
         <source>Output debugging information (default: %u, supplying &lt;category&gt; is optional)</source>
         <translation>Output debugging information (default: %u, supplying &lt;category&gt; is optional)</translation>
     </message>
     <message>
-        <source>Provide liquidity to Obfuscation by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)</source>
-        <translation>Provide liquidity to Obfuscation by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)</translation>
+        <source>Provide liquidity to Darksend by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)</source>
+        <translation>Provide liquidity to Darksend by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)</translation>
     </message>
     <message>
         <source>Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)</source>
@@ -4082,8 +4082,8 @@ https://www.transifex.com/lux-project/lux-project-translations</translation>
         <translation>Show N confirmations for a successfully locked transaction (0-9999, default: %u)</translation>
     </message>
     <message>
-        <source>SwiftTX requires inputs with at least 6 confirmations, you might need to wait a few minutes and try again.</source>
-        <translation>SwiftTX requires inputs with at least 6 confirmations, you might need to wait a few minutes and try again.</translation>
+        <source>InstanTX requires inputs with at least 6 confirmations, you might need to wait a few minutes and try again.</source>
+        <translation>InstanTX requires inputs with at least 6 confirmations, you might need to wait a few minutes and try again.</translation>
     </message>
     <message>
         <source>This is a pre-release test build - use at your own risk - do not use for mining or merchant applications</source>
@@ -4122,12 +4122,12 @@ for example: alertnotify=echo %%s | mail -s "LUX Alert" admin@foo.com
         <translation>Unable to bind to %s on this computer. LUX Core is probably already running.</translation>
     </message>
     <message>
-        <source>Unable to locate enough Obfuscation denominated funds for this transaction.</source>
-        <translation>Unable to locate enough Obfuscation denominated funds for this transaction.</translation>
+        <source>Unable to locate enough Darksend denominated funds for this transaction.</source>
+        <translation>Unable to locate enough Darksend denominated funds for this transaction.</translation>
     </message>
     <message>
-        <source>Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 10000 LUX.</source>
-        <translation>Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 10000 LUX.</translation>
+        <source>Unable to locate enough Darksend non-denominated funds for this transaction that are not equal 10000 LUX.</source>
+        <translation>Unable to locate enough Darksend non-denominated funds for this transaction that are not equal 10000 LUX.</translation>
     </message>
     <message>
         <source>Unable to locate enough funds for this transaction that are not equal 10000 LUX.</source>
@@ -4412,8 +4412,8 @@ for example: alertnotify=echo %%s | mail -s "LUX Alert" admin@foo.com
         <translation>Error: Wallet locked, unable to create transaction!</translation>
     </message>
     <message>
-        <source>Error: You already have pending entries in the Obfuscation pool</source>
-        <translation>Error: You already have pending entries in the Obfuscation pool</translation>
+        <source>Error: You already have pending entries in the Darksend pool</source>
+        <translation>Error: You already have pending entries in the Darksend pool</translation>
     </message>
     <message>
         <source>Failed to listen on any port. Use -listen=0 if you want this.</source>
@@ -4556,12 +4556,12 @@ for example: alertnotify=echo %%s | mail -s "LUX Alert" admin@foo.com
         <translation>Keep at most &lt;n&gt; unconnectable transactions in memory (default: %u)</translation>
     </message>
     <message>
-        <source>Last Obfuscation was too recent.</source>
-        <translation>Last Obfuscation was too recent.</translation>
+        <source>Last Darksend was too recent.</source>
+        <translation>Last Darksend was too recent.</translation>
     </message>
     <message>
-        <source>Last successful Obfuscation action was too recent.</source>
-        <translation>Last successful Obfuscation action was too recent.</translation>
+        <source>Last successful Darksend action was too recent.</source>
+        <translation>Last successful Darksend action was too recent.</translation>
     </message>
     <message>
         <source>Limit size of signature cache to &lt;n&gt; entries (default: %u)</source>
@@ -4692,20 +4692,20 @@ for example: alertnotify=echo %%s | mail -s "LUX Alert" admin@foo.com
         <translation>Number of automatic wallet backups (default: 10)</translation>
     </message>
     <message>
-        <source>Obfuscation is idle.</source>
-        <translation>Obfuscation is idle.</translation>
+        <source>Darksend is idle.</source>
+        <translation>Darksend is idle.</translation>
     </message>
     <message>
-        <source>Obfuscation options:</source>
-        <translation>Obfuscation options:</translation>
+        <source>Darksend options:</source>
+        <translation>Darksend options:</translation>
     </message>
     <message>
-        <source>Obfuscation request complete:</source>
-        <translation>Obfuscation request complete:</translation>
+        <source>Darksend request complete:</source>
+        <translation>Darksend request complete:</translation>
     </message>
     <message>
-        <source>Obfuscation request incomplete:</source>
-        <translation>Obfuscation request incomplete:</translation>
+        <source>Darksend request incomplete:</source>
+        <translation>Darksend request incomplete:</translation>
     </message>
     <message>
         <source>Only accept block chain matching built-in checkpoints (default: %u)</source>
@@ -4900,8 +4900,8 @@ for example: alertnotify=echo %%s | mail -s "LUX Alert" admin@foo.com
         <translation>Submitted to masternode, waiting in queue %s</translation>
     </message>
     <message>
-        <source>SwiftTX options:</source>
-        <translation>SwiftTX options:</translation>
+        <source>InstanTX options:</source>
+        <translation>InstanTX options:</translation>
     </message>
     <message>
         <source>Synchronization failed</source>
@@ -5028,8 +5028,8 @@ for example: alertnotify=echo %%s | mail -s "LUX Alert" admin@foo.com
         <translation>Username for JSON-RPC connections</translation>
     </message>
     <message>
-        <source>Value more than Obfuscation pool maximum allows.</source>
-        <translation>Value more than Obfuscation pool maximum allows.</translation>
+        <source>Value more than Darksend pool maximum allows.</source>
+        <translation>Value more than Darksend pool maximum allows.</translation>
     </message>
     <message>
         <source>Verifying blocks...</source>

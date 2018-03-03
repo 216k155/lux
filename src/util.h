@@ -33,12 +33,12 @@
 
 extern bool fMasterNode;
 extern bool fLiteMode;
-extern bool fEnableSwiftTX;
-extern int nSwiftTXDepth;
+extern bool fEnableInstanTX;
+extern int nInstanTXDepth;
 extern int nDarksendRounds;
 extern int nAnonymizeLuxAmount;
 extern int nLiquidityProvider;
-extern bool fEnableLuxsend;
+extern bool fEnableDarksend;
 extern int64_t enforceMasternodePaymentsTime;
 extern std::string strMasterNodeAddr;
 extern int keysLoaded;
