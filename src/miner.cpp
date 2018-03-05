@@ -397,11 +397,14 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pblock->vtx[0].vin[0].scriptSig = CScript() << nHeight << OP_0;
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
+    	dev::h256 oldHashState(globalState->rootHash()); // lux temp
+
         CValidationState state;
         if (!TestBlockValidity(state, *pblock, pindexPrev, false, false)) {
             if (!fProofOfStake) LogPrintf("%s: TestBlockValidity failed (%s)\n", __func__, ct);
             return nullptr;
         }
+	globalState->setRoot(oldHashState); // lux temp
     }
 
     return pblocktemplate.release();

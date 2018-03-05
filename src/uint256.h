@@ -15,6 +15,12 @@
 #include <string>
 #include <vector>
 
+//////////////////////////////////////// lux
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
+////////////////////////////////////////
+
+
 class uint_error : public std::runtime_error
 {
 public:
@@ -389,5 +395,21 @@ inline uint512 uint512S(const std::string& str)
     rv.SetHex(str);
     return rv;
 }
+
+////////////////////////////////////////////////////// lux
+inline dev::h256 uintToh256(const uint256& in)
+{
+    std::vector<unsigned char> vHashBlock;
+    vHashBlock.assign(in.begin(), in.end());
+    return dev::h256(vHashBlock);
+}
+
+inline uint256 h256Touint(const dev::h256& in)
+{
+	std::vector<unsigned char> vHashBlock = in.asBytes();
+	return uint256(vHashBlock);
+}
+//////////////////////////////////////////////////////
+
 
 #endif // BITCOIN_UINT256_H
