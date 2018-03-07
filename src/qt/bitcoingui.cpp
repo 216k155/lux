@@ -372,7 +372,7 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
     #else
         smartToken->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
     #endif
-    
+
     tabGroup->addAction(smartToken);
     }
 
