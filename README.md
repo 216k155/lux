@@ -99,9 +99,10 @@ Once the source code is ready the build steps are below.
 
     git clone https://github.com/216k155/lux --recursive
     
-    cd lux
+    cd lux 
 
     # Note autogen will prompt to install some more dependencies if needed
+    git submodule update --init
     ./autogen.sh
     ./configure --disable-tests
     make -j$(nproc)

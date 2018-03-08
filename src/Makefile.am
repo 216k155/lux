@@ -21,6 +21,7 @@ BITCOIN_CONFIG_INCLUDES=-I$(builddir)/config
 BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
+BITCOIN_INCLUDES += -I$(srcdir)/cpp-ethereum/
 
 LIBBITCOIN_SERVER=libbitcoin_server.a
 LIBBITCOIN_WALLET=libbitcoin_wallet.a
@@ -31,6 +32,20 @@ LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.a
 LIBBITCOINQT=qt/libbitcoinqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
+
+LIBETHEREUM=cpp-ethereum/libethereum/libethereum.a
+LIBDEVCORE=cpp-ethereum/libdevcore/libdevcore.a
+LIBETHCORE=cpp-ethereum/libethcore/libethcore.a
+LIBJSONCPP=cpp-ethereum/deps/lib/libjsoncpp.a
+LIBEVM=cpp-ethereum/libevm/libevm.a
+LIBEVMCORE=cpp-ethereum/libevmcore/libevmcore.a
+LIBDEVCRYPTO=cpp-ethereum/libdevcrypto/libdevcrypto.a
+LIBCRYPTOPP=cpp-ethereum/deps/lib/libcryptopp.a
+LIBSECP256K1ETH=cpp-ethereum/deps/lib/libsecp256k1.a
+LIBSCRYIPT=cpp-ethereum/utils/libscrypt/libscrypt.a
+LIBETHASHSEAL=cpp-ethereum/libethashseal/libethashseal.a
+LIBETHASH=cpp-ethereum/libethash/libethash.a
+
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F)
@@ -155,7 +170,9 @@ BITCOIN_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h \
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
+  zmq/zmqpublishnotifier.h \
+  qtum/qtumstate.h
+
 
 JSON_H = \
   json/json_spirit.h \
@@ -203,6 +220,7 @@ libbitcoin_server_a_SOURCES = \
   txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
+  qtum/qtumstate.cpp \
   $(JSON_H) \
   $(BITCOIN_CORE_H)
 
@@ -357,6 +375,18 @@ luxd_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
+  $(LIBETHEREUM) \
+  $(LIBETHASHSEAL) \
+  $(LIBETHASH) \
+  $(LIBETHCORE) \
+  $(LIBDEVCORE) \
+  $(LIBJSONCPP) \
+  $(LIBEVM) \
+  $(LIBEVMCORE) \
+  $(LIBDEVCRYPTO) \
+  $(LIBCRYPTOPP) \
+  $(LIBSECP256K1ETH) \
+  $(LIBSCRYIPT) \
   $(LIBSECP256K1)
 
 if ENABLE_ZMQ
@@ -382,6 +412,20 @@ luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 lux_cli_LDADD = \
   $(LIBBITCOIN_CLI) \
   $(LIBBITCOIN_UTIL) \
+  $(LIBBITCOIN_CRYPTO) \
+  $(LIBLEVELDB) \
+  $(LIBETHEREUM) \
+  $(LIBETHASHSEAL) \
+  $(LIBETHASH) \
+  $(LIBETHCORE) \
+  $(LIBDEVCORE) \
+  $(LIBJSONCPP) \
+  $(LIBEVM) \
+  $(LIBEVMCORE) \
+  $(LIBDEVCRYPTO) \
+  $(LIBCRYPTOPP) \
+  $(LIBSECP256K1ETH) \
+  $(LIBSCRYIPT) \
   $(BOOST_LIBS) \
   $(SSL_LIBS) \
   $(CRYPTO_LIBS)
@@ -397,6 +441,19 @@ lux_tx_LDADD = \
   $(LIBBITCOIN_UNIVALUE) \
   $(LIBBITCOIN_COMMON) \
   $(LIBBITCOIN_UTIL) \
+  $(LIBLEVELDB) \
+  $(LIBETHEREUM) \
+  $(LIBETHASHSEAL) \
+  $(LIBETHASH) \
+  $(LIBETHCORE) \
+  $(LIBDEVCORE) \
+  $(LIBJSONCPP) \
+  $(LIBEVM) \
+  $(LIBEVMCORE) \
+  $(LIBDEVCRYPTO) \
+  $(LIBCRYPTOPP) \
+  $(LIBSECP256K1ETH) \
+  $(LIBSCRYIPT) \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBSECP256K1) \
   $(BOOST_LIBS) \
@@ -440,6 +497,7 @@ endif
 
 libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS)
 libbitcoinconsensus_la_LIBADD = $(CRYPTO_LIBS) $(BOOST_LIBS)
+libbitcoinconsensus_la_LIBADD += $(LIBSECP256K1ETH)
 libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) -I$(builddir)/obj -DBUILD_BITCOIN_INTERNAL
 if USE_LIBSECP256K1
 libbitcoinconsensus_la_LIBADD += secp256k1/libsecp256k1.la

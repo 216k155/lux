@@ -30,6 +30,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_SCRIPTHASH: return "scripthash";
     case TX_MULTISIG: return "multisig";
     case TX_NULL_DATA: return "nulldata";
+    case TX_DEPLOYMENT: return "deployment";
     }
     return NULL;
 }
@@ -56,6 +57,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         if (GetBoolArg("-datacarrier", true))
             mTemplates.insert(make_pair(TX_NULL_DATA, CScript() << OP_RETURN << OP_SMALLDATA));
         mTemplates.insert(make_pair(TX_NULL_DATA, CScript() << OP_RETURN));
+
+	// Contract deployment tx
+	mTemplates.insert(make_pair(TX_DEPLOYMENT, CScript() << OP_VERSION << OP_GAS_LAP << OP_GAS_LAP << OP_DATA << OP_CREATE));
     }
 
     // Shortcut for pay-to-script-hash, which are more constrained than the other types:
@@ -140,6 +144,29 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                 else
                     break;
             }
+	    /////////////////////////////////////////////////////////// qtum
+            else if (opcode2 == OP_VERSION)
+            {
+                if(0 <= opcode1 && opcode1 <= OP_PUSHDATA4)
+                {
+                    if(vch1.size() > 1)
+                        break;
+                }
+            }
+            else if(opcode2 == OP_GAS_LAP)
+            {
+                if(vch1.empty() || vch1.size() > 32)
+                    break;
+            }
+            else if(opcode2 == OP_DATA)
+            {
+                if(0 <= opcode1 && opcode1 <= OP_PUSHDATA4)
+                {
+                    if(vch1.empty())
+                        break;
+                }
+            }
+	    ///////////////////////////////////////////////////////////
             else if (opcode2 == OP_SMALLDATA)
             {
                 // small pushdata, <= nMaxDatacarrierBytes
