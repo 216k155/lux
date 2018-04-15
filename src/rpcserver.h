@@ -55,7 +55,7 @@ void StopRPCThreads();
 /** Query whether RPC is running */
 bool IsRPCRunning();
 
-/** 
+/**
  * Set the RPC warmup status.  When this is done, all RPC calls will error out
  * immediately with RPC_IN_WARMUP.
  */
@@ -114,8 +114,8 @@ private:
 
 public:
     CRPCTable();
-    const CRPCCommand* operator[](std::string name) const;
-    std::string help(std::string name) const;
+    const CRPCCommand* operator[](const std::string& name) const;
+    std::string help(const std::string& name) const;
 
     /**
      * Execute a method.
@@ -150,10 +150,10 @@ extern void ShutdownRPCMining();
 extern int64_t nWalletUnlockTime;
 extern CAmount AmountFromValue(const UniValue& value);
 extern UniValue ValueFromAmount(const CAmount& amount);
-extern double GetPoWDifficulty(const CBlockIndex* blockindex = NULL);
+extern double GetPoWDifficulty(const CBlockIndex* blockindex = nullptr);
 extern std::string HelpRequiringPassphrase();
-extern std::string HelpExampleCli(std::string methodname, std::string args);
-extern std::string HelpExampleRpc(std::string methodname, std::string args);
+extern std::string HelpExampleCli(const std::string& methodname, const std::string& args);
+extern std::string HelpExampleRpc(const std::string& methodname, const std::string& args);
 
 extern void EnsureWalletIsUnlocked();
 
