@@ -86,6 +86,7 @@ Once the source code is ready the build steps are below.
     git clone https://github.com/216k155/lux.git
 
     cd lux
+    sudo add-apt-repository ppa:bitcoin/bitcoin
     ./install-dependencies.sh
     ./autogen.sh
     ./configure --disable-tests
