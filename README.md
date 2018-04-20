@@ -117,17 +117,25 @@ Link boost 1.66
     
     brew link boost@1.66 --force
 
+Install required dependencies:
+
+    ./building/mac/requirements.sh
+
 #### Build Luxcore
 
 Clone the Lux source code and cd into lux
 
         git clone https://github.com/216k155/lux.git
         cd lux
-        export LDFLAGS=-L/usr/local/opt/openssl/lib;export CPPFLAGS=-I/usr/local/opt/openssl/include
-        ./autogen.sh
-        ./configure --disable-tests 
-        make -j$(nproc)
-        make deploy
+        ./building/mac/build.sh
+
+
+
+Create the .dmg file
+
+        ./building/mac/dist.sh
+
+
 
 Setup and Build: Arch Linux
 -----------------------------------
