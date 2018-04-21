@@ -908,6 +908,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         ShrinkDebugFile();
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     LogPrintf("LUX version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
+    LogPrintf("LUX build info: %s\n", getBuildInfo());
     LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
 #ifdef ENABLE_WALLET
     LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));

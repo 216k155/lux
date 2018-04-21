@@ -15,8 +15,8 @@
 
 //! These need to be macros, as clientversion.cpp's and lux*-res.rc's voodoo requires it
 #define CLIENT_VERSION_MAJOR 4
-#define CLIENT_VERSION_MINOR 3
-#define CLIENT_VERSION_REVISION 1
+#define CLIENT_VERSION_MINOR 4
+#define CLIENT_VERSION_REVISION 0
 #define CLIENT_VERSION_BUILD 0
 
 //! Set to true for release, false for prerelease or test build
@@ -63,6 +63,7 @@ extern const std::string CLIENT_DATE;
 
 
 std::string FormatFullVersion();
+std::string getBuildInfo();
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 
 #endif // WINDRES_PREPROC
