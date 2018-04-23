@@ -321,8 +321,8 @@ UniValue getwork(const UniValue& params, bool fHelp) {
     if (vNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Lux is not connected!");
 
-//    if (IsInitialBlockDownload())
-//        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Lux is downloading blocks...");
+    if (IsInitialBlockDownload())
+        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Lux is downloading blocks...");
 
     if (chainActive.Tip()->nHeight >= Params().LAST_POW_BLOCK())
         throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
@@ -357,9 +357,8 @@ UniValue getwork(const UniValue& params, bool fHelp) {
             nStart = GetTime();
 
             // Create new block
-            CReserveKey reservekey(pwalletMain);
-
-            pblocktemplate = CreateNewBlockWithKey(reservekey, pwalletMain, false);
+            CScript scriptDummy = CScript() << OP_TRUE;
+            pblocktemplate = CreateNewBlock(scriptDummy, pwalletMain, false);
             if (!pblocktemplate)
                 throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
@@ -412,15 +411,16 @@ UniValue getwork(const UniValue& params, bool fHelp) {
 
         pblock->nTime = pdata->nTime;
         pblock->nNonce = pdata->nNonce;
-        CMutableTransaction newTx(pblock->vtx[0]);
-
+        CMutableTransaction newTx;
         // Use CMutableTransaction when creating a new transaction instead of CTransaction.  CTransaction public variables are all const now.
         newTx.vin[0].scriptSig = mapNewBlock[pdata->hashMerkleRoot].second; // Oh, why? because vin is const in CTransaction now.
         pblock->vtx[0] = newTx;
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
-        CValidationState state;
-        return ProcessNewBlock(state, NULL, pblock);
+        static CBlockIndex* pindexPrev= chainActive.Tip();
+
+
+        return CheckWork(*pblock, pindexPrev);
 
     }
 }
