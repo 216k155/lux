@@ -72,6 +72,7 @@ LSRToken::LSRToken(QWidget *parent) :
         QWidget(parent),
         ui(new Ui::LSRToken),
         m_model(0),
+        m_clientModel(0),
         m_tokenDelegate(0),
         m_tokenModel(0)
 {
@@ -120,6 +121,12 @@ LSRToken::~LSRToken()
 void LSRToken::setModel(WalletModel *_model)
 {
     m_model = _model;
+}
+
+void LSRToken::setClientModel(ClientModel *_clientModel)
+{
+    m_clientModel = _clientModel;
+    m_sendTokenPage->setClientModel(_clientModel);
 }
 
 void LSRToken::on_goToSendTokenPage()

@@ -1,11 +1,16 @@
 #include "addtokenpage.h"
 #include "ui_addtokenpage.h"
+#include "guiconstants.h"
 
 AddTokenPage::AddTokenPage(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::AddTokenPage)
 {
     ui->setupUi(this);
+    ui->lineEditContractAddress;
+    ui->lineEditTokenName;
+    ui->lineEditTokenSymbol;
+    ui->lineEditDecimals;
 }
 
 AddTokenPage::~AddTokenPage()

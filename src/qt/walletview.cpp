@@ -152,6 +152,7 @@ void WalletView::setClientModel(ClientModel* clientModel)
     createContractPage->setClientModel(clientModel);
     sendToContractPage->setClientModel(clientModel);
     callContractPage->setClientModel(clientModel);
+    LSRTokenPage->setClientModel(clientModel);
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeManagerPage->setClientModel(clientModel);
@@ -168,6 +169,7 @@ void WalletView::setWalletModel(WalletModel* walletModel)
     createContractPage->setModel(walletModel);
     sendToContractPage->setModel(walletModel);
     callContractPage->setModel(walletModel);
+    LSRTokenPage->setModel(walletModel);
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeManagerPage->setWalletModel(walletModel);
