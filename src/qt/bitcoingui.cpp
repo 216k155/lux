@@ -353,6 +353,7 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
     tradingAction->setStatusTip(tr("Trading on Cryptopia"));
     tradingAction->setToolTip(tradingAction->statusTip());
     tradingAction->setCheckable(true);
+
 #ifdef Q_OS_MAC
     tradingAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_6));
 #else
@@ -360,12 +361,17 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
 #endif
     tabGroup->addAction(tradingAction);
 
-    LSRTokenAction = new QAction(tr("&LSR Token"), this);
+    LSRTokenAction = new QAction(QIcon(":/icons/lsrtoken"), tr("&LSR Token"), this);
     LSRTokenAction->setStatusTip(tr("LSR Token (send, receive or add Token in list)"));
     LSRTokenAction->setToolTip(LSRTokenAction->statusTip());
     LSRTokenAction->setCheckable(true);
-    LSRTokenAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+#ifdef Q_OS_MAC
+    LSRTokenAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_7));
+#else
+    LSRTokenAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+#endif
     tabGroup->addAction(LSRTokenAction);
+
 
 #ifdef ENABLE_WALLET
 
