@@ -13,15 +13,11 @@
 
 namespace
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    void ECDSA_SIG_get0();
-#endif
-
-    /**
-     * Perform ECDSA key recovery (see SEC1 4.1.6) for curves over (mod p)-fields
-     * recid selects which key is recovered
-     * if check is non-zero, additional checks are performed
-     */
+/**
+ * Perform ECDSA key recovery (see SEC1 4.1.6) for curves over (mod p)-fields
+ * recid selects which key is recovered
+ * if check is non-zero, additional checks are performed
+ */
     int ECDSA_SIG_recover_key_GFp(EC_KEY* eckey, ECDSA_SIG* ecsig, const unsigned char* msg, int msglen, int recid, int check)
     {
         if (!eckey) return 0;
@@ -45,7 +41,7 @@ namespace
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
         const BIGNUM *sig_r, *sig_s;
-        ECDSA_SIG_get0();
+    ECDSA_SIG_get0(ecsig, &sig_r, &sig_s);
 #endif
 
         const EC_GROUP* group = EC_KEY_get0_group(eckey);
@@ -171,12 +167,6 @@ namespace
         if (Q != nullptr) EC_POINT_free(Q);
         return ret;
     }
-    
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    void ECDSA_SIG_get0() {
-
-    }
-#endif
 
 } // anon namespace
 
@@ -250,7 +240,7 @@ bool CECKey::Recover(const uint256& hash, const unsigned char* p64, int rec)
     BIGNUM *sig_s = nullptr;
     if (!(sig_r = BN_bin2bn(&p64[0],  32, nullptr)) ||
         !(sig_s = BN_bin2bn(&p64[32], 32, nullptr)) ||
-	!ECDSA_SIG_set0()) {
+	!ECDSA_SIG_set0(sig, sig_r, sig_s)) {
 	    BN_free(sig_r);
 	    BN_free(sig_s);
 	    return false;
@@ -298,8 +288,4 @@ bool CECKey::SanityCheck()
 
     // TODO Is there more EC functionality that could be missing?
     return true;
-}
-
-bool CECKey::ECDSA_SIG_set0() {
-    return false;
 }
