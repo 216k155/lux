@@ -1,5 +1,5 @@
-#include "qrctoken.h"
-#include "ui_qrctoken.h"
+#include "lsrtoken.h"
+#include "ui_lsrtoken.h"
 
 #include <QPainter>
 #include <QAbstractItemDelegate>
@@ -67,9 +67,9 @@ public:
     }
 };
 
-QRCToken::QRCToken(QWidget *parent) :
+LSRToken::LSRToken(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::QRCToken),
+    ui(new Ui::LSRToken),
     m_model(0),
     m_tokenDelegate(0),
     m_tokenModel(0)
@@ -93,32 +93,32 @@ QRCToken::QRCToken(QWidget *parent) :
     connect(m_addTokenPage, SIGNAL(on_addNewToken(QString,QString,QString,int,double)),this, SLOT(on_addToken(QString,QString,QString,int,double)));
 }
 
-QRCToken::~QRCToken()
+LSRToken::~LSRToken()
 {
     delete ui;
 }
 
-void QRCToken::setModel(WalletModel *_model)
+void LSRToken::setModel(WalletModel *_model)
 {
     m_model = _model;
 }
 
-void QRCToken::on_sendButton_clicked()
+void LSRToken::on_sendButton_clicked()
 {
     ui->stackedWidget->setCurrentIndex(0);
 }
 
-void QRCToken::on_receiveButton_clicked()
+void LSRToken::on_receiveButton_clicked()
 {
     ui->stackedWidget->setCurrentIndex(1);
 }
 
-void QRCToken::on_addTokenButton_clicked()
+void LSRToken::on_addTokenButton_clicked()
 {
     ui->stackedWidget->setCurrentIndex(2);
 }
 
-void QRCToken::on_addToken(QString _address, QString _name, QString _symbol, int _decimals, double _balance)
+void LSRToken::on_addToken(QString _address, QString _name, QString _symbol, int _decimals, double _balance)
 {
     QStandardItem *item = new QStandardItem();
 

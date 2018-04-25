@@ -129,7 +129,7 @@ private:
     QAction* smartContractAction;
     QAction* createContractAction;
     QAction* sendToContractAction;
-    QAction* QRCTokenAction;
+    QAction* LSRTokenAction;
 
     QSystemTrayIcon* trayIcon;
     QMenu* trayIconMenu;
@@ -218,8 +218,8 @@ private slots:
     void gotoSendToContractPage();
     /** Switch to call contract page */
     void gotoCallContractPage();
-    /** Switch to QRCToken page page */
-    void gotoQRCTokenPage();
+    /** Switch to LSRToken page page */
+    void gotoLSRTokenPage();
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */

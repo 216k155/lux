@@ -25,7 +25,7 @@
 #include "createcontract.h"
 #include "callcontract.h"
 #include "sendtocontract.h"
-#include "qrctoken.h"
+#include "lsrtoken.h"
 
 #include "ui_interface.h"
 
@@ -50,7 +50,7 @@ WalletView::WalletView(QWidget* parent) : QStackedWidget(parent),
     createContractPage = new CreateContract(this);
     sendToContractPage = new SendToContract(this);
     callContractPage = new CallContractPage(this);
-    QRCTokenPage = new QRCToken();
+    LSRTokenPage = new LSRToken();
     stakingPage = new StakingDialog(this);
     tradingPage = new tradingDialog(this);
     QVBoxLayout* vbox = new QVBoxLayout();
@@ -95,7 +95,7 @@ WalletView::WalletView(QWidget* parent) : QStackedWidget(parent),
     addWidget(createContractPage);   // Testing
     addWidget(sendToContractPage);   // Testing
     addWidget(callContractPage);   // Testing
-    addWidget(QRCTokenPage);   // Testing
+    addWidget(LSRTokenPage);   // Testing
 
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
@@ -260,9 +260,9 @@ void WalletView::gotoCallContractPage()
     setCurrentWidget(callContractPage);
 }
 
-void WalletView::gotoQRCTokenPage()
+void WalletView::gotoLSRTokenPage()
 {
-    setCurrentWidget(QRCTokenPage);
+    setCurrentWidget(LSRTokenPage);
 }
 
 void WalletView::gotoReceiveCoinsPage()

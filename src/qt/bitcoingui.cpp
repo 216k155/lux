@@ -85,7 +85,7 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
                                                                             smartContractAction(0),
                                                                             createContractAction(0),
                                                                             sendToContractAction(0),
-                                                                            QRCTokenAction(0),
+                                                                            LSRTokenAction(0),
                                                                             overviewAction(0),
                                                                             historyAction(0),
                                                                             stakingAction(0),
@@ -360,12 +360,12 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
 #endif
     tabGroup->addAction(tradingAction);
 
-    QRCTokenAction = new QAction(tr("&QRC Token"), this);
-    QRCTokenAction->setStatusTip(tr("QRC Token (send, receive or add Token in list)"));
-    QRCTokenAction->setToolTip(QRCTokenAction->statusTip());
-    QRCTokenAction->setCheckable(true);
-    QRCTokenAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
-    tabGroup->addAction(QRCTokenAction);
+    LSRTokenAction = new QAction(tr("&LSR Token"), this);
+    LSRTokenAction->setStatusTip(tr("LSR Token (send, receive or add Token in list)"));
+    LSRTokenAction->setToolTip(LSRTokenAction->statusTip());
+    LSRTokenAction->setCheckable(true);
+    LSRTokenAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+    tabGroup->addAction(LSRTokenAction);
 
 #ifdef ENABLE_WALLET
 
@@ -426,7 +426,7 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
     connect(smartContractAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(smartContractAction, SIGNAL(triggered()), this, SLOT(gotoCallContractPage()));
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
-    connect(QRCTokenAction, SIGNAL(triggered()), this, SLOT(gotoQRCTokenPage()));
+    connect(LSRTokenAction, SIGNAL(triggered()), this, SLOT(gotoLSRTokenPage()));
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(gotoSendCoinsPage()));
     connect(receiveCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(receiveCoinsAction, SIGNAL(triggered()), this, SLOT(gotoReceiveCoinsPage()));
@@ -599,7 +599,7 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(sendCoinsAction);
         toolbar->addAction(receiveCoinsAction);
         toolbar->addAction(historyAction);
-        toolbar->addAction(QRCTokenAction);
+        toolbar->addAction(LSRTokenAction);
         toolbar->addAction(stakingAction);
         toolbar->addAction(tradingAction);
         QSettings settings;
@@ -873,10 +873,10 @@ void BitcoinGUI::gotoMasternodePage()
     }
 }
 
-void BitcoinGUI::gotoQRCTokenPage()
+void BitcoinGUI::gotoLSRTokenPage()
 {
-    QRCTokenAction->setChecked(true);
-    if (walletFrame) walletFrame->gotoQRCTokenPage();
+    LSRTokenAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoLSRTokenPage();
 }
 
 void BitcoinGUI::gotoReceiveCoinsPage()

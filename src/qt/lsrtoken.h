@@ -1,5 +1,5 @@
-#ifndef QRCTOKEN_H
-#define QRCTOKEN_H
+#ifndef LSRTOKEN_H
+#define LSRTOKEN_H
 
 #include "sendtokenpage.h"
 #include "receivetokenpage.h"
@@ -13,16 +13,16 @@ class WalletModel;
 class QStandardItemModel;
 
 namespace Ui {
-class QRCToken;
+class LSRToken;
 }
 
-class QRCToken : public QWidget
+class LSRToken : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit QRCToken(QWidget *parent = 0);
-    ~QRCToken();
+    explicit LSRToken(QWidget *parent = 0);
+    ~LSRToken();
 
     void setModel(WalletModel *_model);
 
@@ -35,7 +35,7 @@ public Q_SLOTS:
     void on_addToken(QString address, QString name, QString symbol, int decimals, double balance);
 
 private:
-    Ui::QRCToken *ui;
+    Ui::LSRToken *ui;
     SendTokenPage* m_sendTokenPage;
     ReceiveTokenPage* m_receiveTokenPage;
     AddTokenPage* m_addTokenPage;
@@ -44,4 +44,4 @@ private:
     QStandardItemModel *m_tokenModel;
 };
 
-#endif // QRCTOKEN_H
+#endif // LSRTOKEN_H
