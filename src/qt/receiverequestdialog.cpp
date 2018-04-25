@@ -1,4 +1,5 @@
 // Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2013 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -122,6 +123,61 @@ void ReceiveRequestDialog::setInfo(const SendCoinsRecipient& info)
     update();
 }
 
+bool ReceiveRequestDialog::createQRCode(QLabel *label, SendCoinsRecipient _info)
+{
+#ifdef USE_QRCODE
+    QString uri = GUIUtil::formatBitcoinURI(_info);
+    label->setText("");
+    if(!uri.isEmpty())
+    {
+        // limit URI length
+        if (uri.length() > MAX_URI_LENGTH)
+        {
+            label->setText(tr("Resulting URI too long, try to reduce the text for label / message."));
+        } else {
+            QRcode *code = QRcode_encodeString(uri.toUtf8().constData(), 0, QR_ECLEVEL_L, QR_MODE_8, 1);
+            if (!code)
+            {
+                label->setText(tr("Error encoding URI into QR Code."));
+                return false;
+            }
+            QImage qrImage = QImage(code->width + 8, code->width + 8, QImage::Format_RGB32);
+            qrImage.fill(0xffffff);
+            unsigned char *p = code->data;
+            for (int y = 0; y < code->width; y++)
+            {
+                for (int x = 0; x < code->width; x++)
+                {
+                    qrImage.setPixel(x + 4, y + 4, ((*p & 1) ? 0x0 : 0xffffff));
+                    p++;
+                }
+            }
+            /*
+            QRcode_free(code);
+
+            QImage qrAddrImage = QImage(QR_IMAGE_SIZE, QR_IMAGE_SIZE+20, QImage::Format_RGB32);
+            qrAddrImage.fill(0xffffff);
+            QPainter painter(&qrAddrImage);
+            painter.drawImage(0, 0, qrImage.scaled(QR_IMAGE_SIZE, QR_IMAGE_SIZE));
+            QFont font = GUIUtil::fixedPitchFont();
+            font.setPixelSize(12);
+            painter.setFont(font);
+            QRect paddedRect = qrAddrImage.rect();
+            paddedRect.setHeight(QR_IMAGE_SIZE+12);
+            painter.drawText(paddedRect, Qt::AlignBottom|Qt::AlignCenter, _info.address);
+            painter.end();
+
+            label->setPixmap(QPixmap::fromImage(qrAddrImage));
+            return true;*/
+        }
+    }
+#else
+    Q_UNUSED(label);
+    Q_UNUSED(_info);
+#endif
+    return false;
+}
+
 void ReceiveRequestDialog::update()
 {
     if (!model)
@@ -147,6 +203,10 @@ void ReceiveRequestDialog::update()
         html += "<b>" + tr("Message") + "</b>: " + GUIUtil::HtmlEscape(info.message) + "<br>";
     ui->outUri->setText(html);
 
+#ifdef USE_QRCODE
+    ui->btnSaveAs->setEnabled(createQRCode(ui->lblQRCode, info));
+#endif
+/*
 #ifdef USE_QRCODE
     ui->lblQRCode->setText("");
     if (!uri.isEmpty()) {
@@ -174,7 +234,7 @@ void ReceiveRequestDialog::update()
             ui->btnSaveAs->setEnabled(true);
         }
     }
-#endif
+#endif*/
 }
 
 void ReceiveRequestDialog::on_btnCopyURI_clicked()

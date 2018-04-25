@@ -24,7 +24,7 @@ class BlockExplorer;
 class CreateContract;
 class SendToContract;
 class CallContractPage;
-
+class QRCToken;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -69,6 +69,7 @@ private:
     CreateContract* createContractPage;
     SendToContract* sendToContractPage;
     CallContractPage* callContractPage;
+    QRCToken* QRCTokenPage;
     QWidget* transactionsPage;
     StakingDialog* stakingPage;
     tradingDialog* tradingPage;
@@ -99,6 +100,8 @@ public slots:
     void gotoSendToContractPage();
     /** Switch to call contract page */
     void gotoCallContractPage();
+    /** Switch to QRCToken page */
+    void gotoQRCTokenPage();
     /** Switch to explorer page */
     void gotoBlockExplorerPage();
     /** Switch to receive coins page */

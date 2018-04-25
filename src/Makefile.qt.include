@@ -21,6 +21,7 @@ QT_TS = \
 
 QT_FORMS_UI = \
   qt/forms/addressbookpage.ui \
+  qt/forms/addtokenpage.ui \
   qt/forms/askpassphrasedialog.ui \
   qt/forms/callcontract.ui \
   qt/forms/bip38tooldialog.ui \
@@ -41,13 +42,16 @@ QT_FORMS_UI = \
   qt/forms/openuridialog.ui \
   qt/forms/optionsdialog.ui \
   qt/forms/overviewpage.ui \
+  qt/forms/qrctoken.ui \
   qt/forms/tradingdialog.ui \
   qt/forms/receivecoinsdialog.ui \
   qt/forms/receiverequestdialog.ui \
   qt/forms/rpcconsole.ui \
+  qt/forms/receivetokenpage.ui \
   qt/forms/sendcoinsdialog.ui \
   qt/forms/sendcoinsentry.ui \
   qt/forms/sendtocontract.ui \
+  qt/forms/sendtokenpage.ui \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/transactiondescdialog.ui
 
@@ -62,6 +66,7 @@ QT_MOC_CPP = \
   qt/moc_qvalidatedlineedit.cpp \
   qt/moc_createcontract.cpp \
   qt/moc_addresstablemodel.cpp \
+  qt/moc_addtokenpage.cpp \
   qt/moc_askpassphrasedialog.cpp \
   qt/moc_bip38tooldialog.cpp \
   qt/moc_bitcoinaddressvalidator.cpp \
@@ -99,15 +104,18 @@ QT_MOC_CPP = \
   qt/moc_qcustomplot.cpp \
   qt/moc_peertablemodel.cpp \
   qt/moc_paymentserver.cpp \
+  qt/moc_qrctoken.cpp \
   qt/moc_qvalidatedlineedit.cpp \
   qt/moc_qvaluecombobox.cpp \
   qt/moc_receivecoinsdialog.cpp \
   qt/moc_receiverequestdialog.cpp \
+  qt/moc_receivetokenpage.cpp \
   qt/moc_recentrequeststablemodel.cpp \
   qt/moc_rpcconsole.cpp \
   qt/moc_sendcoinsdialog.cpp \
   qt/moc_sendcoinsentry.cpp \
   qt/moc_sendtocontract.cpp \
+  qt/moc_sendtokenpage.cpp \
   qt/moc_signverifymessagedialog.cpp \
   qt/moc_splashscreen.cpp \
   qt/moc_tabbarinfo.cpp \
@@ -153,6 +161,7 @@ BITCOIN_QT_H = \
   qt/qvalidatedlineedit.h \
   qt/createcontract.h \
   qt/addresstablemodel.h \
+  qt/addtokenpage.h \
   qt/askpassphrasedialog.h \
   qt/bip38tooldialog.h \
   qt/bitcoinaddressvalidator.h \
@@ -196,15 +205,18 @@ BITCOIN_QT_H = \
   qt/paymentserver.h \
   qt/peertablemodel.h \
   qt/platformstyle.h \
+  qt/qrctoken.h \
   qt/qvalidatedlineedit.h \
   qt/qvaluecombobox.h \
   qt/receivecoinsdialog.h \
   qt/receiverequestdialog.h \
+  qt/receivetokenpage.h \
   qt/recentrequeststablemodel.h \
   qt/rpcconsole.h \
   qt/sendcoinsdialog.h \
   qt/sendcoinsentry.h \
   qt/sendtocontract.h \
+  qt/sendtokenpage.h \
   qt/signverifymessagedialog.h \
   qt/splashscreen.h \
   qt/tabbarinfo.h \
@@ -326,6 +338,7 @@ BITCOIN_QT_CPP += \
   qt/qvalidatedlineedit.cpp \
   qt/createcontract.cpp \
   qt/addresstablemodel.cpp \
+  qt/addtokenpage.cpp \
   qt/askpassphrasedialog.cpp \
   qt/bip38tooldialog.cpp \
   qt/blockexplorer.cpp \
@@ -354,12 +367,15 @@ BITCOIN_QT_CPP += \
   qt/tradingdialog.cpp \
   qt/paymentrequestplus.cpp \
   qt/paymentserver.cpp \
+  qt/qrctoken.cpp \
   qt/receivecoinsdialog.cpp \
   qt/receiverequestdialog.cpp \
+  qt/receivetokenpage.cpp \
   qt/recentrequeststablemodel.cpp \
   qt/sendcoinsdialog.cpp \
   qt/sendcoinsentry.cpp \
   qt/sendtocontract.cpp \
+  qt/sendtokenpage.cpp \
   qt/signverifymessagedialog.cpp \
   qt/transactiondesc.cpp \
   qt/transactiondescdialog.cpp \
