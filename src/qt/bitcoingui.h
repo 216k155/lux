@@ -219,7 +219,7 @@ private slots:
     /** Switch to call contract page */
     void gotoCallContractPage();
     /** Switch to LSRToken page page */
-    void gotoLSRTokenPage();
+    void gotoLSRTokenPage(bool toAddTokenPage = false);
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */

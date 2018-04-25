@@ -879,7 +879,7 @@ void BitcoinGUI::gotoMasternodePage()
     }
 }
 
-void BitcoinGUI::gotoLSRTokenPage()
+void BitcoinGUI::gotoLSRTokenPage(bool toAddTokenPage)
 {
     LSRTokenAction->setChecked(true);
     if (walletFrame) walletFrame->gotoLSRTokenPage();
