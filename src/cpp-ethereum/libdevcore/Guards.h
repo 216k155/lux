@@ -24,12 +24,19 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+
+#ifndef __clang__
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 #include <boost/thread.hpp>
+
+#ifndef __clang__
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#endif
 
 namespace dev
 {
