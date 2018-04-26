@@ -306,7 +306,7 @@ univalue_libbitcoin_univalue_a_SOURCES = \
 # common: shared between luxd, and lux-qt and non-server tools
 libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -DLUX_BUILD
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libbitcoin_common_a_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -std=c99 -fPIC
+libbitcoin_common_a_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -fPIC
 libbitcoin_common_a_SOURCES = \
   allocators.cpp \
   amount.cpp \
@@ -646,7 +646,7 @@ if GLIBC_BACK_COMPAT
 endif
 
 libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS)
-libbitcoinconsensus_la_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -std=c99 -fPIC
+libbitcoinconsensus_la_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -fPIC
 libbitcoinconsensus_la_LIBADD = $(CRYPTO_LIBS) $(BOOST_LIBS) $(LIBSECP256K1) $(LIBBITCOIN_COMMON)
 libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) $(BITCOIN_INCLUDES) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL
 if USE_LIBSECP256K1

@@ -10,10 +10,6 @@ AddTokenPage::AddTokenPage(QWidget *parent) :
     m_tokenABI(0)
 {
     ui->setupUi(this);
-    ui->lineEditContractAddress;
-    ui->lineEditTokenName;
-    ui->lineEditTokenSymbol;
-    ui->lineEditDecimals;
     m_tokenABI = new Token();
 
     connect(ui->lineEditContractAddress, SIGNAL(textChanged(const QString &)), this, SLOT(on_addressChanged()));

@@ -21,6 +21,8 @@ namespace
     secp256k1_context* secp256k1_context_verify = NULL;
 }
 
+
+#if 0 // This function is not used anywhere now
 /** This function is taken from the libsecp256k1 distribution and implements
  *  DER parsing for ECDSA signatures, while supporting an arbitrary subset of
  *  format violations.
@@ -171,6 +173,7 @@ static int ecdsa_signature_parse_der_lax(const secp256k1_context* ctx, secp256k1
     }
     return 1;
 }
+#endif
 
 bool CPubKey::Verify(const uint256& hash, const std::vector<unsigned char>& vchSig) const
 {

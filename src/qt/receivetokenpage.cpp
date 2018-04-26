@@ -8,7 +8,6 @@ ReceiveTokenPage::ReceiveTokenPage(QWidget *parent) :
     ui(new Ui::ReceiveTokenPage)
 {
     ui->setupUi(this);
-    ui->lineEditAmount;
     SendCoinsRecipient info;
     info.address = "LgFDgoVVpzxmcm7UkwPoAPGvsVuun48mjR";
     if(ReceiveRequestDialog::createQRCode(ui->lblQRCode, info))

@@ -13,7 +13,9 @@
 
 namespace
 {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     void ECDSA_SIG_get0();
+#endif
 
     /**
      * Perform ECDSA key recovery (see SEC1 4.1.6) for curves over (mod p)-fields
@@ -169,10 +171,12 @@ namespace
         if (Q != nullptr) EC_POINT_free(Q);
         return ret;
     }
-
+    
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     void ECDSA_SIG_get0() {
 
     }
+#endif
 
 } // anon namespace
 
