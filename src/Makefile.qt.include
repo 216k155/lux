@@ -162,6 +162,7 @@ BITCOIN_QT_H = \
   qt/qvalidatedlineedit.h \
   qt/createcontract.h \
   qt/addresstablemodel.h \
+  qt/token.h \
   qt/addtokenpage.h \
   qt/askpassphrasedialog.h \
   qt/bip38tooldialog.h \
@@ -316,6 +317,7 @@ BITCOIN_QT_CPP = \
   qt/luxnodeconfigdialog.cpp \
   qt/navigationbar.cpp \
   qt/networkstyle.cpp \
+  qt/token.cpp \
   qt/notificator.cpp \
   qt/optionsdialog.cpp \
   qt/optionsmodel.cpp \
@@ -516,3 +518,4 @@ moc_%.cpp: %.h
 	@test -f $(LRELEASE)
 	@$(MKDIR_P) $(@D)
 	$(AM_V_GEN) QT_SELECT=$(QT_SELECT) $(LRELEASE) -silent $< -qm $@
+
