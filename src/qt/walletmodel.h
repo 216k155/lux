@@ -23,6 +23,7 @@ class RecentRequestsTableModel;
 class TransactionTableModel;
 class WalletModelTransaction;
 class ContractTableModel;
+class TokenItemModel;
 
 class CCoinControl;
 class CKeyID;
@@ -132,6 +133,7 @@ public:
     ContractTableModel *getContractTableModel();
     TransactionTableModel* getTransactionTableModel();
     RecentRequestsTableModel* getRecentRequestsTableModel();
+    TokenItemModel *getTokenItemModel();
 
     CAmount getBalance(const CCoinControl* coinControl = NULL) const;
     CAmount getUnconfirmedBalance() const;
@@ -228,6 +230,7 @@ private:
     ContractTableModel *contractTableModel;
     TransactionTableModel* transactionTableModel;
     RecentRequestsTableModel* recentRequestsTableModel;
+    TokenItemModel *tokenItemModel;
 
     // Cache some values to be able to detect changes
     CAmount cachedBalance;

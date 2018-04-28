@@ -42,7 +42,7 @@ void SendTokenPage::setClientModel(ClientModel *_clientModel)
 void SendTokenPage::clearAll()
 {
     ui->lineEditPayTo->setText("");
-    ui->lineEditAmount->setText("");
+    ui->lineEditAmount->clear();
     ui->lineEditDescription->setText("");
     ui->lineEditGasLimit->setValue(DEFAULT_GAS_LIMIT_OP_SEND);
     ui->lineEditGasPrice->setValue(DEFAULT_GAS_PRICE);
@@ -63,7 +63,7 @@ void SendTokenPage::on_numBlocksChanged()
         m_clientModel->getGasInfo(blockGasLimit, minGasPrice, nGasPrice);
 
         ui->labelGasLimit->setToolTip(tr("Gas limit: Default = %1, Max = %2.").arg(DEFAULT_GAS_LIMIT_OP_SEND).arg(blockGasLimit));
-        ui->labelGasPrice->setToolTip(tr("Gas price: QTUM price per gas unit. Default = %1, Min = %2.").arg(QString::fromStdString(FormatMoney(DEFAULT_GAS_PRICE))).arg(QString::fromStdString(FormatMoney(minGasPrice))));
+        ui->labelGasPrice->setToolTip(tr("Gas price: LUX/gas unit. Default = %1, Min = %2.").arg(QString::fromStdString(FormatMoney(DEFAULT_GAS_PRICE))).arg(QString::fromStdString(FormatMoney(minGasPrice))));
         ui->lineEditGasPrice->setMinimum(minGasPrice);
         ui->lineEditGasLimit->setMaximum(blockGasLimit);
     }

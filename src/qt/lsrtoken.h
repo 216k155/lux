@@ -10,9 +10,7 @@
 
 class TokenViewDelegate;
 class WalletModel;
-class QStandardItemModel;
 class ClientModel;
-
 namespace Ui {
 class LSRToken;
 }
@@ -31,8 +29,6 @@ public:
 Q_SIGNALS:
 
 public Q_SLOTS:
-
-    void on_addToken(QString address, QString name, QString symbol, int decimals, double balance);
     void on_goToSendTokenPage();
     void on_goToReceiveTokenPage();
     void on_goToAddTokenPage();
@@ -45,7 +41,6 @@ private:
     WalletModel* m_model;
     ClientModel* m_clientModel;
     TokenViewDelegate* m_tokenDelegate;
-    QStandardItemModel *m_tokenModel;
     QAction *m_sendAction;
     QAction *m_receiveAction;
     QAction *m_addTokenAction;
