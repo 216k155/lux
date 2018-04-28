@@ -275,6 +275,8 @@ public:
 
     int64_t nTimeFirstKey;
 
+    std::map<uint256, CTokenInfo> mapToken;
+
     const CWalletTx* GetWalletTx(const uint256& hash) const;
 
     //! check whether we are allowed to upgrade (or already support) to the named feature
@@ -350,6 +352,8 @@ public:
 
     void GetKeyBirthTimes(std::map<CKeyID, int64_t>& mapKeyBirth) const;
 
+    bool LoadToken(const CTokenInfo &token);
+
     //! Adds a contract data tuple to the store, without saving it to disk
     bool LoadContractData(const std::string &address, const std::string &key, const std::string &value);
 
@@ -405,6 +409,8 @@ public:
     bool ConvertList(std::vector<CTxIn> vCoins, std::vector<int64_t>& vecAmounts);
     bool MultiSend();
     void AutoCombineDust();
+
+    bool AddTokenEntry(const CTokenInfo &token);
 
     static CFeeRate minTxFee;
     static CAmount GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool);
@@ -554,6 +560,11 @@ public:
      * Wallet transaction added, removed or updated.
      * @note called with lock cs_wallet held.
      */
+
+    /** Wallet transaction added, removed or updated. */
+    boost::signals2::signal<void (CWallet *wallet, const uint256 &hashToken,
+                                  ChangeType status)> NotifyTokenChanged;
+
     boost::signals2::signal<void(CWallet* wallet, const uint256& hashTx, ChangeType status)> NotifyTransactionChanged;
 
     /** Contract book entry changed. */
@@ -1355,6 +1366,53 @@ public:
 
     CContractBookData()
     {}
+};
+
+class CTokenInfo
+{
+public:
+    static const int CURRENT_VERSION=1;
+    int nVersion;
+    int64_t nCreateTime;
+    std::string strContractAddress;
+    std::string strTokenName;
+    std::string strTokenSymbol;
+    uint8_t nDecimals;
+    std::string strSenderAddress;
+
+    CTokenInfo()
+    {
+        SetNull();
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        if (!(s.GetType() & SER_GETHASH))
+        {
+            READWRITE(nVersion);
+            READWRITE(nCreateTime);
+            READWRITE(strTokenName);
+            READWRITE(strTokenSymbol);
+        }
+        READWRITE(nDecimals);
+        READWRITE(strContractAddress);
+        READWRITE(strSenderAddress);
+    }
+
+    void SetNull()
+    {
+        nVersion = CTokenInfo::CURRENT_VERSION;
+        nCreateTime = 0;
+        strContractAddress = "";
+        strTokenName = "";
+        strTokenSymbol = "";
+        nDecimals = 0;
+        strSenderAddress = "";
+    }
+
+    uint256 GetHash() const;
 };
 
 

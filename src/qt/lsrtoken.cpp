@@ -33,7 +33,7 @@ public:
         painter->save();
 
         QIcon tokenIcon;
-        QString tokenSybol = index.data(SymbolRole).toString();
+        QString tokenSymbol = index.data(SymbolRole).toString();
         QString tokenBalance = index.data(BalanceRole).toString();
 
         QRect mainRect = option.rect;
@@ -53,7 +53,7 @@ public:
         QColor foreground = option.palette.color(QPalette::Text);
         painter->setPen(foreground);
         QRect tokenSymbolRect(decorationRect.right() + MARGIN, mainRect.top(), SYMBOL_WIDTH, DECORATION_SIZE);
-        painter->drawText(tokenSymbolRect, Qt::AlignLeft|Qt::AlignVCenter, tokenSybol);
+        painter->drawText(tokenSymbolRect, Qt::AlignLeft|Qt::AlignVCenter, tokenSymbol);
 
         int amountWidth = (mainRect.width() - decorationRect.width() - 2 * MARGIN - tokenSymbolRect.width());
         QRect tokenBalanceRect(tokenSymbolRect.right(), mainRect.top(), amountWidth, DECORATION_SIZE);
@@ -121,6 +121,7 @@ LSRToken::~LSRToken()
 void LSRToken::setModel(WalletModel *_model)
 {
     m_model = _model;
+    m_addTokenPage->setModel(m_model);
 }
 
 void LSRToken::setClientModel(ClientModel *_clientModel)

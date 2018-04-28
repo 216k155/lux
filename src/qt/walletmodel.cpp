@@ -701,3 +701,8 @@ bool WalletModel::isMine(CBitcoinAddress address)
 {
     return IsMine(*wallet, address.Get());
 }
+
+bool WalletModel::AddTokenEntry(const CTokenInfo &token)
+{
+    return wallet->AddTokenEntry(token);
+}
