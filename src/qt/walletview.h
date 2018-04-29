@@ -101,7 +101,7 @@ public slots:
     /** Switch to call contract page */
     void gotoCallContractPage();
     /** Switch to LSRToken page */
-    void gotoLSRTokenPage();
+    void gotoLSRTokenPage(bool toAddTokenPage);
     /** Switch to explorer page */
     void gotoBlockExplorerPage();
     /** Switch to receive coins page */

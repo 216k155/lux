@@ -139,11 +139,11 @@ void WalletFrame::gotoMasternodePage() // Masternode list
         i.value()->gotoMasternodePage();
 }
 
-void WalletFrame::gotoLSRTokenPage()
+void WalletFrame::gotoLSRTokenPage(bool toAddTokenPage)
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
-        i.value()->gotoLSRTokenPage();
+        i.value()->gotoLSRTokenPage(toAddTokenPage);
 }
 
 void WalletFrame::gotoCreateContractPage()
