@@ -23,6 +23,7 @@
 #include <assert.h>
 
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
 
 #define SELECT_COINS_FROM_ACCOUNT true
@@ -592,8 +593,9 @@ void CWallet::MarkDirty()
     }
 }
 
-bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet)
+bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, bool fFlushOnClose)
 {
+    CWalletDB walletdb(strWalletFile, "r+", fFlushOnClose);
     uint256 hash = wtxIn.GetHash();
 
     if (fFromLoadWallet) {
@@ -3434,11 +3436,19 @@ bool CWallet::LoadToken(const CTokenInfo &token)
     return true;
 }
 
-bool CWallet::AddTokenEntry(const CTokenInfo& token)
+bool CWallet::LoadTokenTx(const CTokenTx &tokenTx)
+{
+    uint256 hash = tokenTx.GetHash();
+    mapTokenTx[hash] = tokenTx;
+
+    return true;
+}
+
+bool CWallet::AddTokenEntry(const CTokenInfo &token, bool fFlushOnClose)
 {
     LOCK(cs_wallet);
 
-    CWalletDB walletdb(strWalletFile);
+    CWalletDB walletdb(strWalletFile, "r+", fFlushOnClose);
 
     uint256 hash = token.GetHash();
 
@@ -3461,6 +3471,36 @@ bool CWallet::AddTokenEntry(const CTokenInfo& token)
     NotifyTokenChanged(this, hash, fInsertedNew ? CT_NEW : CT_UPDATED);
 
     LogPrintf("AddTokenEntry %s\n", wtoken.GetHash().ToString());
+
+    return true;
+}
+
+bool CWallet::AddTokenTxEntry(const CTokenTx &token, bool fFlushOnClose)
+{
+    LOCK(cs_wallet);
+
+    CWalletDB walletdb(strWalletFile, "r+", fFlushOnClose);
+
+    uint256 hash = token.GetHash();
+
+    bool fInsertedNew = true;
+
+    std::map<uint256, CTokenTx>::iterator it = mapTokenTx.find(hash);
+    if(it!=mapTokenTx.end())
+    {
+        fInsertedNew = false;
+    }
+
+    // Write to disk
+    CTokenTx wTokenTx(token);
+    if (!walletdb.WriteTokenTx(wTokenTx))
+        return false;
+
+    mapTokenTx[hash] = wTokenTx;
+
+    NotifyTokenTransactionChanged(this, hash, fInsertedNew ? CT_NEW : CT_UPDATED);
+
+    LogPrintf("AddTokenTxEntry %s\n", wTokenTx.GetHash().ToString());
 
     return true;
 }

@@ -735,8 +735,7 @@ void WalletModel::loadReceiveRequests(std::vector<std::string>& vReceiveRequests
                 vReceiveRequests.push_back(item2.second);
 }
 
-bool WalletModel::saveReceiveRequest(const std::string& sAddress, const int64_t nId, const std::string& sRequest)
-{
+bool WalletModel::saveReceiveRequest(const std::string& sAddress, const int64_t nId, const std::string& sRequest) {
     CTxDestination dest = CBitcoinAddress(sAddress).Get();
 
     std::stringstream ss;
@@ -750,12 +749,14 @@ bool WalletModel::saveReceiveRequest(const std::string& sAddress, const int64_t 
         return wallet->AddDestData(dest, key, sRequest);
 }
 
-bool WalletModel::isMine(CBitcoinAddress address)
-{
+bool WalletModel::isMine(CBitcoinAddress address) {
     return IsMine(*wallet, address.Get());
 }
 
-bool WalletModel::AddTokenEntry(const CTokenInfo &token)
-{
-    return wallet->AddTokenEntry(token);
+bool WalletModel::AddTokenEntry(const CTokenInfo &token) {
+    return wallet->AddTokenEntry(token, true);
+}
+
+bool WalletModel::AddTokenTxEntry(const CTokenTx& tokenTx, bool fFlushOnClose) {
+    return wallet->AddTokenTxEntry(tokenTx, fFlushOnClose);
 }
