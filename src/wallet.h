@@ -1459,6 +1459,7 @@ public:
     int64_t nCreateTime;
     uint256 blockHash;
     int64_t blockNumber;
+    std::string strLabel;
 
     CTokenTx()
     {
@@ -1475,6 +1476,7 @@ public:
             READWRITE(nCreateTime);
             READWRITE(blockHash);
             READWRITE(blockNumber);
+            READWRITE(LIMITED_STRING(strLabel, 65536));
         }
         READWRITE(strContractAddress);
         READWRITE(strSenderAddress);
@@ -1494,6 +1496,7 @@ public:
         transactionHash.SetNull();
         blockHash.SetNull();
         blockNumber = -1;
+        strLabel = "";
     }
 
     uint256 GetHash() const;

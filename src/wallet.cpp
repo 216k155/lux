@@ -3499,6 +3499,7 @@ bool CWallet::AddTokenTxEntry(const CTokenTx &tokenTx, bool fFlushOnClose) {
         wtokenTx.nCreateTime = GetAdjustedTime();
     } else {
         wtokenTx.nCreateTime = it->second.nCreateTime;
+        wtokenTx.strLabel = it->second.strLabel;
     }
 
     if (!walletdb.WriteTokenTx(wtokenTx))
