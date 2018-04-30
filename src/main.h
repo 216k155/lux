@@ -148,7 +148,7 @@ static const unsigned char REJECT_CHECKPOINT = 0x43;
 
 static const int64_t STATIC_POS_REWARD = 1 * COIN; //Constant reward 8%
 
-static const bool DEFAULT_LOGEVENTS = true;
+static const bool DEFAULT_LOGEVENTS = false;
 
 ////////////////////////////////////////////////////// lux
 static const uint64_t DEFAULT_GAS_LIMIT_OP_CREATE=2500000;
