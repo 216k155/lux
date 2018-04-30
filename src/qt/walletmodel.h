@@ -23,6 +23,8 @@ class RecentRequestsTableModel;
 class TransactionTableModel;
 class WalletModelTransaction;
 class ContractTableModel;
+class TokenItemModel;
+class TokenTransactionTableModel;
 
 class CCoinControl;
 class CKeyID;
@@ -30,6 +32,8 @@ class COutPoint;
 class COutput;
 class CPubKey;
 class CWallet;
+class CTokenInfo;
+class CTokenTx;
 class uint256;
 
 QT_BEGIN_NAMESPACE
@@ -131,6 +135,8 @@ public:
     ContractTableModel *getContractTableModel();
     TransactionTableModel* getTransactionTableModel();
     RecentRequestsTableModel* getRecentRequestsTableModel();
+    TokenItemModel *getTokenItemModel();
+    TokenTransactionTableModel *getTokenTransactionTableModel();
 
     CAmount getBalance(const CCoinControl* coinControl = NULL) const;
     CAmount getUnconfirmedBalance() const;
@@ -145,6 +151,11 @@ public:
     bool setAddressBook(const CTxDestination& address, const string& strName, const string& strPurpose);
     void encryptKey(const CKey key, const std::string& pwd, const std::string& slt, std::vector<unsigned char>& crypted);
     void decryptKey(const std::vector<unsigned char>& crypted, const std::string& slt, const std::string& pwd, CKey& key);
+
+    bool AddTokenEntry(const CTokenInfo& token);
+
+    bool AddTokenTxEntry(const CTokenTx& tokenTx, bool fFlushOnClose=true);
+
 
     // Check address for validity
     bool validateAddress(const QString& address);
@@ -202,6 +213,7 @@ public:
     bool isMine(CBitcoinAddress address);
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
     bool isSpent(const COutPoint& outpoint) const;
+    bool isUnspentAddress(const std::string& address) const;
     void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
 
     bool isLockedCoin(uint256 hash, unsigned int n) const;
@@ -225,6 +237,8 @@ private:
     ContractTableModel *contractTableModel;
     TransactionTableModel* transactionTableModel;
     RecentRequestsTableModel* recentRequestsTableModel;
+    TokenItemModel *tokenItemModel;
+    TokenTransactionTableModel *tokenTransactionTableModel;
 
     // Cache some values to be able to detect changes
     CAmount cachedBalance;
@@ -244,6 +258,7 @@ private:
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
     void checkBalanceChanged();
+    void checkTokenBalanceChanged();
 
 signals:
     // Signal that balance in wallet changed
@@ -268,6 +283,8 @@ signals:
 
     // Watch-only address added
     void notifyWatchonlyChanged(bool fHaveWatchonly);
+
+    void AddTokenTxEntry(bool fHaveWatchonly);
 
 public slots:
     /* Wallet status might have changed */

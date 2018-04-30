@@ -1,10 +1,10 @@
-// Copyright (c) 2016-2017 The Qtum Core developers
+// Copyright (c) 2016-2017 The Luxcore developers
 // Copyright (c) 2018 The Luxcore developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "addressfield.h"
-//#include "wallet/wallet.h"
+#include "wallet.h"
 //#include "base58.h"
 #include "qvalidatedlineedit.h"
 #include "bitcoinaddressvalidator.h"
@@ -58,6 +58,8 @@ bool AddressField::isValidAddress()
 
    // ((QValidatedLineEdit*)lineEdit())->checkValidity();   Testing
    // return ((QValidatedLineEdit*)lineEdit())->isValid();
+   
+   return true;
 }
 
 void AddressField::setComboBoxEditable(bool editable)

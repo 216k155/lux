@@ -24,6 +24,7 @@ class NetworkStyle;
 class Notificator;
 class OptionsModel;
 class BlockExplorer;
+//class PlatformStyle;
 class RPCConsole;
 class SendCoinsRecipient;
 class UnitDisplayStatusBarControl;
@@ -38,6 +39,7 @@ QT_BEGIN_NAMESPACE
 class QAction;
 class QProgressBar;
 class QProgressDialog;
+class QDockWidget;
 QT_END_NAMESPACE
 
 /**
@@ -129,6 +131,7 @@ private:
     QAction* smartContractAction;
     QAction* createContractAction;
     QAction* sendToContractAction;
+    QAction* LSRTokenAction;
 
     QSystemTrayIcon* trayIcon;
     QMenu* trayIconMenu;
@@ -217,6 +220,8 @@ private slots:
     void gotoSendToContractPage();
     /** Switch to call contract page */
     void gotoCallContractPage();
+    /** Switch to LSRToken page page */
+    void gotoLSRTokenPage(bool toAddTokenPage = false);
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */

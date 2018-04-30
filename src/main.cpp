@@ -2215,7 +2215,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     LuxDGP luxDGP(globalState.get(), fGettingValuesDGP);
     globalSealEngine->setLuxSchedule(luxDGP.getGasSchedule(pindex->nHeight + 1));
 #endif
-    uint32_t sizeBlockDGP = 0;//luxDGP.getBlockSize(pindex->nHeight + 1);
+    //uint32_t sizeBlockDGP = 0;//luxDGP.getBlockSize(pindex->nHeight + 1);
     uint64_t minGasPrice = 0;//luxDGP.getMinGasPrice(pindex->nHeight + 1);
     uint64_t blockGasLimit = 0;//luxDGP.getBlockGasLimit(pindex->nHeight + 1);
 

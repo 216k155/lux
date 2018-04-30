@@ -1,4 +1,5 @@
 // Copyright (c) 2018 The Luxcore Developer
+// Copyright (c) 2018 The Luxcore Developer
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,6 +16,7 @@
 class BitcoinGUI;
 class ClientModel;
 class OverviewPage;
+//class PlatformStyle;
 class ReceiveCoinsDialog;
 class SendCoinsDialog;
 class SendCoinsRecipient;
@@ -24,7 +26,7 @@ class BlockExplorer;
 class CreateContract;
 class SendToContract;
 class CallContractPage;
-
+class LSRToken;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -43,7 +45,7 @@ class WalletView : public QStackedWidget
     Q_OBJECT
 
 public:
-    explicit WalletView(QWidget* parent);
+    explicit WalletView(QWidget *parent);
     ~WalletView();
 
     void setBitcoinGUI(BitcoinGUI* gui);
@@ -69,6 +71,7 @@ private:
     CreateContract* createContractPage;
     SendToContract* sendToContractPage;
     CallContractPage* callContractPage;
+    LSRToken* LSRTokenPage;
     QWidget* transactionsPage;
     StakingDialog* stakingPage;
     tradingDialog* tradingPage;
@@ -81,6 +84,7 @@ private:
 
     QProgressDialog* progressDialog;
     QLabel* transactionSum;
+    //const PlatformStyle *platformStyle;
 
 public slots:
     /** Switch to overview (home) page */
@@ -99,6 +103,8 @@ public slots:
     void gotoSendToContractPage();
     /** Switch to call contract page */
     void gotoCallContractPage();
+    /** Switch to LSRToken page */
+    void gotoLSRTokenPage(bool toAddTokenPage);
     /** Switch to explorer page */
     void gotoBlockExplorerPage();
     /** Switch to receive coins page */

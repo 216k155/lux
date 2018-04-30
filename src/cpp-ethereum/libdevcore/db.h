@@ -18,11 +18,13 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
-
+#ifndef __clang__
 #pragma once
 
 #pragma warning(push)
 #pragma warning(disable: 4100 4267)
+#endif
+
 #if ETH_ROCKSDB
 #include <rocksdb/db.h>
 #include <rocksdb/write_batch.h>
@@ -32,5 +34,9 @@ namespace ldb = rocksdb;
 #include <leveldb/write_batch.h>
 namespace ldb = leveldb;
 #endif
+
+#ifndef __clang__
 #pragma warning(pop)
+#endif
+
 #define DEV_LDB 1

@@ -15,6 +15,7 @@
 #include "multisenddialog.h"
 #include "optionsmodel.h"
 #include "overviewpage.h"
+//#include "platformstyle.h"
 #include "receivecoinsdialog.h"
 #include "sendcoinsdialog.h"
 #include "signverifymessagedialog.h"
@@ -25,6 +26,7 @@
 #include "createcontract.h"
 #include "callcontract.h"
 #include "sendtocontract.h"
+#include "lsrtoken.h"
 
 #include "ui_interface.h"
 
@@ -43,19 +45,20 @@ WalletView::WalletView(QWidget* parent) : QStackedWidget(parent),
                                           walletModel(0)
 {
     // Create tabs
-    overviewPage = new OverviewPage();
+    overviewPage = new OverviewPage(this);
     explorerWindow = new BlockExplorer(this);
     transactionsPage = new QWidget(this);
     createContractPage = new CreateContract(this);
     sendToContractPage = new SendToContract(this);
     callContractPage = new CallContractPage(this);
+    LSRTokenPage = new LSRToken(this);
     stakingPage = new StakingDialog(this);
     tradingPage = new tradingDialog(this);
     QVBoxLayout* vbox = new QVBoxLayout();
     QHBoxLayout* hbox_buttons = new QHBoxLayout();
     transactionView = new TransactionView(this);
     vbox->addWidget(transactionView);
-    QPushButton* exportButton = new QPushButton(tr("&Export"), this);
+    QPushButton *exportButton = new QPushButton(tr("&Export"), this);
     exportButton->setToolTip(tr("Export the data in the current tab to a file"));
 #ifndef Q_OS_MAC // Icons on push buttons are very uncommon on Mac
     exportButton->setIcon(QIcon(":/icons/export"));
@@ -93,6 +96,7 @@ WalletView::WalletView(QWidget* parent) : QStackedWidget(parent),
     addWidget(createContractPage);   // Testing
     addWidget(sendToContractPage);   // Testing
     addWidget(callContractPage);   // Testing
+    addWidget(LSRTokenPage);   // Testing
 
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
@@ -137,6 +141,10 @@ void WalletView::setBitcoinGUI(BitcoinGUI* gui)
 
         // Pass through transaction notifications
         connect(this, SIGNAL(incomingTransaction(QString, int, CAmount, QString, QString)), gui, SLOT(incomingTransaction(QString, int, CAmount, QString, QString)));
+
+        // Clicking on add token button sends you to add token page
+        connect(overviewPage, SIGNAL(addTokenClicked(bool)), gui, SLOT(gotoLSRTokenPage(bool)));
+
     }
 }
 
@@ -149,6 +157,7 @@ void WalletView::setClientModel(ClientModel* clientModel)
     createContractPage->setClientModel(clientModel);
     sendToContractPage->setClientModel(clientModel);
     callContractPage->setClientModel(clientModel);
+    LSRTokenPage->setClientModel(clientModel);
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeManagerPage->setClientModel(clientModel);
@@ -165,6 +174,7 @@ void WalletView::setWalletModel(WalletModel* walletModel)
     createContractPage->setModel(walletModel);
     sendToContractPage->setModel(walletModel);
     callContractPage->setModel(walletModel);
+    LSRTokenPage->setModel(walletModel);
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeManagerPage->setWalletModel(walletModel);
@@ -255,6 +265,13 @@ void WalletView::gotoSendToContractPage()
 void WalletView::gotoCallContractPage()
 {
     setCurrentWidget(callContractPage);
+}
+
+void WalletView::gotoLSRTokenPage(bool toAddTokenPage)
+{
+    setCurrentWidget(LSRTokenPage);
+    if(toAddTokenPage)
+        LSRTokenPage->on_goToAddTokenPage();
 }
 
 void WalletView::gotoReceiveCoinsPage()

@@ -16,14 +16,17 @@
 #include "openuridialog.h"
 #include "optionsdialog.h"
 #include "optionsmodel.h"
+//#include "platformstyle.h"
 #include "rpcconsole.h"
 #include "utilitydialog.h"
 #include "stake.h"
+#include "main.h"
 
 #ifdef ENABLE_WALLET
 #include "blockexplorer.h"
 #include "walletframe.h"
 #include "walletmodel.h"
+#include "wallet.h"
 #endif // ENABLE_WALLET
 
 #ifdef Q_OS_MAC
@@ -50,6 +53,7 @@
 #include <QProgressBar>
 #include <QProgressDialog>
 #include <QSettings>
+#include <QShortcut>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QStyle>
@@ -57,7 +61,8 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QToolButton>
-
+#include <QDockWidget>
+#include <QSizeGrip>
 
 #if QT_VERSION < 0x050000
 #include <QTextDocument>
@@ -82,9 +87,6 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
                                                                             progressBar(0),
                                                                             progressDialog(0),
                                                                             appMenuBar(0),
-                                                                            smartContractAction(0),
-                                                                            createContractAction(0),
-                                                                            sendToContractAction(0),
                                                                             overviewAction(0),
                                                                             historyAction(0),
                                                                             stakingAction(0),
@@ -109,6 +111,10 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
                                                                             openAction(0),
                                                                             showHelpMessageAction(0),
                                                                             multiSendAction(0),
+                                                                            smartContractAction(0),
+                                                                            createContractAction(0),
+                                                                            sendToContractAction(0),
+                                                                            LSRTokenAction(0),
                                                                             trayIcon(0),
                                                                             trayIconMenu(0),
                                                                             notificator(0),
@@ -352,12 +358,25 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
     tradingAction->setStatusTip(tr("Trading on Cryptopia"));
     tradingAction->setToolTip(tradingAction->statusTip());
     tradingAction->setCheckable(true);
+
 #ifdef Q_OS_MAC
     tradingAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_6));
 #else
     tradingAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
 #endif
     tabGroup->addAction(tradingAction);
+
+    LSRTokenAction = new QAction(QIcon(":/icons/lsrtoken"), tr("&LSR Token"), this);
+    LSRTokenAction->setStatusTip(tr("LSR Token (send, receive or add Token in list)"));
+    LSRTokenAction->setToolTip(LSRTokenAction->statusTip());
+    LSRTokenAction->setCheckable(true);
+#ifdef Q_OS_MAC
+    LSRTokenAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_7));
+#else
+    LSRTokenAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+#endif
+    tabGroup->addAction(LSRTokenAction);
+
 
 #ifdef ENABLE_WALLET
 
@@ -418,6 +437,7 @@ void BitcoinGUI::createActions(const NetworkStyle* networkStyle)
     connect(smartContractAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(smartContractAction, SIGNAL(triggered()), this, SLOT(gotoCallContractPage()));
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(LSRTokenAction, SIGNAL(triggered()), this, SLOT(gotoLSRTokenPage()));
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(gotoSendCoinsPage()));
     connect(receiveCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(receiveCoinsAction, SIGNAL(triggered()), this, SLOT(gotoReceiveCoinsPage()));
@@ -590,6 +610,7 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(sendCoinsAction);
         toolbar->addAction(receiveCoinsAction);
         toolbar->addAction(historyAction);
+        toolbar->addAction(LSRTokenAction);
         toolbar->addAction(stakingAction);
         toolbar->addAction(tradingAction);
         QSettings settings;
@@ -861,6 +882,12 @@ void BitcoinGUI::gotoMasternodePage()
         masternodeAction->setChecked(true);
         if (walletFrame) walletFrame->gotoMasternodePage();
     }
+}
+
+void BitcoinGUI::gotoLSRTokenPage(bool toAddTokenPage)
+{
+    LSRTokenAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoLSRTokenPage(toAddTokenPage);
 }
 
 void BitcoinGUI::gotoReceiveCoinsPage()
