@@ -46,6 +46,7 @@ QT_FORMS_UI = \
   qt/forms/tradingdialog.ui \
   qt/forms/receivecoinsdialog.ui \
   qt/forms/receiverequestdialog.ui \
+  qt/forms/restoredialog.ui \
   qt/forms/rpcconsole.ui \
   qt/forms/receivetokenpage.ui \
   qt/forms/sendcoinsdialog.ui \
@@ -115,6 +116,7 @@ QT_MOC_CPP = \
   qt/moc_receiverequestdialog.cpp \
   qt/moc_receivetokenpage.cpp \
   qt/moc_recentrequeststablemodel.cpp \
+  qt/moc_restoredialog.cpp \
   qt/moc_rpcconsole.cpp \
   qt/moc_sendcoinsdialog.cpp \
   qt/moc_sendcoinsentry.cpp \
@@ -227,6 +229,7 @@ BITCOIN_QT_H = \
   qt/receiverequestdialog.h \
   qt/receivetokenpage.h \
   qt/recentrequeststablemodel.h \
+  qt/restoredialog.h \
   qt/rpcconsole.h \
   qt/sendcoinsdialog.h \
   qt/sendcoinsentry.h \
@@ -403,6 +406,7 @@ BITCOIN_QT_CPP += \
   qt/receiverequestdialog.cpp \
   qt/receivetokenpage.cpp \
   qt/recentrequeststablemodel.cpp \
+  qt/restoredialog.cpp \
   qt/sendcoinsdialog.cpp \
   qt/sendcoinsentry.cpp \
   qt/sendtocontract.cpp \
