@@ -147,17 +147,14 @@ void AddressField::on_editingFinished()
 
 void AddressField::appendAddress(const QString &strAddress)
 {
-    /*CBitcoinAddress address(strAddress.toStdString());
+    CBitcoinAddress address(strAddress.toStdString());
     if(!m_stringList.contains(strAddress) &&
-            IsMine(*pwalletMain, address.Get()))
-    {
+            IsMine(*pwalletMain, address.Get())) {
         m_stringList.append(strAddress);
-    }*/    //Testing
-    return;
+    }
 }
 
-void AddressField::setReceive(const QString &receive)
-{
+void AddressField::setReceive(const QString &receive) {
     m_receive = receive;
 }
 
