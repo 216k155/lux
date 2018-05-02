@@ -3506,11 +3506,11 @@ bool CWallet::AddTokenTxEntry(const CTokenTx &tokenTx, bool fFlushOnClose) {
     // Write to disk
     CTokenTx wtokenTx = tokenTx;
     if(fInsertedNew) {
-        wtokenTx.nCreateTime = GetAdjustedTime();
-    } else {
-        wtokenTx.nCreateTime = it->second.nCreateTime;
         wtokenTx.strLabel = it->second.strLabel;
     }
+
+    const CBlockIndex* pindex = chainActive[wtokenTx.blockNumber];
+    wtokenTx.nCreateTime = pindex ? pindex->GetBlockTime() : GetAdjustedTime();
 
     if (!walletdb.WriteTokenTx(wtokenTx))
         return false;

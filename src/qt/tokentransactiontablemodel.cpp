@@ -72,15 +72,18 @@ public:
 
     /* Query entire wallet anew from core.
      */
-    void refreshWallet()
-    {
+    void refreshWallet() {
         qDebug() << "TokenTransactionTablePriv::refreshWallet";
-        cachedWallet.clear();
-        {
+        cachedWallet.clear();{
             LOCK2(cs_main, wallet->cs_wallet);
-            for(std::map<uint256, CTokenTx>::iterator it = wallet->mapTokenTx.begin(); it != wallet->mapTokenTx.end(); ++it)
-            {
-                cachedWallet.append(TokenTransactionRecord::decomposeTransaction(wallet, it->second)); 
+            for(std::map<uint256, CTokenTx>::iterator it = wallet->mapTokenTx.begin(); it != wallet->mapTokenTx.end(); ++it) {
+                CTokenTx wtokenTx = it->second;
+                const CBlockIndex* pindex = chainActive[wtokenTx.blockNumber];
+                if(pindex && pindex->GetBlockTime() != wtokenTx.nCreateTime) {
+                    wtokenTx.nCreateTime = pindex->GetBlockTime();
+                    wallet->AddTokenTxEntry(wtokenTx, false);
+                 }
+                 cachedWallet.append(TokenTransactionRecord::decomposeTransaction(wallet, wtokenTx));
             }
         }
     }
