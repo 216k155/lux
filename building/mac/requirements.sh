@@ -2,7 +2,7 @@
 brew uninstall qt5
 
 # Make sure we have the C libs we need
-brew install boost@1.60 pkg-config automake
+brew install boost@1.60 pkg-config automake libtool
 
 # Install some deps
 brew install qt@5.5 protobuf miniupnpc openssl qrencode berkeley-db4 zlib libevent
