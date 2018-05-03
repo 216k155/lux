@@ -48,7 +48,7 @@ StakingDialog::StakingDialog(QWidget *parent) :
     oldColor->setStyleSheet(legendBoxStyle.arg(COLOR_MINT_OLD.red()).arg(COLOR_MINT_OLD.green()).arg(COLOR_MINT_OLD.blue()));
     QLabel *oldLegend = new QLabel(tr("transaction has reached maximum probability"));
     oldLegend->setContentsMargins(5,0,15,0);
-
+    printf("3213123I am initiaz!!!!!!!!!!!!!!!!!!\n");
     QHBoxLayout *legendLayout = new QHBoxLayout();
     legendLayout->setContentsMargins(10,10,0,0);
     legendLayout->addWidget(youngColor);
@@ -63,6 +63,7 @@ StakingDialog::StakingDialog(QWidget *parent) :
 	label1->setText("Staking Estimations");
 	label1->setAlignment(Qt::AlignLeft);
 	QFont font( "Arial", 16, QFont::Bold);
+    printf("3213123I am initiaz!!!!!!!!!!!!!!!!!!\n");
 	label1->setFont(font);
 	label1->setFixedWidth(250);
 	
@@ -132,6 +133,7 @@ StakingDialog::StakingDialog(QWidget *parent) :
 
 void StakingDialog::setModel(WalletModel *model)
 {
+    printf("entered in set model");
     this->model = model;
     if(model)
     {
@@ -155,11 +157,13 @@ void StakingDialog::setModel(WalletModel *model)
         stakingDialog->horizontalHeader()->resizeSection(
             StakingTableModel::TxHash, 545);
     }
+    printf("3213123I atrtett543m initiaz!!!!!!!!!!!!!!!!!!\n");
 }
 
 
 void StakingDialog::chooseStakingInterval(int idx)
 {
+    printf("321sfgdfhdhg3123I am initiaz!!!!!!!!!!!!!!!!!!\n");
     int interval = 10;
     switch(stakingCombo->itemData(idx).toInt())
     {
@@ -196,6 +200,7 @@ void StakingDialog::copyTxID()
 
 void StakingDialog::copyAddress()
 {
+    printf("3213123I am initiaz!!!!!!!!!!!!!!!!!!\n");
     GUIUtil::copyEntryData(stakingDialog, StakingTableModel::Address, 0 );
 }
 
@@ -207,12 +212,14 @@ void StakingDialog::showHideAddress()
 
 void StakingDialog::showHideTxID()
 {
+    printf("3213123I am initityerter656546534az!!!!!!!!!!!!!!!!!!\n");
     stakingDialog->horizontalHeader()->setSectionHidden(StakingTableModel::TxHash, 
         !(stakingDialog->horizontalHeader()->isSectionHidden(StakingTableModel::TxHash)));
 }
 
 void StakingDialog::contextualMenu(const QPoint &point)
 {
+    printf("3213123I am ini000000000000000000---------------tiaz!!!!!!!!!!!!!!!!!!\n");
     QModelIndex index = stakingDialog->indexAt(point);
     if(index.isValid())
     {

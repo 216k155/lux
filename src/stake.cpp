@@ -368,8 +368,9 @@ bool Stake::CheckHash(const CBlockIndex* pindexPrev, unsigned int nBits, const C
         return false; //error("%s: nTime violation (nTime=%d, nTimeTx=%d)", __func__, txPrev.nTime, nTimeTx);
     }
 
-    if (GetStakeAge(nTimeBlockFrom) > nTimeTx) // Min age requirement
-        return false; //error("%s: min age violation (nBlockTime=%d, nTimeTx=%d)", __func__, nTimeBlockFrom, nTimeTx);
+    //we need to delete age in new ver of pos. for test! do not make anything without full testing it!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //if (GetStakeAge(nTimeBlockFrom) > nTimeTx) // Min age requirement
+    //    return false; //error("%s: min age violation (nBlockTime=%d, nTimeTx=%d)", __func__, nTimeBlockFrom, nTimeTx);
 
     if (nHashInterval < Params().StakingInterval()) {
         nHashInterval = Params().StakingInterval();

@@ -74,7 +74,7 @@ StakingTableModel::StakingTableModel(CWallet *wallet, WalletModel *parent):
 {
     columns << tr("Transaction") <<  tr("Address") << tr("Balance") << tr("Age") << tr("Coin Days") << tr("Stake Probability"); //Removed Stake Reward temporarily
     priv->refreshWallet();
-
+    printf("I am initiaz!!!!!!!!!!!!!!!!!!\n");
     QTimer *timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(update()));
     timer->start(MODEL_UPDATE_DELAY);
@@ -87,6 +87,7 @@ StakingTableModel::~StakingTableModel()
 
 void StakingTableModel::update()
 {
+    printf("I am initiaz!!!!!!!!!!!!!!!!!!\n");
     QList<uint256> updated;
 
     // Check if there are changes to wallet map
