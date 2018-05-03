@@ -54,10 +54,10 @@ SendTokenPage::SendTokenPage(QWidget *parent) :
 
     // Connect signals with slots
     connect(ui->lineEditPayTo, SIGNAL(textChanged(QString)), SLOT(on_updateConfirmButton()));
-    connect(ui->lineEditAmount, SIGNAL(textChanged(QString)), SLOT(on_updateConfirmButton()));
+    connect(ui->lineEditAmount, SIGNAL(valueChanged()), SLOT(on_updateConfirmButton()));
     connect(ui->confirmButton, SIGNAL(clicked()), SLOT(on_confirmClicked()));
 
-    ui->lineEditPayTo->setCheckValidator(new BitcoinAddressCheckValidator(parent));
+    ui->lineEditPayTo->setCheckValidator(new BitcoinAddressCheckValidator(parent, false));
 }
 
 SendTokenPage::~SendTokenPage()
@@ -80,7 +80,7 @@ void SendTokenPage::setClientModel(ClientModel *_clientModel)
 
     if (m_clientModel)
     {
-        connect(m_clientModel, SIGNAL(numBlocksChanged(int,QDateTime,double,bool)), this, SLOT(on_numBlocksChanged()));
+        connect(m_clientModel, SIGNAL(tipChanged()), this, SLOT(on_numBlocksChanged()));
         on_numBlocksChanged();
     }
 }

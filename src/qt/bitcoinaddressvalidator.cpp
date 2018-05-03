@@ -17,11 +17,12 @@
   - All lower-case letters except for 'l'
 */
 
-BitcoinAddressEntryValidator::BitcoinAddressEntryValidator(QObject* parent) : QValidator(parent)
+BitcoinAddressEntryValidator::BitcoinAddressEntryValidator(QObject *parent) :
+    QValidator(parent)
 {
 }
 
-QValidator::State BitcoinAddressEntryValidator::validate(QString& input, int& pos) const
+QValidator::State BitcoinAddressEntryValidator::validate(QString &input, int &pos) const
 {
     Q_UNUSED(pos);
 
@@ -59,13 +60,15 @@ QValidator::State BitcoinAddressEntryValidator::validate(QString& input, int& po
 
     // Validation
     QValidator::State state = QValidator::Acceptable;
-    for (int idx = 0; idx < input.size(); ++idx) {
+    for (int idx = 0; idx < input.size(); ++idx)
+    {
         int ch = input.at(idx).unicode();
 
-        if (((ch >= '0' && ch <= '9') ||
-                (ch >= 'a' && ch <= 'z') ||
-                (ch >= 'A' && ch <= 'Z')) &&
-            ch != 'l' && ch != 'I' && ch != '0' && ch != 'O') {
+        if (((ch >= '0' && ch<='9') ||
+            (ch >= 'a' && ch<='z') ||
+            (ch >= 'A' && ch<='Z')) &&
+            ch != 'l' && ch != 'I' && ch != '0' && ch != 'O')
+        {
             // Alphanumeric and not a 'forbidden' character
         } else {
             state = QValidator::Invalid;
@@ -75,17 +78,24 @@ QValidator::State BitcoinAddressEntryValidator::validate(QString& input, int& po
     return state;
 }
 
-BitcoinAddressCheckValidator::BitcoinAddressCheckValidator(QObject* parent) : QValidator(parent)
+BitcoinAddressCheckValidator::BitcoinAddressCheckValidator(QObject *parent, bool allowScript) :
+    QValidator(parent),
+    bAllowScript(allowScript)
 {
 }
 
-QValidator::State BitcoinAddressCheckValidator::validate(QString& input, int& pos) const
+QValidator::State BitcoinAddressCheckValidator::validate(QString &input, int &pos) const
 {
     Q_UNUSED(pos);
     // Validate the passed LUX address
     CBitcoinAddress addr(input.toStdString());
     if (addr.IsValid())
-        return QValidator::Acceptable;
+    {
+        if(bAllowScript)
+            return QValidator::Acceptable;
+        else if(!addr.IsScript())
+            return QValidator::Acceptable;
+    }
 
     return QValidator::Invalid;
 }

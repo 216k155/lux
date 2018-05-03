@@ -25,6 +25,7 @@ class WalletModelTransaction;
 class ContractTableModel;
 class TokenItemModel;
 class TokenTransactionTableModel;
+class ContractTableModel;
 
 class CCoinControl;
 class CKeyID;
@@ -230,6 +231,10 @@ public:
 
     QString getRestorePath();
     QString getRestoreParam();
+
+    std::vector<CTokenInfo> getInvalidTokens();
+
+    bool isMineAddress(const std::string &strAddress);
 
 private:
     CWallet* wallet;

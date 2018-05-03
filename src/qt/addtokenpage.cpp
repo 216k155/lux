@@ -9,6 +9,8 @@
 #include "qvalidatedlineedit.h"
 #include "contractabi.h"
 #include "main.h"
+#include "addresstablemodel.h"
+#include "optionsmodel.h"
 
 #include <QRegularExpressionValidator>
 #include <QMessageBox>
@@ -31,6 +33,9 @@ AddTokenPage::AddTokenPage(QWidget *parent) :
     connect(ui->lineEditTokenName, SIGNAL(textChanged(const QString &)), SLOT(on_updateConfirmButton()));
     connect(ui->lineEditTokenSymbol, SIGNAL(textChanged(const QString &)), SLOT(on_updateConfirmButton()));
 
+    ui->lineEditSenderAddress->setAddressColumn(AddressTableModel::Address);
+    ui->lineEditSenderAddress->setTypeRole(AddressTableModel::TypeRole);
+    ui->lineEditSenderAddress->setReceive(AddressTableModel::Receive);
     if(ui->lineEditSenderAddress->isEditable())
         ((QValidatedLineEdit*)ui->lineEditSenderAddress->lineEdit())->setEmptyIsValid(false);
     m_validTokenAddress = false;
@@ -50,7 +55,7 @@ void AddTokenPage::setClientModel(ClientModel *clientModel)
     m_clientModel = clientModel;
     if (m_clientModel)
     {
-        connect(m_clientModel, SIGNAL(textChanged(int,QDateTime,double,bool)), this, SLOT(on_numBlocksChanged()));
+        connect(m_clientModel, SIGNAL(tipChanged()), this, SLOT(on_numBlocksChanged()));
         on_numBlocksChanged();
     }
 }
@@ -67,6 +72,8 @@ void AddTokenPage::clearAll()
 void AddTokenPage::setModel(WalletModel *_model)
 {
     m_model = _model;
+    on_zeroBalanceAddressToken(bZeroBalanceAddressToken);
+    connect(m_model->getOptionsModel(), SIGNAL(zeroBalanceAddressTokenChanged(bool)), this, SLOT(on_zeroBalanceAddressToken(bool)));
 }
 
 void AddTokenPage::on_clearButton_clicked()
@@ -87,7 +94,14 @@ void AddTokenPage::on_confirmButton_clicked()
 
         if(m_model)
         {
-            if(m_model->existTokenEntry(tokenInfo))
+            if(!m_model->isMineAddress(tokenInfo.strSenderAddress))
+            {
+                QString symbol = QString::fromStdString(tokenInfo.strTokenSymbol);
+                QString address = QString::fromStdString(tokenInfo.strSenderAddress);
+                QString message = tr("The %1 address \"%2\" is not yours, please change it to new one.\n").arg(symbol, address);
+                QMessageBox::warning(this, tr("Invalid token address"), message);
+            }
+            else if(m_model->existTokenEntry(tokenInfo))
             {
                 QMessageBox::information(this, tr("Token exist"), tr("The token already exist with the specified contract and sender addresses."));
             }
@@ -142,4 +156,14 @@ void AddTokenPage::on_updateConfirmButton()
     }
     enabled &= m_validTokenAddress;
     ui->confirmButton->setEnabled(enabled);
+}
+
+void AddTokenPage::on_zeroBalanceAddressToken(bool enable)
+{
+    QAbstractItemModel *addressTableModel = 0;
+    if(enable && m_model)
+    {
+        addressTableModel = m_model->getAddressTableModel();
+    }
+    ui->lineEditSenderAddress->setAddressTableModel(addressTableModel);
 }

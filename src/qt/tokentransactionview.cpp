@@ -82,6 +82,7 @@ TokenTransactionView::TokenTransactionView(QWidget *parent) :
 #if QT_VERSION >= 0x040700
     amountWidget->setPlaceholderText(tr("Min amount"));
 #endif
+    amountWidget->setFixedWidth(AMOUNT_COLUMN_WIDTH - 10);
 
     amountWidget->setFixedWidth(AMOUNT_MINIMUM_COLUMN_WIDTH);
     QRegularExpression regEx;
