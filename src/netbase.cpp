@@ -564,8 +564,8 @@ bool ConnectSocketByName(CService& addr, SOCKET& hSocketRet, const char* pszDest
 
     SOCKET hSocket = INVALID_SOCKET;
 
-    CService nameProxy;
-    GetNameProxy(nameProxy);
+    CService proxy;
+    GetNameProxy(proxy);
 
     CService addrResolved(CNetAddr(strDest, fNameLookup && !HaveNameProxy()), port);
     if (addrResolved.IsValid()) {
@@ -578,7 +578,7 @@ bool ConnectSocketByName(CService& addr, SOCKET& hSocketRet, const char* pszDest
     if (!HaveNameProxy())
         return false;
     // first connect to name proxy server
-    if (!ConnectSocketDirectly(nameProxy, hSocket, nTimeout)) {
+    if (!ConnectSocketDirectly(proxy, hSocket, nTimeout)) {
         if (outProxyConnectionFailed)
             *outProxyConnectionFailed = true;
         return false;
@@ -786,8 +786,8 @@ bool CNetAddr::IsValid() const
         return false;
 
     // unspecified IPv6 address (::/128)
-    unsigned char ipNone[16] = {};
-    if (memcmp(ip, ipNone, 16) == 0)
+    unsigned char ipNone6[16] = {};
+    if (memcmp(ip, ipNone6, 16) == 0)
         return false;
 
     // documentation IPv6 address
