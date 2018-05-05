@@ -6,10 +6,12 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "checkpoints.h"
+#include "clientversion.h"
 #include "main.h"
 #include "primitives/transaction.h"
 #include "rpcserver.h"
 #include "sync.h"
+#include "txdb.h"
 #include "util.h"
 
 #include <stdint.h>
@@ -570,9 +572,9 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "{\n"
             "  \"chain\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
-            "  \"height\": xxxxxx,         (numeric) the current number of blocks (height) processed in the server\n"
-                    "  \"headers\": xxxxxx,        (numeric) the current number of headers we have validated\n"
-            "  \"peak\": \"...\",          (string) the hash of the main chain top block\n"
+            "  \"blocks\": xxxxxx,         (numeric) the current number of blocks processed in the server\n"
+            "  \"headers\": xxxxxx,        (numeric) the current number of headers we have validated\n"
+            "  \"bestblockhash\": \"...\", (string) the hash of the currently best block\n"
             "  \"difficulty\": xxxxxx,     (numeric) the current difficulty\n"
             "  \"verificationprogress\": xxxx, (numeric) estimate of verification progress [0..1]\n"
             "  \"chainwork\": \"xxxx\"     (string) total amount of work in active chain, in hexadecimal\n"
@@ -584,11 +586,11 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("chain", Params().NetworkIDString()));
-    obj.push_back(Pair("height", (int)chainActive.Height()));
+    obj.push_back(Pair("blocks", (int)chainActive.Height()));
     obj.push_back(Pair("headers", pindexBestHeader ? pindexBestHeader->nHeight : -1));
-    obj.push_back(Pair("peak", chainActive.Tip()->GetBlockHash().GetHex()));
+    obj.push_back(Pair("bestblockhash", chainActive.Tip()->GetBlockHash().GetHex()));
     obj.push_back(Pair("difficulty", (double)GetDifficulty()));
-    obj.push_back(Pair("verificationprogress", Checkpoints::GuessVerificationProgress(Params().Checkpoints(), chainActive.Tip())));
+    obj.push_back(Pair("verificationprogress", Checkpoints::GuessVerificationProgress(chainActive.Tip())));
     obj.push_back(Pair("chainwork", chainActive.Tip()->nChainWork.GetHex()));
     return obj;
 }

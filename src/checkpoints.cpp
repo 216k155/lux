@@ -27,20 +27,21 @@ static const double SIGCHECK_VERIFICATION_FACTOR = 5.0;
 
 bool fEnabled = true;
 
-bool CheckBlock(const CCheckpointData& data, int nHeight, const uint256& hash)
+bool CheckBlock(int nHeight, const uint256& hash, bool fMatchesCheckpoint)
 {
     if (!fEnabled)
         return true;
 
-    const MapCheckpoints& checkpoints = *data.mapCheckpoints;
+    const MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
 
     MapCheckpoints::const_iterator i = checkpoints.find(nHeight);
-    if (i == checkpoints.end()) return true;
+    // If looking for an exact match, then return false
+    if (i == checkpoints.end()) return !fMatchesCheckpoint;
     return hash == i->second;
 }
 
 //! Guess how far we are in the verification process at the given block index
-double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks)
+double GuessVerificationProgress(CBlockIndex* pindex, bool fSigchecks)
 {
     if (pindex == NULL)
         return 0.0;
@@ -53,7 +54,7 @@ double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pinde
     // Work is defined as: 1.0 per transaction before the last checkpoint, and
     // fSigcheckVerificationFactor per transaction after.
 
-    // const CCheckpointData& data = Params().Checkpoints();
+    const CCheckpointData& data = Params().Checkpoints();
 
     if (pindex->nChainTx <= data.nTransactionsLastCheckpoint) {
         double nCheapBefore = pindex->nChainTx;
@@ -72,22 +73,22 @@ double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pinde
     return fWorkBefore / (fWorkBefore + fWorkAfter);
 }
 
-int GetTotalBlocksEstimate(const CCheckpointData& data)
+int GetTotalBlocksEstimate()
 {
     if (!fEnabled)
         return 0;
 
-    const MapCheckpoints& checkpoints = *data.mapCheckpoints;
+    const MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
 
     return checkpoints.rbegin()->first;
 }
 
-CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
+CBlockIndex* GetLastCheckpoint()
 {
     if (!fEnabled)
         return NULL;
 
-    const MapCheckpoints& checkpoints = *data.mapCheckpoints;
+    const MapCheckpoints& checkpoints = *Params().Checkpoints().mapCheckpoints;
 
     BOOST_REVERSE_FOREACH (const MapCheckpoints::value_type& i, checkpoints) {
         const uint256& hash = i.second;

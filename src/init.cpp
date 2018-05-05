@@ -1313,7 +1313,7 @@ bool AppInit2(boost::thread_group& threadGroup)
                 // we're reindexing. It will also load fHavePruned if we've
                 // ever removed a block file from disk.
                 // Note that it also sets fReindex based on the disk flag!
-                // From here on out fReindex and fReset mean something different!
+                // From here on out fReindex and fReset mean something differents
                 if (!LoadBlockIndex()) {
                     strLoadError = _("Error loading block database");
                     break;
@@ -1379,6 +1379,12 @@ bool AppInit2(boost::thread_group& threadGroup)
                     strLoadError = _("You need to rebuild the database using -reindex to change -txindex");
                     break;
                 }
+
+                if (fAddrIndex != GetBoolArg("-addrindex", true)) {
+                    strLoadError = _("You need to rebuild the database using -reindex to change -addrindex");
+                    break;
+                }
+
 
                 // Check for changed -logevents state
                 if (fLogEvents != GetBoolArg("-logevents", false) && !fLogEvents) {
