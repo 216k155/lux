@@ -294,7 +294,7 @@ public:
 
 /** nServices flags */
 enum {
-    NODE_NETWORK = (1 << 0),
+    LUX_NODE_NETWORK = (1 << 0),
 
     // NODE_BLOOM means the node is capable and willing to handle bloom-filtered connections.
     // Bitcoin Core nodes used to support this by default, without advertising this bit,
@@ -315,7 +315,7 @@ class CAddress : public CService
 {
 public:
     CAddress();
-    explicit CAddress(CService ipIn, uint64_t nServicesIn = NODE_NETWORK);
+    explicit CAddress(CService ipIn, uint64_t nServicesIn = LUX_NODE_NETWORK);
 
     void Init();
 

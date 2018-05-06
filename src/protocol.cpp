@@ -205,7 +205,7 @@ CAddress::CAddress(CService ipIn, uint64_t nServicesIn) : CService(ipIn)
 
 void CAddress::Init()
 {
-    nServices = NODE_NETWORK;
+    nServices = LUX_NODE_NETWORK;
     nTime = 100000000;
     nLastTry = 0;
 }

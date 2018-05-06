@@ -4570,7 +4570,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         if (pfrom->fInbound)
             pfrom->PushVersion();
 
-        pfrom->fClient = !(pfrom->nServices & NODE_NETWORK);
+        pfrom->fClient = !(pfrom->nServices & LUX_NODE_NETWORK);
 
         // Potentially mark this peer as a preferred download peer.
         UpdatePreferredDownload(pfrom, State(pfrom->GetId()));
@@ -4662,6 +4662,9 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         int64_t nSince = nNow - 10 * 60;
         BOOST_FOREACH (CAddress& addr, vAddr) {
             boost::this_thread::interruption_point();
+
+            if (!(addr.nServices & LUX_NODE_NETWORK))
+                continue;
 
             if (addr.nTime <= 100000000 || addr.nTime > nNow + 10 * 60)
                 addr.nTime = nNow - 5 * 24 * 60 * 60;

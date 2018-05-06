@@ -910,7 +910,7 @@ QString formatServicesStr(quint64 mask)
         uint64_t check = 1 << i;
         if (mask & check) {
             switch (check) {
-            case NODE_NETWORK:
+            case LUX_NODE_NETWORK:
                 strList.append(QObject::tr("NETWORK"));
                 break;
             default:

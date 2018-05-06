@@ -74,14 +74,14 @@ struct ListenSocket {
 }
 
 /** Services this node implementation cares about */
-uint64_t nRelevantServices = NODE_NETWORK;
+uint64_t nRelevantServices = LUX_NODE_NETWORK;
 
 //
 // Global state variables
 //
 bool fDiscover = true;
 bool fListen = true;
-uint64_t nLocalServices = NODE_NETWORK;
+uint64_t nLocalServices = LUX_NODE_NETWORK;
 CCriticalSection cs_mapLocalHost;
 map<CNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfReachable[NET_MAX] = {};
@@ -1245,7 +1245,7 @@ void ThreadOpenConnections()
                 continue;
 
             // only connect to full nodes
-            if (!(addr.nServices & NODE_NETWORK))
+            if (!(addr.nServices & LUX_NODE_NETWORK))
                 continue;
 
             // only consider very recently tried nodes after 30 failed attempts
