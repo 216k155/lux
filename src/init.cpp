@@ -1237,6 +1237,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     nCoinCacheSize = nTotalCache / 300; // coins in memory require around 300 bytes
 
     bool fLoaded = false;
+    nStart = GetTimeMillis();
     while (!fLoaded && !fRequestShutdown) {
         bool fReset = fReindex;
         std::string strLoadError;
