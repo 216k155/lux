@@ -19,6 +19,9 @@ static const int INIT_PROTO_VERSION = 209;
 //! In this version, 'getheaders' was introduced.
 static const int GETHEADERS_VERSION = 70077;
 
+//! Version after which witness support potentially exists
+static const int WITNESS_VERSION = 70013;
+
 //! disconnect from peers older than this proto version
 static const int MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT = 69100;
 static const int MIN_PEER_PROTO_VERSION_AFTER_ENFORCEMENT = 69100;

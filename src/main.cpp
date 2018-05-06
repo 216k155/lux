@@ -285,6 +285,8 @@ struct CNodeState {
     int nBlocksInFlight;
     //! Whether we consider this a preferred download peer.
     bool fPreferredDownload;
+    //! Whether this peer can give us witnesses
+    bool fHaveWitness;
 
     CNodeState()
     {
@@ -298,6 +300,7 @@ struct CNodeState {
         nStallingSince = 0;
         nBlocksInFlight = 0;
         fPreferredDownload = false;
+        fHaveWitness = false;
     }
 };
 
@@ -4578,6 +4581,12 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         pfrom->fClient = !(pfrom->nServices & LUX_NODE_NETWORK);
 
+        if((pfrom->nServices & LUX_NODE_WITNESS))
+        {
+            LOCK(cs_main);
+            State(pfrom->GetId())->fHaveWitness = true;
+        }
+
         // Potentially mark this peer as a preferred download peer.
         UpdatePreferredDownload(pfrom, State(pfrom->GetId()));
 
@@ -4727,8 +4736,9 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         std::vector<CInv> vToFetch;
 
-        for (unsigned int nInv = 0; nInv < vInv.size(); nInv++) {
-            const CInv& inv = vInv[nInv];
+        for (unsigned int nInv = 0; nInv < vInv.size(); nInv++)
+        {
+            CInv &inv = vInv[nInv];
 
             boost::this_thread::interruption_point();
             pfrom->AddInventoryKnown(inv);
@@ -4739,11 +4749,16 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             if (!fAlreadyHave && !fImporting && !fReindex && inv.type != MSG_BLOCK)
                 pfrom->AskFor(inv);
 
+            if (inv.type == MSG_TX && State(pfrom->GetId())->fHaveWitness) {
+                inv.type = MSG_WITNESS_TX;
+            }
 
             if (inv.type == MSG_BLOCK) {
                 UpdateBlockAvailability(pfrom->GetId(), inv.hash);
                 if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash)) {
-                    // Add this to the list of blocks to request
+                    if (State(pfrom->GetId())->fHaveWitness) {
+                        inv.type = MSG_WITNESS_BLOCK;
+                    }
                     vToFetch.push_back(inv);
                     LogPrint("net", "getblocks (%d) %s to peer=%d\n", pindexBestHeader->nHeight, inv.hash.ToString(), pfrom->id);
                 }
@@ -5600,11 +5615,11 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             vector<CBlockIndex*> vToDownload;
             NodeId staller = -1;
             FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
-            BOOST_FOREACH (CBlockIndex* pindex, vToDownload) {
-                vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
+            BOOST_FOREACH(CBlockIndex *pindex, vToDownload) {
+                vGetData.push_back(CInv(State(staller)->fHaveWitness ? MSG_WITNESS_BLOCK : MSG_BLOCK, pindex->GetBlockHash()));
                 MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), pindex);
-                LogPrintf("Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
-                    pindex->nHeight, pto->id);
+                LogPrint("net", "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
+                         pindex->nHeight, pto->id);
             }
             if (state.nBlocksInFlight == 0 && staller != -1) {
                 if (State(staller)->nStallingSince == 0) {

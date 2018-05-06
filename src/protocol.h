@@ -296,6 +296,8 @@ public:
 enum {
     LUX_NODE_NETWORK = (1 << 0),
 
+    LUX_NODE_WITNESS = (1 << 3),
+
     // NODE_BLOOM means the node is capable and willing to handle bloom-filtered connections.
     // Bitcoin Core nodes used to support this by default, without advertising this bit,
     // but no longer do as of protocol version 70011 (= NO_BLOOM_VERSION)
@@ -377,7 +379,7 @@ public:
 
 const uint32_t MSG_WITNESS_FLAG = 1 << 30;
 const uint32_t MSG_TYPE_MASK    = 0xffffffff >> 2;
-enum {
+enum GetDataMsg {
     MSG_TX = 1,
     MSG_BLOCK,
     // Nodes may always request a MSG_FILTERED_BLOCK in a getdata, however,
@@ -388,7 +390,8 @@ enum {
     MSG_SPORK,
     MSG_MASTERNODE_WINNER,
     MSG_WITNESS_BLOCK = MSG_BLOCK | MSG_WITNESS_FLAG,
-    MSG_WITNESS_TX = MSG_TX | MSG_WITNESS_FLAG
+    MSG_WITNESS_TX = MSG_TX | MSG_WITNESS_FLAG,
+    MSG_FILTERED_WITNESS_BLOCK = MSG_FILTERED_BLOCK | MSG_WITNESS_FLAG,
 };
 
 const int MSG_TYPE_MAX = MSG_FILTERED_BLOCK;
