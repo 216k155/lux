@@ -19,6 +19,8 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "masternode.h"
+#include "spork.h"
+#include "validationinterface.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #endif
@@ -120,6 +122,9 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pblock->nVersion = GetArg("-blockversion", pblock->nVersion);
 
     int nHeight = chainActive.Tip()->nHeight + 1;
+
+    // Decide whether to include witness transactions (temporary)
+    bool fIncludeWitness = IsSporkActive(SPORK_4_SEGWIT_ACTIVATION);
 
     // Create coinbase tx
     CMutableTransaction txNew;
@@ -274,6 +279,9 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             CFeeRate feeRate = vecPriority.front().get<1>();
             const CTransaction& tx = *(vecPriority.front().get<2>());
 
+            if (!fIncludeWitness && !tx.wit.IsNull())
+                continue; // cannot accept witness transactions into a non-witness block
+
             std::pop_heap(vecPriority.begin(), vecPriority.end(), comparer);
             vecPriority.pop_back();
 
@@ -399,6 +407,14 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             UpdateTime(pblock, pindexPrev);
         }
         pblock->vtx[0].vin[0].scriptSig = CScript() << nHeight << OP_0;
+        pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev);
+
+        // Fill in header
+        pblock->hashPrevBlock = pindexPrev->GetBlockHash();
+        if (!fProofOfStake)
+            UpdateTime(pblock, pindexPrev);
+        pblock->nBits = GetNextWorkRequired(pindexPrev, pblock);
+        pblock->nNonce = 0;
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
         CValidationState state;
@@ -411,7 +427,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     return pblocktemplate.release();
 }
 
-void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce)
+void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce,  const std::vector<unsigned char> vchCoinbaseCommitment)
 {
     // Update nExtraNonce
     static uint256 hashPrevBlock;
@@ -422,7 +438,7 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
     ++nExtraNonce;
     unsigned int nHeight = pindexPrev->nHeight + 1; // Height first in coinbase required for block.version=2
     CMutableTransaction txCoinbase(pblock->vtx[0]);
-    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
+    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << vchCoinbaseCommitment << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     pblock->vtx[0] = txCoinbase;
@@ -541,7 +557,7 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
             continue;
 
         CBlock* pblock = &pblocktemplate->block;
-        IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
+        IncrementExtraNonce(pblock, pindexPrev, nExtraNonce, pblocktemplate->vchCoinbaseCommitment);
 
         //Stake miner main
         if (fProofOfStake) {

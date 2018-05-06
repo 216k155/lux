@@ -928,8 +928,8 @@ bool Stake::GenBlockStake(CWallet *wallet, const CReserveKey &key, unsigned int 
     if (!block->IsProofOfStake()) {
         return error("%s: Created non-staked block:\n%s", __func__, block->ToString());
     }
-    
-    IncrementExtraNonce(block, tip, extra);
+    // TODO: IncrementExtraNonce(pblock, pindexPrev, nExtraNonce, pblocktemplate->vchCoinbaseCommitment);
+    //IncrementExtraNonce(block, tip, extra);
 
     if (!block->SignBlock(*wallet)) {
         return error("%s: Cant sign new block.", __func__);

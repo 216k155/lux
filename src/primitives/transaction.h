@@ -328,7 +328,6 @@ class CTransaction
 private:
     /** Memory only. */
     const uint256 hash;
-    void UpdateHash() const;
 
 public:
     static const int32_t CURRENT_VERSION=1;
@@ -410,6 +409,8 @@ public:
     std::string ToString() const;
 
     bool GetCoinAge(uint64_t& nCoinAge) const;  // ppcoin: get transaction coin age
+
+    void UpdateHash() const;
 };
 
 /** A mutable version of CTransaction. */
