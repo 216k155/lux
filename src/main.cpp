@@ -1458,7 +1458,7 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, uint256& hashBlock
         if (fTxIndex) {
             CDiskTxPos postx;
             if (pblocktree->ReadTxIndex(hash, postx)) {
-                CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
+                CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
                 if (file.IsNull())
                     return error("%s: OpenBlockFile failed", __func__);
                 CBlockHeader header;
@@ -1474,6 +1474,9 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, uint256& hashBlock
                     return error("%s : txid mismatch", __func__);
                 return true;
             }
+
+            // transaction not found in the index, nothing more can be done
+            return false;
         }
 
         if (fAllowSlow) { // use coin database to locate block that contains transaction, and scan it
@@ -1514,7 +1517,7 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, uint256& hashBlock
 bool WriteBlockToDisk(CBlock& block, CDiskBlockPos& pos)
 {
     // Open history file to append
-    CAutoFile fileout(OpenBlockFile(pos), SER_DISK, CLIENT_VERSION);
+    CAutoFile fileout(OpenBlockFile(pos), SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
     if (fileout.IsNull())
         return error("WriteBlockToDisk : OpenBlockFile failed");
 
@@ -1538,7 +1541,7 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
     block.SetNull();
 
     // Open history file to read
-    CAutoFile filein(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION);
+    CAutoFile filein(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
     if (filein.IsNull())
         return error("ReadBlockFromDisk : OpenBlockFile failed");
 
@@ -2216,7 +2219,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         UpdateCoins(tx, state, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
 
         vPos.push_back(std::make_pair(tx.GetHash(), pos));
-        pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
+        pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
     }
 
     // ppcoin: track money supply and mint amount info
@@ -3412,7 +3415,7 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, 
 
     // Write block to history file
     try {
-        unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
+        unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
         CDiskBlockPos blockPos;
         if (dbp != NULL)
             blockPos = *dbp;
@@ -3996,7 +3999,7 @@ bool InitBlockIndex()
         try {
             CBlock& block = const_cast<CBlock&>(Params().GenesisBlock());
             // Start new block file
-            unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
+            unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
             CDiskBlockPos blockPos;
             CValidationState state;
             if (!FindBlockPos(state, blockPos, nBlockSize + 8, 0, block.GetBlockTime()))
@@ -4028,7 +4031,7 @@ bool LoadExternalBlockFile(FILE* fileIn, CDiskBlockPos* dbp)
     int nLoaded = 0;
     try {
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
-        CBufferedFile blkdat(fileIn, 2 * MAX_BLOCK_SIZE, MAX_BLOCK_SIZE + 8, SER_DISK, CLIENT_VERSION);
+        CBufferedFile blkdat(fileIn, 2 * MAX_BLOCK_SIZE, MAX_BLOCK_SIZE + 8, SER_DISK, CLIENT_VERSION | SERIALIZE_TRANSACTION_WITNESS);
         uint64_t nRewind = blkdat.GetPos();
         while (!blkdat.eof()) {
             boost::this_thread::interruption_point();
@@ -4322,6 +4325,7 @@ string GetWarnings(string strFor)
 bool static AlreadyHave(const CInv& inv)
 {
     switch (inv.type) {
+    case MSG_WITNESS_TX:
     case MSG_TX: {
         bool txInMap = false;
         txInMap = mempool.exists(inv.hash);
@@ -4329,6 +4333,7 @@ bool static AlreadyHave(const CInv& inv)
                pcoinsTip->HaveCoins(inv.hash);
     }
     case MSG_BLOCK:
+    case MSG_WITNESS_BLOCK:
         return mapBlockIndex.count(inv.hash);
     case MSG_TXLOCK_REQUEST:
         return mapTxLockReq.count(inv.hash) ||
@@ -4363,7 +4368,8 @@ void static ProcessGetData(CNode* pfrom)
             boost::this_thread::interruption_point();
             it++;
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK) {
+            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_WITNESS_BLOCK)
+            {
                 bool send = false;
                 BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
                 if (mi != mapBlockIndex.end()) {
@@ -4380,13 +4386,16 @@ void static ProcessGetData(CNode* pfrom)
                         }
                     }
                 }
-                if (send) {
+                // Don't send not-validated blocks
+                if (send && (mi->second->nStatus & BLOCK_HAVE_DATA)) {
                     // Send block from disk
                     CBlock block;
                     if (!ReadBlockFromDisk(block, (*mi).second))
                         assert(!"cannot load block from disk");
                     if (inv.type == MSG_BLOCK)
                         pfrom->PushMessage(NetMsgType::BLOCK, block);
+                    else if (inv.type == MSG_WITNESS_BLOCK)
+                        pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_WITNESS, NetMsgType::BLOCK, block);
                     else // MSG_FILTERED_BLOCK)
                     {
                         LOCK(pfrom->cs_filter);
@@ -4426,18 +4435,15 @@ void static ProcessGetData(CNode* pfrom)
                     LOCK(cs_mapRelay);
                     map<CInv, CDataStream>::iterator mi = mapRelay.find(inv);
                     if (mi != mapRelay.end()) {
-                        pfrom->PushMessage(inv.GetCommand(), (*mi).second);
+                        pfrom->PushMessageWithFlag(inv.type == MSG_WITNESS_TX ? SERIALIZE_TRANSACTION_WITNESS : 0, NetMsgType::TX, (*mi).second);
                         pushed = true;
                     }
                 }
 
-                if (!pushed && inv.type == MSG_TX) {
+                if (!pushed && (inv.type == MSG_TX || inv.type == MSG_WITNESS_TX)) {
                     CTransaction tx;
                     if (mempool.lookup(inv.hash, tx)) {
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << tx;
-                        pfrom->PushMessage(NetMsgType::TX, ss);
+                        pfrom->PushMessageWithFlag(inv.type == MSG_WITNESS_TX ? SERIALIZE_TRANSACTION_WITNESS : 0, NetMsgType::TX, tx);
                         pushed = true;
                     }
                 }
@@ -4487,7 +4493,7 @@ void static ProcessGetData(CNode* pfrom)
             // Track requests for our stuff.
             g_signals.Inventory(inv.hash);
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK)
+            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_WITNESS_BLOCK)
                 break;
         }
     }
@@ -4847,7 +4853,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == NetMsgType::TX) {
+    else if (strCommand == NetMsgType::TX || strCommand == NetMsgType::DSTX) {
         vector<uint256> vWorkQueue;
         vector<uint256> vEraseQueue;
         CTransaction tx;
@@ -4856,6 +4862,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         bool ignoreFees = false;
         CTxIn vin;
         vector<unsigned char> vchSig;
+        int64_t sigTime;
 
         vRecv >> tx;
 
@@ -5016,21 +5023,20 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
     else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) { // Ignore blocks received while importing
         CBlock block;
-        vRecv >> block;
-        uint256 hashBlock = block.GetHash();
-        CInv inv(MSG_BLOCK, hashBlock);
+        WithOrVersion(&vRecv, SERIALIZE_TRANSACTION_WITNESS) >> block;
+        CInv inv(MSG_BLOCK, block.GetHash());
         LogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
 
         //sometimes we will be sent their most recent block and its not the one we want, in that case tell where we are
         if (!mapBlockIndex.count(block.hashPrevBlock)) {
-            if (find(pfrom->vBlockRequested.begin(), pfrom->vBlockRequested.end(), hashBlock) != pfrom->vBlockRequested.end()) {
+            if (find(pfrom->vBlockRequested.begin(), pfrom->vBlockRequested.end(), block.GetHash()) != pfrom->vBlockRequested.end()) {
                 //we already asked for this block, so lets work backwards and ask for the previous block
                 pfrom->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(), block.hashPrevBlock);
                 pfrom->vBlockRequested.push_back(block.hashPrevBlock);
             } else {
                 //ask to sync to this block
-                pfrom->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(), hashBlock);
-                pfrom->vBlockRequested.push_back(hashBlock);
+                pfrom->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(), block.GetHash());
+                pfrom->vBlockRequested.push_back(block.GetHash());
             }
         } else {
             pfrom->AddInventoryKnown(inv);
@@ -5534,11 +5540,11 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             vInv.reserve(pto->vInventoryToSend.size());
             vInvWait.reserve(pto->vInventoryToSend.size());
             BOOST_FOREACH (const CInv& inv, pto->vInventoryToSend) {
-                if (pto->setInventoryKnown.count(inv))
+                if ((inv.type == MSG_TX || inv.type == MSG_WITNESS_TX) && pto->setInventoryKnown.count(inv))
                     continue;
 
                 // trickle out tx inv to protect privacy
-                if (inv.type == MSG_TX && !fSendTrickle) {
+                if ((inv.type == MSG_TX || inv.type == MSG_WITNESS_TX) && !fSendTrickle) {
                     // 1/4 of tx invs blast to all immediately
                     static uint256 hashSalt;
                     if (hashSalt == 0)
@@ -5650,7 +5656,7 @@ bool CBlockUndo::WriteToDisk(CDiskBlockPos& pos, const uint256& hashBlock)
     fileout << *this;
 
     // calculate & write checksum
-    CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
+    CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_WITNESS);
     hasher << hashBlock;
     hasher << *this;
     fileout << hasher.GetHash();
@@ -5675,7 +5681,7 @@ bool CBlockUndo::ReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock
     }
 
     // Verify checksum
-    CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
+    CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_WITNESS);
     hasher << hashBlock;
     hasher << *this;
     if (hashChecksum != hasher.GetHash())

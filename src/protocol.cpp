@@ -129,6 +129,8 @@ static const char* ppszTypeName[] =
         "tx",
         "block",
         "filtered block",
+        "witness block",
+        "witness tx",
         "tx lock request",
         "tx lock vote",
         "spork",
@@ -243,7 +245,8 @@ bool operator<(const CInv& a, const CInv& b)
 
 bool CInv::IsKnownType() const
 {
-    return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
+    int masked = type & (MSG_TYPE_MASK | MSG_WITNESS_FLAG);
+    return (masked >= 1 && masked <= MSG_TYPE_MAX);
 }
 
 const char* CInv::GetCommand() const

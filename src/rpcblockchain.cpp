@@ -6,10 +6,12 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "checkpoints.h"
+#include "clientversion.h"
 #include "main.h"
 #include "primitives/transaction.h"
 #include "rpcserver.h"
 #include "sync.h"
+#include "txdb.h"
 #include "util.h"
 
 #include <stdint.h>
@@ -411,7 +413,7 @@ UniValue getblockheader(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     if (!fVerbose) {
-        CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
+        CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_WITNESS);
         ssBlock << block.GetBlockHeader();
         std::string strHex = HexStr(ssBlock.begin(), ssBlock.end());
         return strHex;
