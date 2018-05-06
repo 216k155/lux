@@ -25,6 +25,7 @@
 #include "ui_interface.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "protocol.h"
 
 #include <sstream>
 
@@ -4517,10 +4518,10 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         return true;
     }
 
-    if (strCommand == "version") {
+    if (strCommand == NetMsgType::VERSION) {
         // Each connection can only send one version message
         if (pfrom->nVersion != 0) {
-            pfrom->PushMessage("reject", strCommand, REJECT_DUPLICATE, string("Duplicate version message"));
+            pfrom->PushMessage(NetMsgType::REJECT, strCommand, REJECT_DUPLICATE, string("Duplicate version message"));
             Misbehaving(pfrom->GetId(), 1);
             return false;
         }

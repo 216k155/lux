@@ -12,6 +12,116 @@
 #ifndef WIN32
 #include <arpa/inet.h>
 #endif
+// Reference: https://dev.visucore.com/bitcoin/doxygen/namespace_net_msg_type.html
+// When adding new message types, don't forget to update allNetMessageTypes in protocol.cpp.
+namespace NetMsgType {
+const char *VERSION="version";
+const char *VERACK="verack";
+const char *ADDR="addr";
+const char *ALERT="alert";
+const char *INV="inv";
+const char *GETDATA="getdata";
+const char *MERKLEBLOCK="merkleblock";
+const char *GETBLOCKS="getblocks";
+const char *GETHEADERS="getheaders";
+const char *TX="tx";
+const char *MNW="mnw";
+const char *IX="ix";
+const char *DSTX="dstx";
+const char *FBS="fbs";
+const char *MNB="mnb";
+const char *MNP="mnp";
+const char *MNGET="mnget";
+const char *DSEEP="dseep";
+const char *DSEE="dsee";
+const char *DSEG="dseg";
+const char *DSSU="dssu";
+const char *DSS="dss";
+const char *DSA="dsa";
+const char *DSQ="dsq";
+const char *DSF="dsf";
+const char *DSI="dsi";
+const char *DSC="dsc";
+const char *DSR="dsr";
+const char *SPORK="spork";
+const char *GETSPORKS="getsporks";
+const char *GETSPORK="getspork";
+const char *SSC="ssc";
+const char *MNVS="mnvs";
+const char *HEADERS="headers";
+const char *BLOCK="block";
+const char *GETADDR="getaddr";
+const char *MEMPOOL="mempool";
+const char *PING="ping";
+const char *PONG="pong";
+const char *NOTFOUND="notfound";
+const char *FILTERLOAD="filterload";
+const char *FILTERADD="filteradd";
+const char *FILTERCLEAR="filterclear";
+const char *REJECT="reject";
+const char *SENDHEADERS="sendheaders";
+const char *FEEFILTER="feefilter";
+const char *SENDCMPCT="sendcmpct";
+const char *CMPCTBLOCK="cmpctblock";
+const char *GETBLOCKTXN="getblocktxn";
+const char *BLOCKTXN="blocktxn";
+} // namespace NetMsgType
+
+/** All known message types. Keep this in the same order as the list of
+ * messages above and in protocol.h.
+ */
+const static std::string allNetMessageTypes[] = {
+    NetMsgType::VERSION,
+    NetMsgType::VERACK,
+    NetMsgType::ADDR,
+    NetMsgType::ALERT,
+    NetMsgType::INV,
+    NetMsgType::GETDATA,
+    NetMsgType::MERKLEBLOCK,
+    NetMsgType::GETBLOCKS,
+    NetMsgType::GETHEADERS,
+    NetMsgType::TX,
+    NetMsgType::MNW,
+    NetMsgType::IX,
+    NetMsgType::DSTX,
+    NetMsgType::FBS,
+    NetMsgType::MNB,
+    NetMsgType::MNP,
+    NetMsgType::MNGET,
+    NetMsgType::DSEEP,
+    NetMsgType::DSEE,
+    NetMsgType::DSEG,
+    NetMsgType::DSSU,
+    NetMsgType::DSS,
+    NetMsgType::DSA,
+    NetMsgType::DSQ,
+    NetMsgType::DSF,
+    NetMsgType::DSI,
+    NetMsgType::DSC,
+    NetMsgType::DSR,
+    NetMsgType::SPORK,
+    NetMsgType::GETSPORKS,
+    NetMsgType::GETSPORK,
+    NetMsgType::SSC,
+    NetMsgType::MNVS,
+    NetMsgType::HEADERS,
+    NetMsgType::BLOCK,
+    NetMsgType::GETADDR,
+    NetMsgType::MEMPOOL,
+    NetMsgType::PING,
+    NetMsgType::PONG,
+    NetMsgType::NOTFOUND,
+    NetMsgType::FILTERLOAD,
+    NetMsgType::FILTERADD,
+    NetMsgType::FILTERCLEAR,
+    NetMsgType::REJECT,
+    NetMsgType::SENDHEADERS,
+    NetMsgType::FEEFILTER,
+    NetMsgType::SENDCMPCT,
+    NetMsgType::CMPCTBLOCK,
+    NetMsgType::GETBLOCKTXN,
+    NetMsgType::BLOCKTXN
+};
 
 static const char* ppszTypeName[] =
     {
