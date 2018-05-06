@@ -605,7 +605,7 @@ bool AddOrphanTx(const CTransaction& tx, NodeId peer)
     // at most 500 megabytes of orphans:
     unsigned int sz = tx.GetSerializeSize(SER_NETWORK, CTransaction::CURRENT_VERSION);
     if (sz > 5000) {
-        LogPrint("mempool", "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
+        LogPrint(NetMsgType::MEMPOOL, "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
         return false;
     }
 
@@ -614,7 +614,7 @@ bool AddOrphanTx(const CTransaction& tx, NodeId peer)
     BOOST_FOREACH (const CTxIn& txin, tx.vin)
         mapOrphanTransactionsByPrev[txin.prevout.hash].insert(hash);
 
-    LogPrint("mempool", "stored orphan tx %s (mapsz %u prevsz %u)\n", hash.ToString(),
+    LogPrint(NetMsgType::MEMPOOL, "stored orphan tx %s (mapsz %u prevsz %u)\n", hash.ToString(),
         mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
     return true;
 }
@@ -646,7 +646,7 @@ void EraseOrphansFor(NodeId peer)
             ++nErased;
         }
     }
-    if (nErased > 0) LogPrint("mempool", "Erased %d orphan tx from peer %d\n", nErased, peer);
+    if (nErased > 0) LogPrint(NetMsgType::MEMPOOL, "Erased %d orphan tx from peer %d\n", nErased, peer);
 }
 
 
@@ -1214,7 +1214,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                 if (dFreeCount >= GetArg("-limitfreerelay", 15) * 10 * 1000)
                     return state.DoS(0, error("AcceptToMemoryPool : free transaction rejected by rate limiter"),
                         REJECT_INSUFFICIENTFEE, "rate limited free transaction");
-                LogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
+                LogPrint(NetMsgType::MEMPOOL, "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
                 dFreeCount += nSize;
             }
         }
@@ -1403,7 +1403,7 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
                 if (dFreeCount >= GetArg("-limitfreerelay", 15) * 10 * 1000)
                     return state.DoS(0, error("AcceptableInputs : free transaction rejected by rate limiter"),
                         REJECT_INSUFFICIENTFEE, "rate limited free transaction");
-                LogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
+                LogPrint(NetMsgType::MEMPOOL, "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
                 dFreeCount += nSize;
             }
         }
@@ -3511,7 +3511,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, CDis
     else if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL) {
         BlockMap::iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
         if (mi == mapBlockIndex.end()) {
-            pfrom->PushMessage("getblocks", chainActive.GetLocator(), uint256(0));
+            pfrom->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(), uint256(0));
             return false;
         }
     }
@@ -4386,13 +4386,13 @@ void static ProcessGetData(CNode* pfrom)
                     if (!ReadBlockFromDisk(block, (*mi).second))
                         assert(!"cannot load block from disk");
                     if (inv.type == MSG_BLOCK)
-                        pfrom->PushMessage("block", block);
+                        pfrom->PushMessage(NetMsgType::BLOCK, block);
                     else // MSG_FILTERED_BLOCK)
                     {
                         LOCK(pfrom->cs_filter);
                         if (pfrom->pfilter) {
                             CMerkleBlock merkleBlock(block, *pfrom->pfilter);
-                            pfrom->PushMessage("merkleblock", merkleBlock);
+                            pfrom->PushMessage(NetMsgType::MERKLEBLOCK, merkleBlock);
                             // CMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
                             // This avoids hurting performance by pointlessly requiring a round-trip
                             // Note that there is currently no way for a node to request any single transactions we didnt send here -
@@ -4402,7 +4402,7 @@ void static ProcessGetData(CNode* pfrom)
                             typedef std::pair<unsigned int, uint256> PairType;
                             BOOST_FOREACH (PairType& pair, merkleBlock.vMatchedTxn)
                                 if (!pfrom->setInventoryKnown.count(CInv(MSG_TX, pair.second)))
-                                    pfrom->PushMessage("tx", block.vtx[pair.first]);
+                                    pfrom->PushMessage(NetMsgType::TX, block.vtx[pair.first]);
                         }
                         // else
                         // no response
@@ -4415,7 +4415,7 @@ void static ProcessGetData(CNode* pfrom)
                         // wait for other stuff first.
                         vector<CInv> vInv;
                         vInv.push_back(CInv(MSG_BLOCK, chainActive.Tip()->GetBlockHash()));
-                        pfrom->PushMessage("inv", vInv);
+                        pfrom->PushMessage(NetMsgType::INV, vInv);
                         pfrom->hashContinue = 0;
                     }
                 }
@@ -4437,7 +4437,7 @@ void static ProcessGetData(CNode* pfrom)
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
                         ss << tx;
-                        pfrom->PushMessage("tx", ss);
+                        pfrom->PushMessage(NetMsgType::TX, ss);
                         pushed = true;
                     }
                 }
@@ -4455,7 +4455,7 @@ void static ProcessGetData(CNode* pfrom)
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
                         ss << mapTxLockReq[inv.hash];
-                        pfrom->PushMessage("ix", ss);
+                        pfrom->PushMessage(NetMsgType::IX, ss);
                         pushed = true;
                     }
                 }
@@ -4464,7 +4464,7 @@ void static ProcessGetData(CNode* pfrom)
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
                         ss << mapSporks[inv.hash];
-                        pfrom->PushMessage("spork", ss);
+                        pfrom->PushMessage(NetMsgType::SPORK, ss);
                         pushed = true;
                     }
                 }
@@ -4474,7 +4474,7 @@ void static ProcessGetData(CNode* pfrom)
                         int a = 0;
                         ss.reserve(1000);
                         ss << mapSeenMasternodeVotes[inv.hash] << a;
-                        pfrom->PushMessage("mnw", ss);
+                        pfrom->PushMessage(NetMsgType::MNW, ss);
                         pushed = true;
                     }
                 }
@@ -4502,7 +4502,7 @@ void static ProcessGetData(CNode* pfrom)
         // do that because they want to know about (and store and rebroadcast and
         // risk analyze) the dependencies of transactions relevant to them, without
         // having to download the entire memory pool.
-        pfrom->PushMessage("notfound", vNotFound);
+        pfrom->PushMessage(NetMsgType::NOTFOUND, vNotFound);
     }
 }
 
@@ -4534,8 +4534,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         if (pfrom->nVersion < ActiveProtocol()) {
             // disconnect from peers older than this proto version
             LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
-            pfrom->PushMessage("reject", strCommand, REJECT_OBSOLETE,
-                strprintf("Version must be %d or greater", ActiveProtocol()));
+            pfrom->PushMessage(NetMsgType::REJECT, strCommand, REJECT_OBSOLETE, strprintf("Version must be %d or greater", ActiveProtocol()));
             pfrom->fDisconnect = true;
             return false;
         }
@@ -4577,7 +4576,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         UpdatePreferredDownload(pfrom, State(pfrom->GetId()));
 
         // Change version
-        pfrom->PushMessage("verack");
+        pfrom->PushMessage(NetMsgType::VERACK);
         pfrom->ssSend.SetVersion(min(pfrom->nVersion, PROTOCOL_VERSION));
 
         if (!pfrom->fInbound) {
@@ -4594,7 +4593,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
             // Get recent addresses
             if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || addrman.size() < 1000) {
-                pfrom->PushMessage("getaddr");
+                pfrom->PushMessage(NetMsgType::GETADDR);
                 pfrom->fGetAddr = true;
             }
             addrman.Good(pfrom->addr);
@@ -4634,7 +4633,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "verack") {
+    else if (strCommand == NetMsgType::VERACK) {
         pfrom->SetRecvVersion(min(pfrom->nVersion, PROTOCOL_VERSION));
 
         // Mark this node as currently connected, so we update its timestamp later.
@@ -4645,7 +4644,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "addr") {
+    else if (strCommand == NetMsgType::ADDR) {
         vector<CAddress> vAddr;
         vRecv >> vAddr;
 
@@ -4707,7 +4706,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "inv") {
+    else if (strCommand == NetMsgType::INV) {
         vector<CInv> vInv;
         vRecv >> vInv;
         if (vInv.size() > MAX_INV_SZ) {
@@ -4751,11 +4750,11 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         }
 
         if (!vToFetch.empty())
-            pfrom->PushMessage("getdata", vToFetch);
+            pfrom->PushMessage(NetMsgType::GETDATA, vToFetch);
     }
 
 
-    else if (strCommand == "getdata") {
+    else if (strCommand == NetMsgType::GETDATA) {
         vector<CInv> vInv;
         vRecv >> vInv;
         if (vInv.size() > MAX_INV_SZ) {
@@ -4774,7 +4773,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "getblocks" || strCommand == "getheaders") {
+    else if (strCommand == NetMsgType::GETBLOCKS || strCommand == NetMsgType::GETHEADERS) {
         CBlockLocator locator;
         uint256 hashStop;
         vRecv >> locator >> hashStop;
@@ -4807,7 +4806,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "headers" && Params().HeadersFirstSyncingActive()) {
+    else if (strCommand == NetMsgType::HEADERS && Params().HeadersFirstSyncingActive()) {
         CBlockLocator locator;
         uint256 hashStop;
         vRecv >> locator >> hashStop;
@@ -4841,11 +4840,11 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             if (--nLimit <= 0 || pindex->GetBlockHash() == hashStop)
                 break;
         }
-        pfrom->PushMessage("headers", vHeaders);
+        pfrom->PushMessage(NetMsgType::HEADERS, vHeaders);
     }
 
 
-    else if (strCommand == "tx") {
+    else if (strCommand == NetMsgType::TX) {
         vector<uint256> vWorkQueue;
         vector<uint256> vEraseQueue;
         CTransaction tx;
@@ -4876,7 +4875,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             RelayTransaction(tx);
             vWorkQueue.push_back(inv.hash);
 
-            LogPrint("mempool", "AcceptToMemoryPool: peer=%d %s : accepted %s (poolsz %u)\n",
+            LogPrint(NetMsgType::MEMPOOL, "AcceptToMemoryPool: peer=%d %s : accepted %s (poolsz %u)\n",
                 pfrom->id, pfrom->cleanSubVer,
                 tx.GetHash().ToString(),
                 mempool.mapTx.size());
@@ -4902,7 +4901,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                     if (setMisbehaving.count(fromPeer))
                         continue;
                     if (AcceptToMemoryPool(mempool, stateDummy, orphanTx, true, &fMissingInputs2)) {
-                        LogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
+                        LogPrint(NetMsgType::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
                         RelayTransaction(orphanTx);
                         vWorkQueue.push_back(orphanHash);
                         vEraseQueue.push_back(orphanHash);
@@ -4912,11 +4911,11 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                             // Punish peer that gave us an invalid orphan tx
                             Misbehaving(fromPeer, nDos);
                             setMisbehaving.insert(fromPeer);
-                            LogPrint("mempool", "   invalid orphan tx %s\n", orphanHash.ToString());
+                            LogPrint(NetMsgType::MEMPOOL, "   invalid orphan tx %s\n", orphanHash.ToString());
                         }
                         // Has inputs but not accepted to mempool
                         // Probably non-standard or insufficient fee/priority
-                        LogPrint("mempool", "   removed orphan tx %s\n", orphanHash.ToString());
+                        LogPrint(NetMsgType::MEMPOOL, "   removed orphan tx %s\n", orphanHash.ToString());
                         vEraseQueue.push_back(orphanHash);
                     }
                     mempool.check(pcoinsTip);
@@ -4932,7 +4931,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
             unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
             if (nEvicted > 0)
-                LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+                LogPrint(NetMsgType::MEMPOOL, "mapOrphan overflow, removed %u tx\n", nEvicted);
         } else if (pfrom->fWhitelisted) {
             // Always relay transactions received from whitelisted peers, even
             // if they are already in the mempool (allowing the node to function
@@ -4943,10 +4942,10 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         int nDoS = 0;
         if (state.IsInvalid(nDoS)) {
-            LogPrint("mempool", "%s from peer=%d %s was not accepted into the memory pool: %s\n", tx.GetHash().ToString(),
+            LogPrint(NetMsgType::MEMPOOL, "%s from peer=%d %s was not accepted into the memory pool: %s\n", tx.GetHash().ToString(),
                 pfrom->id, pfrom->cleanSubVer,
                 state.GetRejectReason());
-            pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
+            pfrom->PushMessage(NetMsgType::REJECT, strCommand, state.GetRejectCode(),
                 state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
             if (nDoS > 0)
                 Misbehaving(pfrom->GetId(), nDoS);
@@ -5005,14 +5004,14 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip(), continue
             // from there instead.
             LogPrintf("more getheaders (%d) to end to peer=%d (startheight:%d)\n", pindexLast->nHeight, pfrom->id, pfrom->nStartingHeight);
-            pfrom->PushMessage("getheaders", chainActive.GetLocator(pindexLast), uint256(0));
+            pfrom->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexLast), uint256(0));
         }
 
         CheckBlockIndex();
     }
 
 
-    else if (strCommand == "block" && !fImporting && !fReindex) { // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) { // Ignore blocks received while importing
         CBlock block;
         vRecv >> block;
         uint256 hashBlock = block.GetHash();
@@ -5023,11 +5022,11 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         if (!mapBlockIndex.count(block.hashPrevBlock)) {
             if (find(pfrom->vBlockRequested.begin(), pfrom->vBlockRequested.end(), hashBlock) != pfrom->vBlockRequested.end()) {
                 //we already asked for this block, so lets work backwards and ask for the previous block
-                pfrom->PushMessage("getblocks", chainActive.GetLocator(), block.hashPrevBlock);
+                pfrom->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(), block.hashPrevBlock);
                 pfrom->vBlockRequested.push_back(block.hashPrevBlock);
             } else {
                 //ask to sync to this block
-                pfrom->PushMessage("getblocks", chainActive.GetLocator(), hashBlock);
+                pfrom->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(), hashBlock);
                 pfrom->vBlockRequested.push_back(hashBlock);
             }
         } else {
@@ -5037,7 +5036,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             ProcessNewBlock(state, pfrom, &block);
             int nDoS;
             if (state.IsInvalid(nDoS)) {
-                pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
+                pfrom->PushMessage(NetMsgType::REJECT, strCommand, state.GetRejectCode(),
                     state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
                 if (nDoS > 0) {
                     TRY_LOCK(cs_main, lockMain);
@@ -5054,7 +5053,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     // to users' AddrMan and later request them by sending getaddr messages.
     // Making users (which are behind NAT and can only make outgoing connections) ignore
     // getaddr message mitigates the attack.
-    else if ((strCommand == "getaddr") && (pfrom->fInbound)) {
+    else if ((strCommand == NetMsgType::GETADDR) && (pfrom->fInbound)) {
         pfrom->vAddrToSend.clear();
         vector<CAddress> vAddr = addrman.GetAddr();
         BOOST_FOREACH (const CAddress& addr, vAddr)
@@ -5062,7 +5061,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "mempool") {
+    else if (strCommand == NetMsgType::MEMPOOL) {
         LOCK2(cs_main, pfrom->cs_filter);
 
         std::vector<uint256> vtxid;
@@ -5077,16 +5076,16 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                 (!pfrom->pfilter))
                 vInv.push_back(inv);
             if (vInv.size() == MAX_INV_SZ) {
-                pfrom->PushMessage("inv", vInv);
+                pfrom->PushMessage(NetMsgType::INV, vInv);
                 vInv.clear();
             }
         }
         if (vInv.size() > 0)
-            pfrom->PushMessage("inv", vInv);
+            pfrom->PushMessage(NetMsgType::INV, vInv);
     }
 
 
-    else if (strCommand == "ping") {
+    else if (strCommand == NetMsgType::PING) {
         if (pfrom->nVersion > BIP0031_VERSION) {
             uint64_t nonce = 0;
             vRecv >> nonce;
@@ -5101,12 +5100,12 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             // it, if the remote node sends a ping once per second and this node takes 5
             // seconds to respond to each, the 5th ping the remote sends would appear to
             // return very quickly.
-            pfrom->PushMessage("pong", nonce);
+            pfrom->PushMessage(NetMsgType::PONG, nonce);
         }
     }
 
 
-    else if (strCommand == "pong") {
+    else if (strCommand == NetMsgType::PONG) {
         int64_t pingUsecEnd = nTimeReceived;
         uint64_t nonce = 0;
         size_t nAvail = vRecv.in_avail();
@@ -5190,15 +5189,15 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
 
     else if (!(nLocalServices & NODE_BLOOM) &&
-             (strCommand == "filterload" ||
-              strCommand == "filteradd" ||
-              strCommand == "filterclear")) {
+                (strCommand == NetMsgType::FILTERLOAD ||
+                 strCommand == NetMsgType::FILTERADD ||
+                 strCommand == NetMsgType::FILTERCLEAR)) {
         LogPrintf("bloom message=%s\n", strCommand);
         Misbehaving(pfrom->GetId(), 100);
     }
 
 
-    else if (strCommand == "filterload") {
+    else if (strCommand == NetMsgType::FILTERLOAD) {
         CBloomFilter filter;
         vRecv >> filter;
 
@@ -5215,7 +5214,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "filteradd") {
+    else if (strCommand == NetMsgType::FILTERADD) {
         vector<unsigned char> vData;
         vRecv >> vData;
 
@@ -5233,7 +5232,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "filterclear") {
+    else if (strCommand == NetMsgType::FILTERCLEAR) {
         LOCK(pfrom->cs_filter);
         delete pfrom->pfilter;
         pfrom->pfilter = new CBloomFilter();
@@ -5241,7 +5240,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
     }
 
 
-    else if (strCommand == "reject") {
+    else if (strCommand == NetMsgType::REJECT) {
         if (fDebug) {
             try {
                 string strMsg;
@@ -5252,7 +5251,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                 ostringstream ss;
                 ss << strMsg << " code " << itostr(ccode) << ": " << strReason;
 
-                if (strMsg == "block" || strMsg == "tx") {
+                if (strMsg == NetMsgType::BLOCK || strMsg == NetMsgType::TX) {
                     uint256 hash;
                     vRecv >> hash;
                     ss << ": hash " << hash.ToString();
@@ -5370,7 +5369,7 @@ bool ProcessMessages(CNode* pfrom)
             fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime);
             boost::this_thread::interruption_point();
         } catch (std::ios_base::failure& e) {
-            pfrom->PushMessage("reject", strCommand, REJECT_MALFORMED, string("error parsing message"));
+            pfrom->PushMessage(NetMsgType::REJECT, strCommand, REJECT_MALFORMED, string("error parsing message"));
             if (strstr(e.what(), "end of data")) {
                 // Allow exceptions from under-length message on vRecv
                 LogPrintf("ProcessMessages(%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", SanitizeString(strCommand), nMessageSize, e.what());
@@ -5430,11 +5429,11 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             pto->nPingUsecStart = GetTimeMicros();
             if (pto->nVersion > BIP0031_VERSION) {
                 pto->nPingNonceSent = nonce;
-                pto->PushMessage("ping", nonce);
+                pto->PushMessage(NetMsgType::PING, nonce);
             } else {
                 // Peer is too old to support ping command with nonce, pong will never arrive.
                 pto->nPingNonceSent = 0;
-                pto->PushMessage("ping");
+                pto->PushMessage(NetMsgType::PING);
             }
         }
 
@@ -5470,14 +5469,14 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                     vAddr.push_back(addr);
                     // receiver rejects addr messages larger than 1000
                     if (vAddr.size() >= 1000) {
-                        pto->PushMessage("addr", vAddr);
+                        pto->PushMessage(NetMsgType::ADDR, vAddr);
                         vAddr.clear();
                     }
                 }
             }
             pto->vAddrToSend.clear();
             if (!vAddr.empty())
-                pto->PushMessage("addr", vAddr);
+                pto->PushMessage(NetMsgType::ADDR, vAddr);
         }
 
         CNodeState& state = *State(pto->GetId());
@@ -5496,7 +5495,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         }
 
         BOOST_FOREACH (const CBlockReject& reject, state.rejects)
-            pto->PushMessage("reject", (string) "block", reject.chRejectCode, reject.strRejectReason, reject.hashBlock);
+            pto->PushMessage(NetMsgType::REJECT, (string) NetMsgType::BLOCK, reject.chRejectCode, reject.strRejectReason, reject.hashBlock);
         state.rejects.clear();
 
         // Start block sync
@@ -5511,7 +5510,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                 //CBlockIndex *pindexStart = chainActive.Tip()->pprev ? chainActive.Tip()->pprev : chainActive.Tip();
                 //LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
                 //pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256(0));
-                pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
+                pto->PushMessage(NetMsgType::GETBLOCKS, chainActive.GetLocator(chainActive.Tip()), uint256(0));
             }
         }
 
@@ -5555,7 +5554,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                 if (pto->setInventoryKnown.insert(inv).second) {
                     vInv.push_back(inv);
                     if (vInv.size() >= 1000) {
-                        pto->PushMessage("inv", vInv);
+                        pto->PushMessage(NetMsgType::INV, vInv);
                         vInv.clear();
                     }
                 }
@@ -5563,7 +5562,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             pto->vInventoryToSend = vInvWait;
         }
         if (!vInv.empty())
-            pto->PushMessage("inv", vInv);
+            pto->PushMessage(NetMsgType::INV, vInv);
 
         // Detect whether we're stalling
         int64_t nNow = GetTimeMicros();
@@ -5616,14 +5615,14 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                     LogPrint("net", "Requesting %s peer=%d\n", inv.ToString(), pto->id);
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000) {
-                    pto->PushMessage("getdata", vGetData);
+                    pto->PushMessage(NetMsgType::GETDATA, vGetData);
                     vGetData.clear();
                 }
             }
             pto->mapAskFor.erase(pto->mapAskFor.begin());
         }
         if (!vGetData.empty())
-            pto->PushMessage("getdata", vGetData);
+            pto->PushMessage(NetMsgType::GETDATA, vGetData);
     }
     return true;
 }

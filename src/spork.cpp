@@ -28,7 +28,7 @@ CSporkManager sporkManager;
 
 void ProcessSpork(CNode* pfrom, const std::string& strCommand, CDataStream& vRecv, bool &isSporkCommand)
 {
-    if (strCommand == "spork") {
+    if (strCommand == NetMsgType::SPORK) {
         isSporkCommand = true;
 
         //LogPrintf("ProcessSpork::spork\n");
@@ -64,12 +64,12 @@ void ProcessSpork(CNode* pfrom, const std::string& strCommand, CDataStream& vRec
         ExecuteSpork(spork.nSporkID, spork.nValue);
     }
 
-    else if (strCommand == "getsporks") {
+    else if (strCommand == NetMsgType::GETSPORKS) {
         isSporkCommand = true;
 
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
         while (it != mapSporksActive.end()) {
-            pfrom->PushMessage("spork", it->second);
+            pfrom->PushMessage(NetMsgType::SPORK, it->second);
             it++;
         }
     }

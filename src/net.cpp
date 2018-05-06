@@ -1754,7 +1754,7 @@ void RelayTransactionLockReq(const CTransaction& tx, bool relayToAll)
         if (!relayToAll && !pnode->fRelayTxes)
             continue;
 
-        pnode->PushMessage("ix", tx);
+        pnode->PushMessage(NetMsgType::IX, tx);
     }
 }
 
@@ -1771,7 +1771,7 @@ void RelayDarkSendFinalTransaction(const int sessionID, const CTransaction& txNe
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("dsf", sessionID, txNew);
+        pnode->PushMessage(NetMsgType::DSF, sessionID, txNew);
     }
 }
 
@@ -1781,7 +1781,7 @@ void RelayDarkSendIn(const std::vector<CTxIn>& in, const int64_t& nAmount, const
     BOOST_FOREACH(CNode* pnode, vNodes) {
         if((CNetAddr)darkSendPool.submittedToMasternode != (CNetAddr)pnode->addr) continue;
         LogPrintf("RelayDarkSendIn - found master, relaying message - %s \n", pnode->addr.ToString().c_str());
-        pnode->PushMessage("dsi", in, nAmount, txCollateral, out);
+        pnode->PushMessage(NetMsgType::DSI, in, nAmount, txCollateral, out);
     }
 }
 
@@ -1789,7 +1789,7 @@ void RelayDarkSendStatus(const int sessionID, const int newState, const int newE
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("dssu", sessionID, newState, newEntriesCount, newAccepted, error);
+        pnode->PushMessage(NetMsgType::DSSU, sessionID, newState, newEntriesCount, newAccepted, error);
     }
 }
 
@@ -1798,7 +1798,7 @@ void RelayDarkSendElectionEntry(const CTxIn &vin, const CService addr, const std
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
         if(!pnode->fRelayTxes) continue;
-        pnode->PushMessage("dsee", vin, addr, vchSig, nNow, pubkey, pubkey2, count, current, lastUpdated, protocolVersion);
+        pnode->PushMessage(NetMsgType::DSEE, vin, addr, vchSig, nNow, pubkey, pubkey2, count, current, lastUpdated, protocolVersion);
     }
 }
 
@@ -1806,7 +1806,7 @@ void SendDarkSendElectionEntry(const CTxIn &vin, const CService addr, const std:
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("dsee", vin, addr, vchSig, nNow, pubkey, pubkey2, count, current, lastUpdated, protocolVersion);
+        pnode->PushMessage(NetMsgType::DSEE, vin, addr, vchSig, nNow, pubkey, pubkey2, count, current, lastUpdated, protocolVersion);
     }
 }
 
@@ -1815,7 +1815,7 @@ void RelayDarkSendElectionEntryPing(const CTxIn &vin, const std::vector<unsigned
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
         if(!pnode->fRelayTxes) continue;
-        pnode->PushMessage("dseep", vin, vchSig, nNow, stop);
+        pnode->PushMessage(NetMsgType::DSEEP, vin, vchSig, nNow, stop);
     }
 }
 
@@ -1823,7 +1823,7 @@ void SendDarkSendElectionEntryPing(const CTxIn &vin, const std::vector<unsigned 
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("dseep", vin, vchSig, nNow, stop);
+        pnode->PushMessage(NetMsgType::DSEEP, vin, vchSig, nNow, stop);
     }
 }
 
@@ -1831,7 +1831,7 @@ void RelayDarkSendCompletedTransaction(const int sessionID, const bool error, co
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("dsc", sessionID, error, errorMessage);
+        pnode->PushMessage(NetMsgType::DSC, sessionID, error, errorMessage);
     }
 }
 
