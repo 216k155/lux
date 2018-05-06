@@ -102,13 +102,13 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         darkSendPool.CompletedTransaction(error, lastMessage);
     }
 
-    else if (strCommand == "dsa") { //DarkSend Acceptable
+    else if (strCommand == NetMsgType::DSA) { //DarkSend Acceptable
         isDarksend = true;
 
         if (pfrom->nVersion < darkSendPool.MIN_PEER_PROTO_VERSION) {
             std::string strError = _("Incompatible version.");
             LogPrintf("dsa -- incompatible version! \n");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
 
             return;
         }
@@ -116,7 +116,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         if(!fMasterNode){
             std::string strError = _("This is not a masternode.");
             LogPrintf("dsa -- not a masternode! \n");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
 
             return;
         }
@@ -129,7 +129,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         int mn = GetMasternodeByVin(activeMasternode.vin);
         if(mn == -1){
             std::string strError = _("Not in the masternode list.");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
             return;
         }
 
@@ -138,7 +138,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
                 vecMasternodes[mn].nLastDsq + CountMasternodesAboveProtocol(darkSendPool.MIN_PEER_PROTO_VERSION)/5 > darkSendPool.nDsqCount){
                 //LogPrintf("dsa -- last dsq too recent, must wait. %s \n", vecMasternodes[mn].addr.ToString().c_str());
                 std::string strError = _("Last Darksend was too recent.");
-                pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
+                pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, strError);
                 return;
             }
         }
@@ -146,11 +146,11 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         if(!darkSendPool.IsCompatibleWithSession(nDenom, txCollateral, error))
         {
             LogPrintf("dsa -- not compatible with existing transactions! \n");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
             return;
         } else {
             LogPrintf("dsa -- is compatible, please submit! \n");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_ACCEPTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_ACCEPTED, error);
             return;
         }
     }
@@ -215,7 +215,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         if (pfrom->nVersion < darkSendPool.MIN_PEER_PROTO_VERSION) {
             LogPrintf("dsi -- incompatible version! \n");
             error = _("Incompatible version.");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
 
             return;
         }
@@ -223,7 +223,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         if(!fMasterNode){
             LogPrintf("dsi -- not a masternode! \n");
             error = _("This is not a masternode.");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
 
             return;
         }
@@ -238,7 +238,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         if(!darkSendPool.IsSessionReady()){
             LogPrintf("dsi -- session not complete! \n");
             error = _("Session not complete!");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
             return;
         }
 
@@ -247,7 +247,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         {
             LogPrintf("dsi -- not compatible with existing transactions! \n");
             error = _("Not compatible with existing transactions.");
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
             return;
         }
 
@@ -267,13 +267,13 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
                 if(o.scriptPubKey.size() != 25){
                     LogPrintf("dsi - non-standard pubkey detected! %s\n", o.scriptPubKey.ToString().c_str());
                     error = _("Non-standard public key detected.");
-                    pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+                    pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
                     return;
                 }
                 if(!o.scriptPubKey.IsNormalPaymentScript()){
                     LogPrintf("dsi - invalid script! %s\n", o.scriptPubKey.ToString().c_str());
                     error = _("Invalid script detected.");
-                    pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+                    pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
                     return;
                 }
             }
@@ -298,7 +298,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
             if (nValueIn > DARKSEND_POOL_MAX) {
                 LogPrintf("dsi -- more than darksend pool max! %s\n", tx.ToString().c_str());
                 error = _("Value more than Darksend pool maximum allows.");
-                pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+                pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
                 return;
             }
 
@@ -306,13 +306,13 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
                 if (nValueIn-nValueOut > nValueIn*.01) {
                     LogPrintf("dsi -- fees are too high! %s\n", tx.ToString().c_str());
                     error = _("Transaction fees are too high.");
-                    pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+                    pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
                     return;
                 }
             } else {
                 LogPrintf("dsi -- missing input tx! %s\n", tx.ToString().c_str());
                 error = _("Missing input transaction information.");
-                pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+                pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
                 return;
             }
 
@@ -320,18 +320,18 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
 	    if (!AcceptableInputs(mempool, state, tx, false, pfMissingInputs)) {
                 LogPrintf("dsi -- transaction not valid! \n");
                 error = _("Transaction not valid.");
-                pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+                pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
                 return;
             }
         }
 
         if (darkSendPool.AddEntry(in, nAmount, txCollateral, out, error)) {
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_ACCEPTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_ACCEPTED, error);
             darkSendPool.Check();
 
             RelayDarkSendStatus(darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_RESET);
         } else {
-            pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
+            pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
         }
     }
 
@@ -345,7 +345,7 @@ void ProcessDarksend(CNode* pfrom, const std::string& strCommand, CDataStream& v
         if(!fMasterNode) return;
 
         std::string error = "";
-        pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_RESET, error);
+        pfrom->PushMessage(NetMsgType::DSSU, darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_RESET, error);
         return;
     }
 
@@ -661,7 +661,7 @@ void CDarkSendPool::Check()
 // a client submits a transaction then refused to sign, there must be a cost. Otherwise they
 // would be able to do this over and over again and bring the mixing to a hault.
 //
-// How does this work? Messages to masternodes come in via "dsi", these require a valid collateral
+// How does this work? Messages to masternodes come in via NetMsgType::DSI, these require a valid collateral
 // transaction for the client to be able to enter the pool. This transaction is kept by the masternode
 // until the transaction is either complete or fails.
 //
@@ -1307,7 +1307,7 @@ bool CDarkSendPool::SignFinalTransaction(const CTransaction& finalTransactionNew
 
     // push all of our signatures to the masternode
     if(sigs.size() > 0 && node != NULL)
-        node->PushMessage("dss", sigs);
+        node->PushMessage(NetMsgType::DSS, sigs);
 
     return true;
 }
@@ -1534,7 +1534,7 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
                         vecMasternodesUsed.push_back(dsq.vin);
                         sessionDenom = dsq.nDenom;
 
-                        pnode->PushMessage("dsa", sessionDenom, txCollateral);
+                        pnode->PushMessage(NetMsgType::DSA, sessionDenom, txCollateral);
                         LogPrintf("DoAutomaticDenominating --- connected (from queue), sending dsa for %d %d - %s\n", sessionDenom, GetDenominationsByAmount(sessionTotalValue), pnode->addr.ToString().c_str());
                         strAutoDenomResult = "";
                         return true;
@@ -1598,7 +1598,7 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready)
                     pwalletMain->ConvertList(vCoins, vecAmounts);
                     sessionDenom = GetDenominationsByAmounts(vecAmounts);
 
-                    pnode->PushMessage("dsa", sessionDenom, txCollateral);
+                    pnode->PushMessage(NetMsgType::DSA, sessionDenom, txCollateral);
                     LogPrintf("DoAutomaticDenominating --- connected, sending dsa for %d - denom %d\n", sessionDenom, GetDenominationsByAmount(sessionTotalValue));
                     strAutoDenomResult = "";
                     return true;
@@ -2088,7 +2088,7 @@ bool CDarksendQueue::Relay()
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes){
         // always relay to everyone
-        pnode->PushMessage("dsq", (*this));
+        pnode->PushMessage(NetMsgType::DSQ, (*this));
     }
 
     return true;
@@ -2157,7 +2157,7 @@ void ThreadCheckDarkSendPool()
                 if(mn.IsEnabled()) {
                     if(fDebug) LogPrintf("Sending masternode entry - %s \n", mn.addr.ToString().c_str());
                     BOOST_FOREACH(CNode* pnode, vNodes) {
-                        pnode->PushMessage("dsee", mn.vin, mn.addr, mn.sig, mn.now, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion);
+                        pnode->PushMessage(NetMsgType::DSEE, mn.vin, mn.addr, mn.sig, mn.now, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion);
                     }
                 }
                 i++;
@@ -2195,9 +2195,9 @@ void ThreadCheckDarkSendPool()
 
                         LogPrintf("Successfully synced, asking for Masternode list and payment list\n");
 
-                        pnode->PushMessage("dseg", CTxIn()); //request full mn list
-                        pnode->PushMessage("mnget"); //sync payees
-                        pnode->PushMessage("getsporks"); //get current network sporks
+                        pnode->PushMessage(NetMsgType::DSEG, CTxIn()); //request full mn list
+                        pnode->PushMessage(NetMsgType::MNGET); //sync payees
+                        pnode->PushMessage(NetMsgType::GETSPORKS); //get current network sporks
                         RequestedMasterNodeList++;
                     }
                 }

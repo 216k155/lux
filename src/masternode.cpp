@@ -199,7 +199,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
         }
     }
 
-    else if (strCommand == "dseep") { //DarkSend Election Entry Ping
+    else if (strCommand == NetMsgType::DSEEP) { //DarkSend Election Entry Ping
         isMasternodeCommand = true;
         bool fIsInitialDownload = IsInitialBlockDownload();
         if(fIsInitialDownload) return;
@@ -267,13 +267,13 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
         // ask for the dsee info once from the node that sent dseep
 
         LogPrintf("dseep - Asking source node for missing entry %s\n", vin.ToString().c_str());
-        pfrom->PushMessage("dseg", vin);
+        pfrom->PushMessage(NetMsgType::DSEG, vin);
         int64_t askAgain = GetTime()+(60*60*24);
         askedForMasternodeListEntry[vin.prevout] = askAgain;
 
     }
 
-    else if (strCommand == "dseg") { //Get masternode list or specific entry
+    else if (strCommand == NetMsgType::DSEG) { //Get masternode list or specific entry
         isMasternodeCommand = true;
 
         CTxIn vin;
@@ -311,11 +311,11 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
                             mn.Check();
                             if(mn.IsEnabled()) {
                                 if(fDebug) LogPrintf("dseg - Sending masternode entry - %s \n", mn.addr.ToString().c_str());
-                                pfrom->PushMessage("dsee", mn.vin, mn.addr, mn.sig, mn.now, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion);
+                                pfrom->PushMessage(NetMsgType::DSEE, mn.vin, mn.addr, mn.sig, mn.now, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion);
                             }
                         } else if (vin == mn.vin) {
                             if(fDebug) LogPrintf("dseg - Sending masternode entry - %s \n", mn.addr.ToString().c_str());
-                            pfrom->PushMessage("dsee", mn.vin, mn.addr, mn.sig, mn.now, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion);
+                            pfrom->PushMessage(NetMsgType::DSEE, mn.vin, mn.addr, mn.sig, mn.now, mn.pubkey, mn.pubkey2, count, i, mn.lastTimeSeen, mn.protocolVersion);
                             LogPrintf("dseg - Sent 1 masternode entries to %s\n", pfrom->addr.ToString().c_str());
                             return;
                         }
@@ -325,7 +325,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
         LogPrintf("dseg - Sent %d masternode entries to %s\n", count, pfrom->addr.ToString().c_str());
     }
 
-    else if (strCommand == "mnget") { //Masternode Payments Request Sync
+    else if (strCommand == NetMsgType::MNGET) { //Masternode Payments Request Sync
         isMasternodeCommand = true;
 
         /*if(pfrom->HasFulfilledRequest("mnget")) {
@@ -334,7 +334,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
             return;
         }*/
 
-        pfrom->FulfilledRequest("mnget");
+        pfrom->FulfilledRequest(NetMsgType::MNGET);
         masternodePayments.Sync(pfrom);
         LogPrintf("mnget - Sent masternode winners to %s\n", pfrom->addr.ToString().c_str());
     }
