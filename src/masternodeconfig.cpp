@@ -2,7 +2,7 @@
 #include "masternodeconfig.h"
 #include "util.h"
 #include "chainparams.h"
-
+#include "consensus/validation.h"
 CMasternodeConfig masternodeConfig;
 
 void CMasternodeConfig::add(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex) 

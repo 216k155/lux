@@ -5,6 +5,7 @@
 
 
 //#include "bignum.h"
+#include "consensus/validation.h"
 #include "sync.h"
 #include "net.h"
 #include "key.h"

@@ -10,6 +10,7 @@
 #include "base58.h"
 #include "checkpoints.h"
 #include "coincontrol.h"
+#include "consensus/validation.h"
 #include "stake.h"
 #include "net.h"
 #include "main.h"

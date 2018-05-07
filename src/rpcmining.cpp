@@ -8,6 +8,7 @@
 #include "amount.h"
 #include "base58.h"
 #include "chainparams.h"
+#include "consensus/validation.h"
 #include "core_io.h"
 #include "init.h"
 #include "main.h"
@@ -19,6 +20,7 @@
 #include "util.h"
 #include "script/script.h"
 #include "script/script_error.h"
+
 #ifdef ENABLE_WALLET
 #include "db.h"
 #include "wallet.h"
