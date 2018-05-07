@@ -6,16 +6,17 @@
 #ifndef BITCOIN_MINER_H
 #define BITCOIN_MINER_H
 
+#include "primitives/block.h"
+
 #include <stdint.h>
 
-class CBlock;
 class CBlockHeader;
 class CBlockIndex;
 class CReserveKey;
 class CScript;
 class CWallet;
 
-struct CBlockTemplate;
+class CBlockTemplate;
 
 /** Run the miner threads */
 void GenerateBitcoins(CWallet* pwallet, int nThreads);
@@ -28,7 +29,7 @@ void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash
 /** Base sha256 mining transform */
 void SHA256Transform(void* pstate, void* pinput, const void* pinit);
 /** Modify the extranonce in a block */
-void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
+void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce, const std::vector<unsigned char> vchCoinbaseCommitment);
 /** Check mined block */
 void UpdateTime(CBlockHeader* block, const CBlockIndex* pindexPrev);
 

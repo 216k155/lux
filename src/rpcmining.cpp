@@ -174,7 +174,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
             CBlock* pblock = &pblocktemplate->block;
             {
                 LOCK(cs_main);
-                IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
+                IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce, pblocktemplate->vchCoinbaseCommitment);
             }
             while (!ShutdownRequested() && !CheckProofOfWork(pblock->GetHash(), pblock->nBits)) {
                 // Yes, there is a chance every nonce could fail to satisfy the -regtest
@@ -375,7 +375,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
 
         // Update nExtraNonce
         static unsigned int nExtraNonce = 0;
-        IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
+        IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce, pblocktemplate->vchCoinbaseCommitment);
 
         // Save
         mapNewBlock[pblock->hashMerkleRoot] = make_pair(pblock, pblock->vtx[0].vin[0].scriptSig);
@@ -452,7 +452,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             "  \"transactions\" : [                (array) contents of non-coinbase transactions that should be included in the next block\n"
             "      {\n"
             "         \"data\" : \"xxxx\",          (string) transaction data encoded in hexadecimal (byte-for-byte)\n"
-            "         \"hash\" : \"xxxx\",          (string) hash/id encoded in little-endian hexadecimal\n"
+            "         \"txid\" : \"xxxx\",          (string) transaction id encoded in little-endian hexadecimal\n"
+            "         \"hash\" : \"xxxx\",          (string) hash encoded in little-endian hexadecimal\n"
             "         \"depends\" : [              (array) array of numbers \n"
             "             n                        (numeric) transactions before this one (by 1-based index in 'transactions' list) that must be present in the final block if this one is\n"
             "             ,...\n"
@@ -652,8 +653,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         UniValue entry(UniValue::VOBJ);
 
         entry.push_back(Pair("data", EncodeHexTx(tx)));
-
-        entry.push_back(Pair("hash", txHash.GetHex()));
+        entry.push_back(Pair("txid", txHash.GetHex()));
+        entry.push_back(Pair("hash", tx.GetWitnessHash().GetHex()));
 
         UniValue deps(UniValue::VARR);
         BOOST_FOREACH (const CTxIn& in, tx.vin) {
@@ -755,8 +756,10 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     result.push_back(Pair("masternode", aMasternode));
     result.push_back(Pair("masternode_payments", pblock->nTime > Params().StartMasternodePayments()));
     result.push_back(Pair("enforce_masternode_payments", true));
-    result.push_back(Pair("masternode_payments_started", true));
-    result.push_back(Pair("masternode_payments_enforced", true));
+
+    if (!pblocktemplate->vchCoinbaseCommitment.empty()) {
+        result.push_back(Pair("default_witness_commitment", HexStr(pblocktemplate->vchCoinbaseCommitment.begin(), pblocktemplate->vchCoinbaseCommitment.end())));
+    }
 
     return result;
 }
@@ -816,6 +819,14 @@ UniValue submitblock(const UniValue& params, bool fHelp)
                 return "duplicate-invalid";
             // Otherwise, we might only have the header - process the block before returning
             fBlockPresent = true;
+        }
+    }
+
+    {
+        LOCK(cs_main);
+        BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
+        if (mi != mapBlockIndex.end()) {
+            UpdateUncommitedBlockStructures(block, mi->second);
         }
     }
 

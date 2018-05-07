@@ -86,7 +86,7 @@ bool IsSporkActive(int nSporkID)
         if(nSporkID == SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT) r = SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT_DEFAULT;
         if(nSporkID == SPORK_2_MAX_VALUE) r = SPORK_2_MAX_VALUE_DEFAULT;
         if(nSporkID == SPORK_3_REPLAY_BLOCKS) r = SPORK_3_REPLAY_BLOCKS_DEFAULT;
-
+        if(nSporkID == SPORK_4_SEGWIT_ACTIVATION) r = SPORK_4_SEGWIT_ACTIVATION_DEFAULT;
         if(r == 0 && fDebug) LogPrintf("GetSpork::Unknown Spork %d\n", nSporkID);
     }
     if(r == 0) r = 4070908800; //return 2099-1-1 by default
@@ -105,7 +105,7 @@ int GetSporkValue(int nSporkID)
         if(nSporkID == SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT) r = SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT_DEFAULT;
         if(nSporkID == SPORK_2_MAX_VALUE) r = SPORK_2_MAX_VALUE_DEFAULT;
         if(nSporkID == SPORK_3_REPLAY_BLOCKS) r = SPORK_3_REPLAY_BLOCKS_DEFAULT;
-
+        if (nSporkID == SPORK_4_SEGWIT_ACTIVATION) r = SPORK_4_SEGWIT_ACTIVATION_DEFAULT;
         if(r == 0 && fDebug) LogPrintf("GetSpork::Unknown Spork %d\n", nSporkID);
     }
 
@@ -215,7 +215,7 @@ int CSporkManager::GetSporkIDByName(std::string strName)
     if(strName == "SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT") return SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT;
     if(strName == "SPORK_2_MAX_VALUE") return SPORK_2_MAX_VALUE;
     if(strName == "SPORK_3_REPLAY_BLOCKS") return SPORK_3_REPLAY_BLOCKS;
-
+    if(strName == "SPORK_4_SEGWIT_ACTIVATION") return SPORK_4_SEGWIT_ACTIVATION;
     return -1;
 }
 
@@ -224,6 +224,7 @@ std::string CSporkManager::GetSporkNameByID(int id)
     if(id == SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT) return "SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT";
     if(id == SPORK_2_MAX_VALUE) return "SPORK_2_MAX_VALUE";
     if(id == SPORK_3_REPLAY_BLOCKS) return "SPORK_3_REPLAY_BLOCKS";
+    if(id == SPORK_4_SEGWIT_ACTIVATION) return "SPORK_4_SEGWIT_ACTIVATION";
 
     return "Unknown";
 }

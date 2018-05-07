@@ -783,7 +783,7 @@ bool Stake::CreateCoinStake(CWallet *wallet, const CKeyStore& keystore, unsigned
             uint64_t nTotalSize = pcoin.first->vout[pcoin.second].nValue + GetProofOfWorkReward(0, pIndex0->nHeight);
 
             //presstab HyperStake - if MultiSend is set to send in coinstake we will add our outputs here (values asigned further down)
-            if (nTotalSize / 2 > GetStakeCombineThreshold() * COIN)
+            if ((unsigned int)nTotalSize / 2 > GetStakeCombineThreshold() * COIN)
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
 
             fKernelFound = true;
@@ -928,8 +928,8 @@ bool Stake::GenBlockStake(CWallet *wallet, const CReserveKey &key, unsigned int 
     if (!block->IsProofOfStake()) {
         return error("%s: Created non-staked block:\n%s", __func__, block->ToString());
     }
-    
-    IncrementExtraNonce(block, tip, extra);
+
+    IncrementExtraNonce(block, tip, extra, blocktemplate->vchCoinbaseCommitment);
 
     if (!block->SignBlock(*wallet)) {
         return error("%s: Cant sign new block.", __func__);
