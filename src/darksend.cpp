@@ -12,6 +12,7 @@
 #include "masternode.h"
 #include "instantx.h"
 #include "ui_interface.h"
+#include "consensus/validation.h"
 //#include "random.h"
 
 #include <openssl/rand.h>

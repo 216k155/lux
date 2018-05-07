@@ -1,3 +1,4 @@
+#include "consensus/validation.h"
 #include "uint256.h"
 #include "sync.h"
 #include "net.h"

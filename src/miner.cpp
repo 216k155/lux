@@ -21,6 +21,7 @@
 #include "masternode.h"
 #include "spork.h"
 #include "validationinterface.h"
+#include "consensus/validation.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #endif

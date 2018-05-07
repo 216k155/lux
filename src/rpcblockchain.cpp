@@ -13,7 +13,7 @@
 #include "sync.h"
 #include "txdb.h"
 #include "util.h"
-
+#include "consensus/validation.h"
 #include <stdint.h>
 
 #include "univalue/univalue.h"

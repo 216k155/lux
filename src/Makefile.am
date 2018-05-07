@@ -94,6 +94,7 @@ BITCOIN_CORE_H = \
   compat.h \
   compat/sanity.h \
   consensus/merkle.h \
+  consensus/validation.h \
   compressor.h \
   consensus/params.h \
   primitives/block.h \
