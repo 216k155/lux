@@ -803,14 +803,12 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
         vector<vector<unsigned char> > stack;
         if (!EvalScript(stack, tx.vin[i].scriptSig, false, BaseSignatureChecker()))
         {
-            LogPrintf("%s: 333333333333333333333333333333333333333\n", __func__);
             return false;
         }    
 
         if (whichType == TX_SCRIPTHASH) {
             if (stack.empty())
             {
-                LogPrintf("%s: 4444444444444444444444444444444444444\n", __func__);
                 return false;
             }    
             CScript subscript(stack.back().begin(), stack.back().end());
