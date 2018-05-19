@@ -15,7 +15,6 @@
 #include "pubkey.h"
 #include "script/script.h"
 #include "uint256.h"
-#include <iostream>
 
 using namespace std;
 

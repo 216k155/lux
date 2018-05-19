@@ -701,3 +701,7 @@ bool WalletModel::isMine(CTxDestination address)
 {
     return IsMine(*wallet, address);
 }
+
+bool WalletModel::IsSpendable(const CTxDestination& dest) const {
+    return IsMine(*wallet, dest) & ISMINE_SPENDABLE;
+}

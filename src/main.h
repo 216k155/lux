@@ -514,7 +514,14 @@ unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& ma
  * This does not modify the UTXO set. If pvChecks is not NULL, script checks are pushed onto it
  * instead of being performed inline.
  */
-bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& view, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck>* pvChecks = NULL);
+bool CheckInputs(const CTransaction& tx, 
+                CValidationState& state, 
+                const CCoinsViewCache& view, 
+                bool fScriptChecks, 
+                unsigned int flags, 
+                bool cacheStore, 
+                PrecomputedTransactionData* pTxData, 
+                std::vector<CScriptCheck>* pvChecks = NULL);
 
 /**
  * Compute total signature operation cost of a transaction.
