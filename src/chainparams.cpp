@@ -292,40 +292,40 @@ public:
         txNew.vin.resize(1);
         txNew.vout.resize(1);
         txNew.vin[0].scriptSig = CScript() << 0 << CScriptNum(42) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
-        txNew.vout[0].SetEmpty();
+        txNew.vout[0].nValue = 1000000;
 
         genesis.SetNull();
         genesis.vtx.push_back(txNew);
         genesis.hashPrevBlock = 0;
         genesis.hashMerkleRoot = genesis.BuildMerkleTree();
         genesis.nVersion = 1;
-        genesis.nTime = 1527570033; //05/29/2018 @ 5:00am (UTC)
+        genesis.nTime = 1527594360; //05/29/2018 @ 5:00am (UTC)
         genesis.nBits = 0x1e0fffff;
-        genesis.nNonce = 342410;
+        genesis.nNonce = 2034785;
         genesis.hashStateRoot = uint256(h256Touint(dev::h256("e965ffd002cd6ad0e2dc402b8044de833e06b23127ea8c3d80aec91410771495"))); // lux
         genesis.hashUTXORoot = uint256(h256Touint(dev::sha3(dev::rlp("")))); // lux
 
-//        while (!CheckProof(genesis.GetHash(), genesis.nBits)) {
-//            genesis.nNonce ++;
-//        }
-//
-//        std::cout << genesis.nNonce << std::endl;
-//        std::cout << genesis.GetHash().GetHex() << std::endl;
-//        std::cout << genesis.hashMerkleRoot.GetHex() << std::endl;
+       // while (!CheckProof(genesis.GetHash(), genesis.nBits)) {
+       //     genesis.nNonce ++;
+       // }
 
-        //TODO: Phi2_hash hardfork block here !!!
-        //nSwitchPhi2Block = 300000;
-        //nFirstSCBlock = 300000;
+       // std::cout << genesis.nNonce << std::endl;
+       // std::cout << genesis.GetHash().GetHex() << std::endl;
+       // std::cout << genesis.hashMerkleRoot.GetHex() << std::endl;
+
+        // TODO: Phi2_hash hardfork block here !!!
+        // nSwitchPhi2Block = 300000;
+        // nFirstSCBlock = 300000;
 
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256("0x0000005cde4b7ef3807da5f42db3e4c65c2be0a984054bb76fa63c6d45614421"));
-        assert(genesis.hashMerkleRoot == uint256("0xec9a67c0da64ef05f59a80c544f828e327d57b71b8ef5f20aac1fa861ab04636"));
+        assert(consensus.hashGenesisBlock == uint256("0x00000c4aa32653833607441e873650734f6ce3505f0a40ddd566d19401369b72"));
+        assert(genesis.hashMerkleRoot == uint256("0xa3f79984968937fb87608597079e09474f588871f37488ab84e5f1e12ac34acb"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
-//        vSeeds.push_back(CDNSSeedData("luxtest1", "108.160.141.118"));
-//        vSeeds.push_back(CDNSSeedData("luxtest2", "45.76.53.201"));
+       // vSeeds.push_back(CDNSSeedData("luxtest1", "108.160.141.118"));
+       // vSeeds.push_back(CDNSSeedData("luxtest2", "45.76.53.201"));
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 48); // Testnet lux addresses start with 'l'
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 63);  // Testnet lux script addresses start with 'S'
