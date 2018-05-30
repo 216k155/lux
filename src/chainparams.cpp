@@ -409,20 +409,10 @@ public:
         nMaturity = 2;
         genesis.nTime = 1454124731;
         genesis.nBits = 0x207fffff;
-        genesis.nNonce = 12347;
-
-        /*while (!CheckProof(genesis.GetHash(), genesis.nBits)) {
-            genesis.nNonce ++;
-        }
-
-        std::cout << genesis.nNonce << std::endl;
-        std::cout << genesis.GetHash().GetHex() << std::endl;
-        std::cout << genesis.hashMerkleRoot.GetHex() << std::endl;*/
+        genesis.nNonce = 12345;
 
         consensus.hashGenesisBlock = genesis.GetHash();
         nDefaultPort = 51476;
-        nSwitchPhi2Block = 0;
-        //printf("RegTest - consensus.hashGenesisBlock %s\n", consensus.hashGenesisBlock.ToString().c_str());
 //        assert(hashGenesisBlock == uint256("0"));
 
         vFixedSeeds.clear(); //! Testnet mode doesn't have any fixed seeds.
