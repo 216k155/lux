@@ -1719,7 +1719,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheme& scheme)
 #ifdef ENABLE_WALLET
     // Generate coins in the background
     if (GetBoolArg("-gen", false) && pwalletMain) {
-//        GenerateBitcoins(pwalletMain, GetArg("-genproclimit", 1));
+        GenerateBitcoins(true, pwalletMain, (int)GetArg("-genproclimit", 1));
     }
 #endif
 
