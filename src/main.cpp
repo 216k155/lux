@@ -6329,7 +6329,12 @@ std::string CBlockFileInfo::ToString() const
 int GetSpendHeight(const CCoinsViewCache& inputs)
 {
     LOCK(cs_main);
-    CBlockIndex* pindexPrev = mapBlockIndex.find(inputs.GetBestBlock())->second;
+    BlockMap::iterator it = mapBlockIndex.find(inputs.GetBestBlock());
+    if (it == mapBlockIndex.end())
+        return 0;
+    CBlockIndex* pindexPrev = it->second;
+    if (pindexPrev == 0)
+        return 0;
     return pindexPrev->nHeight + 1;
 }
 
