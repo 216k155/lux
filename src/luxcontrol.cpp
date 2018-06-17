@@ -74,8 +74,8 @@ public:
 class LuxControlConnection
 {
 public:
-    typedef boost::function<void(LuxControlConnection&)> ConnectionCB;
-    typedef boost::function<void(LuxControlConnection &,const LuxControlReply &)> ReplyHandlerCB;
+    typedef std::function<void(LuxControlConnection&)> ConnectionCB;
+    typedef std::function<void(LuxControlConnection &,const LuxControlReply &)> ReplyHandlerCB;
 
     /** Create a new LuxControlConnection.
      */
