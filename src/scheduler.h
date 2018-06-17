@@ -41,7 +41,7 @@ public:
     CScheduler();
     ~CScheduler();
 
-    typedef boost::function<void(void)> Function;
+    typedef std::function<void(void)> Function;
 
     // Call func at/after time t
     void scheduler(Function f, boost::chrono::system_clock::time_point t=boost::chrono::system_clock::now());

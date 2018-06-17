@@ -276,10 +276,10 @@ FILE* OpenUndoFile(const CDiskBlockPos& pos, bool fReadOnly = false);
 boost::filesystem::path GetBlockPosFilename(const CDiskBlockPos& pos, const char* prefix);
 /** Import blocks from an external file */
 bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos* dbp = NULL);
-/** Initialize a new block tree database + block data on disk */
-bool InitBlockIndex(const CChainParams& chainparams);
+/** Ensures we have a genesis block in the block tree, possibly writing one to disk. */
+bool LoadGenesisBlock(const CChainParams& chainparams);
 /** Load the block tree and coins database from disk */
-bool LoadBlockIndex();
+bool LoadBlockIndex(const CChainParams& chainparams);
 /** Unload database information */
 void UnloadBlockIndex();
 /** See whether the protocol update is enforced for connected nodes */
@@ -440,7 +440,7 @@ struct CNodeStateStats {
     int nCommonHeight;
     std::vector<int> vHeightInFlight;
 };
-
+/*
 struct CDiskTxPos : public CDiskBlockPos {
     unsigned int nTxOffset; // after header
 
@@ -468,7 +468,7 @@ struct CDiskTxPos : public CDiskBlockPos {
         nTxOffset = 0;
     }
 };
-
+*/
 
 CAmount GetMinRelayFee(const CTransaction& tx, unsigned int nBytes, bool fAllowFree);
 
@@ -672,7 +672,7 @@ public:
 
 
 /** Functions for disk access for blocks */
-bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos);
+bool WriteBlockToDisk(const CBlock& block, const CChainParams& chainparams, const CMessageHeader::MessageStartChars& messageStart, CDiskBlockPos& pos);
 bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, int nHeight, const Consensus::Params& consensusParams);
 bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus::Params& consensusParams);
 
