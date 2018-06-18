@@ -205,6 +205,29 @@ inline uint32_t ByteReverse(uint32_t value)
     return (value<<16) | (value>>16);
 }
 
+template <typename Callable>
+void LoopForever(const char* name, Callable func, int64_t msecs)
+{
+    std::string s = strprintf("lux-%s", name);
+    RenameThread(s.c_str());
+    LogPrintf("%s thread start\n", name);
+    try {
+        while (1) {
+            MilliSleep(msecs);
+            func();
+        }
+    } catch (boost::thread_interrupted) {
+        LogPrintf("%s thread stop\n", name);
+        throw;
+    } catch (std::exception& e) {
+        PrintExceptionContinue(&e, name);
+        throw;
+    } catch (...) {
+        PrintExceptionContinue(NULL, name);
+        throw;
+    }
+}
+
 /**
  * .. and a wrapper that just calls func once
  */
@@ -230,5 +253,7 @@ void TraceThread(const char* name, Callable func)
 }
 
 bool CheckHex(const std::string& str);
+
+
 
 #endif // BITCOIN_UTIL_H
