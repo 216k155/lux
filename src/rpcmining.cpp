@@ -9,6 +9,7 @@
 #include "base58.h"
 #include "chainparams.h"
 #include "consensus/validation.h"
+#include "consensus/merkle.h"
 #include "core_io.h"
 #include "init.h"
 #include "main.h"
@@ -902,7 +903,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
         // Use CMutableTransaction when creating a new transaction instead of CTransaction.  CTransaction public variables are all const now.
         newTx.vin[0].scriptSig = mapNewBlock[pdata->hashMerkleRoot].second; // Oh, why? because vin is const in CTransaction now.
         pblock->vtx[0] = newTx;
-        pblock->hashMerkleRoot = pblock->BuildMerkleTree();
+        pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 
         CValidationState state;
         return ProcessNewBlock(state, Params(), NULL, pblock);

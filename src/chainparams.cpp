@@ -195,7 +195,7 @@ public:
 
         genesis.vtx.push_back(txNew);
         genesis.hashPrevBlock = 0;
-        genesis.hashMerkleRoot = genesis.BuildMerkleTree();
+        genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
         genesis.nVersion = 1;
         genesis.nTime = 1507656633; //10/10/2017
         genesis.nBits = 0x1e0fffff;
@@ -303,7 +303,7 @@ public:
         genesis.SetNull();
         genesis.vtx.push_back(txNew);
         genesis.hashPrevBlock = 0;
-        genesis.hashMerkleRoot = genesis.BuildMerkleTree();
+        genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
         genesis.nVersion = 1;
         genesis.nTime = 1528954643; // 14 June 2018 @ 5:37am (UTC)
         genesis.nBits = 0x1e0fffff;
@@ -538,7 +538,7 @@ public:
 
         genesis.vtx.push_back(txNew);
         genesis.hashPrevBlock = 0;
-        genesis.hashMerkleRoot = genesis.BuildMerkleTree();
+        genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
         genesis.nVersion = 1;
         genesis.nTime = 1524645689;
         genesis.nBits = 0x1e0fffff;
