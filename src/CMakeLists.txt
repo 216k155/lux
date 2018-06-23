@@ -2,6 +2,11 @@
 
 set(CMAKE_CXX_STANDARD 11)
 
+# Ensure that WINDRES_PREPROC is enabled when using windres.
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    list(APPEND CMAKE_RC_FLAGS "-DWINDRES_PREPROC")
+endif()
+
 add_subdirectory(config)
 add_subdirectory(crypto)
 add_subdirectory(leveldb)
@@ -35,11 +40,18 @@ target_include_directories(util
         )
 
 # Dependencies
-set(BOOST_PACKAGES_REQUIRED filesystem)
+set(BOOST_PACKAGES_REQUIRED chrono filesystem program_options)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(Boost_USE_STATIC_LIBS ON)
     list(APPEND BOOST_PACKAGES_REQUIRED thread_win32)
+
+    find_package(SHLWAPI REQUIRED)
+    target_link_libraries(util ${SHLWAPI_LIBRARY})
+    target_include_directories(util PUBLIC ${SHLWAPI_INCLUDE_DIR})
+
+    find_library(WS2_32_LIBRARY NAMES ws2_32)
+    target_link_libraries(util ${WS2_32_LIBRARY})
 else()
     list(APPEND BOOST_PACKAGES_REQUIRED date_time thread)
 endif()
@@ -54,7 +66,7 @@ endfunction(prepend)
 
 prepend(BOOST_LIBRARIES "Boost::" ${BOOST_PACKAGES_REQUIRED})
 
-find_package(Boost 1.55 REQUIRED ${BOOST_PACKAGES_REQUIRED})
+find_package(Boost 1.58 REQUIRED ${BOOST_PACKAGES_REQUIRED})
 target_link_libraries(util univalue ${BOOST_LIBRARIES})
 
 # More completely unrelated features shared by all executables.
@@ -100,3 +112,24 @@ lux/storageresults.cpp
         )
 
 target_link_libraries(common util secp256k1)
+
+# lux-cli
+option(BUILD_LUX_CLI "Build lux-cli" ON)
+if(BUILD_LUX_CLI)
+    add_executable(lux-cli lux-cli.cpp rpcclient.cpp)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        target_sources(lux-cli PRIVATE lux-cli-res.rc)
+    endif()
+
+    # This require libevent
+    find_package(Event REQUIRED)
+    target_include_directories(lux-cli PUBLIC ${EVENT_INCLUDE_DIR})
+    target_link_libraries(lux-cli common ${EVENT_LIBRARY})
+endif()
+
+
+# lux-seeder
+#option(BUILD_LUX_SEEDER "Build lux-seeder" OFF)
+#if (BUILD_LUX_SEEDER)
+#    add_subdirectory(seeder)
+#endif()
