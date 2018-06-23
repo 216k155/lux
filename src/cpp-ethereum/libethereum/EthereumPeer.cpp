@@ -22,8 +22,8 @@
 #include "EthereumPeer.h"
 
 #include <chrono>
-#include <libdevcore/Common.h>
-#include <libethcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
 #include <libp2p/Session.h>
 #include <libp2p/Host.h>
 #include "EthereumHost.h"

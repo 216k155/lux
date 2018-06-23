@@ -23,10 +23,10 @@
 #include <fstream>
 #include <sstream>
 
-#include <libdevcore/Log.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
 #include <algorithm>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <test/libtesteth/TestHelper.h>

@@ -30,14 +30,14 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/test/unit_test.hpp>
 
 #include <json_spirit/json_spirit.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/CommonIO.h>
-#include <libevmcore/Instruction.h>
-#include <libevm/ExtVMFace.h>
-#include <libevm/VM.h>
-#include <libethereum/Transaction.h>
-#include <libethereum/ExtVM.h>
-#include <libethereum/State.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
+#include <cpp-ethereum/libevm/VM.h>
+#include <cpp-ethereum/libethereum/Transaction.h>
+#include <cpp-ethereum/libethereum/ExtVM.h>
+#include <cpp-ethereum/libethereum/State.h>
 
 namespace dev { namespace test {
 

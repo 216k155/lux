@@ -25,9 +25,9 @@
 #pragma once
 
 #include <mutex>
-#include <libdevcore/Common.h>
-#include <libdevcore/FixedHash.h>
-#include <libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
 
 namespace dev
 {

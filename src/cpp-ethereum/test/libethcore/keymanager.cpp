@@ -22,8 +22,8 @@
 
 #include <boost/test/unit_test.hpp>
 #include <test/libtesteth/TestHelper.h>
-#include <libdevcore/TransientDirectory.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libdevcore/TransientDirectory.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 
 using namespace std;
 using namespace dev;

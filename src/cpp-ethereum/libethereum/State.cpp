@@ -24,14 +24,14 @@
 #include <ctime>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
 #ifndef LUX_BUILD
-#include <libdevcore/TrieHash.h>
+#include <cpp-ethereum/libdevcore/TrieHash.h>
 #endif
-#include <libevmcore/Instruction.h>
-#include <libethcore/Exceptions.h>
-#include <libevm/VMFactory.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "CodeSizeCache.h"
 #include "Defaults.h"

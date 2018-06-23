@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include <libevmcore/Instruction.h>
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 
 namespace dev
 {

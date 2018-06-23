@@ -22,8 +22,8 @@
 #pragma once
 
 #include <string>
-#include <libdevcore/FixedHash.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
+#include <cpp-ethereum/libethcore/Common.h>
 
 namespace dev
 {

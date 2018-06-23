@@ -19,7 +19,7 @@
  * @date 2016
  */
 #pragma once
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 
 /**
  * Add account management functionnalities to CLI.

@@ -23,9 +23,9 @@
 
 #include "AccountHolder.h"
 #include <random>
-#include <libdevcore/Guards.h>
-#include <libethereum/Client.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libethereum/Client.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 
 
 using namespace std;

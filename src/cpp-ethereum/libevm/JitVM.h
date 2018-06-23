@@ -1,7 +1,7 @@
 #pragma once
 
 #include <evmjit.h>
-#include <libevm/VMFace.h>
+#include <cpp-ethereum/libevm/VMFace.h>
 
 namespace dev
 {

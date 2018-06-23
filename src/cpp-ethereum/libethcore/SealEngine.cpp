@@ -21,7 +21,7 @@
 
 #include "SealEngine.h"
 #include "Transaction.h"
-#include <libevm/ExtVMFace.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
 using namespace std;
 using namespace dev;
 using namespace eth;

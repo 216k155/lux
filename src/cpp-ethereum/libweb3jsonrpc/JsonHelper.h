@@ -22,9 +22,9 @@
 #pragma once
 
 #include <json/json.h>
-#include <libethcore/Common.h>
-#include <libethcore/BlockHeader.h>
-#include <libethereum/LogFilter.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
+#include <cpp-ethereum/libethereum/LogFilter.h>
 #include <libwhisper/Message.h>
 
 namespace dev

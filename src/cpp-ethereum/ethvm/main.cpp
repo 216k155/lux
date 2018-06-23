@@ -23,17 +23,17 @@
 #include <iostream>
 #include <ctime>
 #include <boost/algorithm/string.hpp>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
-#include <libethcore/SealEngine.h>
-#include <libethereum/Block.h>
-#include <libethereum/Executive.h>
-#include <libethereum/ChainParams.h>
-#include <libethashseal/GenesisInfo.h>
-#include <libethashseal/Ethash.h>
-#include <libevm/VM.h>
-#include <libevm/VMFactory.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
+#include <cpp-ethereum/libethereum/Block.h>
+#include <cpp-ethereum/libethereum/Executive.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libevm/VM.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
 using namespace std;
 using namespace dev;
 using namespace eth;

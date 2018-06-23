@@ -21,9 +21,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <libdevcore/Worker.h>
-#include <libdevcore/Assertions.h>
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcore/Worker.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 #include <libp2p/UDP.h>
 #include <libp2p/NodeTable.h>
 #include <test/libtesteth/TestHelper.h>

@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include <libethereum/ExtVM.h>
+#include <cpp-ethereum/libethereum/ExtVM.h>
 #include "VMConfig.h"
 #include "VM.h"
 using namespace std;

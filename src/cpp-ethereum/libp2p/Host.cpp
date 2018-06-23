@@ -26,11 +26,11 @@
 #include <mutex>
 #include <memory>
 #include <boost/algorithm/string.hpp>
-#include <libdevcore/Common.h>
-#include <libdevcore/Assertions.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Exceptions.h>
-#include <libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
 #include "Session.h"
 #include "Common.h"
 #include "Capability.h"

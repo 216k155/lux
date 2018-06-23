@@ -20,12 +20,12 @@
  * Blockchain test functions.
  */
 
-#include <libethereum/Block.h>
-#include <libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/Block.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/libtesteth/BlockChainHelper.h>
-#include <libethereum/GenesisInfo.h>
-#include <libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethereum/GenesisInfo.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
 
 
 using namespace std;

@@ -21,8 +21,8 @@
 
 #include "TransactionQueue.h"
 
-#include <libdevcore/Log.h>
-#include <libethcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
 using namespace dev;

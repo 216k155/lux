@@ -23,7 +23,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "WinPipeServer.h"
 #include <windows.h>
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 
 using namespace std;
 using namespace jsonrpc;

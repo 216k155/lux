@@ -1,9 +1,9 @@
 #include <jsonrpccpp/common/exception.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 #include <libweb3jsonrpc/AccountHolder.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include <libweb3jsonrpc/JsonHelper.h>
-#include <libethereum/Client.h>
+#include <cpp-ethereum/libethereum/Client.h>
 
 #include "Personal.h"
 

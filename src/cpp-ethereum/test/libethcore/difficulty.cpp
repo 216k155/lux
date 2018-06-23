@@ -23,9 +23,9 @@
 #include <boost/test/unit_test.hpp>
 #include <test/libtesteth/TestHelper.h>
 #include <test/fuzzTesting/fuzzHelper.h>
-#include <libethashseal/Ethash.h>
-#include <libethashseal/GenesisInfo.h>
-#include <libethereum/ChainParams.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;

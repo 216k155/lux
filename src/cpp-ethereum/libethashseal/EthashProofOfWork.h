@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 
 namespace dev
 {

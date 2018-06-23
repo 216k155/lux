@@ -20,8 +20,8 @@
  */
 
 #include "ChainOperationParams.h"
-#include <libdevcore/Log.h>
-#include <libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
 using namespace std;
 using namespace dev;
 using namespace eth;

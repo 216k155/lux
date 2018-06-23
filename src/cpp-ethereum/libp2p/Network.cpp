@@ -29,10 +29,10 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 
-#include <libdevcore/Common.h>
-#include <libdevcore/Assertions.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
 #include "Common.h"
 #include "UPnP.h"
 #include "Network.h"

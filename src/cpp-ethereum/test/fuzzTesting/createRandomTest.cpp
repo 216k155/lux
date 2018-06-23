@@ -22,11 +22,11 @@
 #include <string>
 #include <iostream>
 
-#include <libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/fuzzTesting/fuzzHelper.h>
-#include <libevm/VMFactory.h>
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 
 //String Variables
 extern std::string const c_testExampleStateTest;

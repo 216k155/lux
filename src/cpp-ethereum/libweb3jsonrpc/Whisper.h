@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 #include "WhisperFace.h"
 
 namespace dev

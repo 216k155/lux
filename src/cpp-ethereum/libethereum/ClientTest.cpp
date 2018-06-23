@@ -19,8 +19,8 @@
  * @date 2016
  */
 
-#include <libethereum/EthereumHost.h>
-#include <libethereum/ClientTest.h>
+#include <cpp-ethereum/libethereum/EthereumHost.h>
+#include <cpp-ethereum/libethereum/ClientTest.h>
 
 using namespace std;
 using namespace dev;

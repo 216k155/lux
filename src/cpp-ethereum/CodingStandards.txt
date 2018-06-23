@@ -214,12 +214,12 @@ b. Document the interface, not the implementation.
 
 Includes should go in increasing order of generality (libethereum -> libethcore -> libdevcrypto -> libdevcore -> boost -> STL).  For example:
 
-#include <libethereum/Defaults.h>
-#include <libdevcrypto/SHA3.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Exceptions.h>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libethereum/Defaults.h>
+#include <cpp-ethereum/libdevcrypto/SHA3.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 #include <boost/filesystem.hpp>
 #include <string>
 

@@ -19,12 +19,12 @@
  * that manage block/transaction import and test mining
  */
 
-#include <libdevcore/TransientDirectory.h>
-#include <libethereum/Block.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/TransactionQueue.h>
-#include <libethereum/GenesisInfo.h>
-#include <libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libdevcore/TransientDirectory.h>
+#include <cpp-ethereum/libethereum/Block.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/TransactionQueue.h>
+#include <cpp-ethereum/libethereum/GenesisInfo.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
 #include <test/libtesteth/BlockChainHelper.h>
 #include <test/libtesteth/TestHelper.h>
 using namespace std;

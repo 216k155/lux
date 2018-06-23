@@ -21,11 +21,11 @@
 
 #include "ChainParams.h"
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/TrieDB.h>
-#include <libethcore/SealEngine.h>
-#include <libethcore/BlockHeader.h>
-#include <libethcore/Precompiled.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/TrieDB.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
+#include <cpp-ethereum/libethcore/Precompiled.h>
 #include "GenesisInfo.h"
 #include "State.h"
 #include "Account.h"

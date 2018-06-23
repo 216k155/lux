@@ -24,8 +24,8 @@
 #pragma once
 
 #include <string>
-#include <libdevcore/CommonJS.h>
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 #include "Common.h"
 
 // devcrypto

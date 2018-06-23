@@ -29,13 +29,13 @@
 #include <utility>
 #include <thread>
 
-#include <libdevcore/Guards.h>
-#include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Worker.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include <libp2p/Common.h>
-#include <libdevcore/OverlayDB.h>
-#include <libethcore/BlockHeader.h>
-#include <libethereum/BlockChainSync.h>
+#include <cpp-ethereum/libdevcore/OverlayDB.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
+#include <cpp-ethereum/libethereum/BlockChainSync.h>
 #include "CommonNet.h"
 #include "EthereumPeer.h"
 

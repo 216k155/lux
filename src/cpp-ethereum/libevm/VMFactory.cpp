@@ -16,7 +16,7 @@
 */
 
 #include "VMFactory.h"
-#include <libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
 #include "VM.h"
 
 #if ETH_EVMJIT

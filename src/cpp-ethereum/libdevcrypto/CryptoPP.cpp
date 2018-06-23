@@ -19,13 +19,13 @@
  * @date 2014
  */
 
-#include <libdevcore/Guards.h>  // <boost/thread> conflicts with <thread>
+#include <cpp-ethereum/libdevcore/Guards.h>  // <boost/thread> conflicts with <thread>
 #include "CryptoPP.h"
 #include <cryptopp/eccrypto.h>
 #include <cryptopp/osrng.h>
 #include <cryptopp/oids.h>
-#include <libdevcore/Assertions.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include "ECDHE.h"
 
 static_assert(CRYPTOPP_VERSION == 570, "Wrong Crypto++ version");

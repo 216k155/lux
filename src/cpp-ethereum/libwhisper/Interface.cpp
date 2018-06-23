@@ -21,7 +21,7 @@
 
 #include "Interface.h"
 
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 #include <libp2p/All.h>
 #include "WhisperHost.h"
 using namespace std;

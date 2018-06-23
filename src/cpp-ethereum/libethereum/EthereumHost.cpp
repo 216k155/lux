@@ -23,10 +23,10 @@
 
 #include <chrono>
 #include <thread>
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 #include <libp2p/Host.h>
 #include <libp2p/Session.h>
-#include <libethcore/Exceptions.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "BlockQueue.h"

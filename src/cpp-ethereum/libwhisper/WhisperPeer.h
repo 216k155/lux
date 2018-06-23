@@ -27,9 +27,9 @@
 #include <memory>
 #include <utility>
 
-#include <libdevcore/RLP.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include "Common.h"
 #include "Message.h"
 

@@ -22,9 +22,9 @@
 #include "BlockQueue.h"
 #include <thread>
 #include <sstream>
-#include <libdevcore/Log.h>
-#include <libethcore/Exceptions.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 #include "BlockChain.h"
 #include "VerifiedBlock.h"
 #include "State.h"

@@ -23,8 +23,8 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
-#include <libdevcore/FileSystem.h>
-#include <libethashseal/Ethash.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/libtesteth/BlockChainHelper.h>
 #include <test/libtesteth/JsonSpiritHeaders.h>

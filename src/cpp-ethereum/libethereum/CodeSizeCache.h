@@ -21,8 +21,8 @@
 #pragma once
 
 #include <map>
-#include <libdevcore/FixedHash.h>
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 
 namespace dev
 {

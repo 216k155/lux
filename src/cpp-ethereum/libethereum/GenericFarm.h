@@ -24,11 +24,11 @@
 #include <thread>
 #include <list>
 #include <atomic>
-#include <libdevcore/Common.h>
-#include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
-#include <libethereum/GenericMiner.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Worker.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libethereum/GenericMiner.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 
 namespace dev
 {

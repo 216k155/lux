@@ -23,12 +23,12 @@
 
 #include <csignal>
 #include <jsonrpccpp/common/exception.h>
-#include <libdevcore/CommonData.h>
-#include <libevmcore/Instruction.h>
-#include <libethereum/Client.h>
-#include <libethashseal/EthashClient.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libethereum/Client.h>
+#include <cpp-ethereum/libethashseal/EthashClient.h>
 #include <libwebthree/WebThree.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include "Eth.h"
 #include "AccountHolder.h"

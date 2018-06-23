@@ -19,7 +19,7 @@
  * @date 2015
  */
 
-#include <libdevcore/RangeMask.h>
+#include <cpp-ethereum/libdevcore/RangeMask.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

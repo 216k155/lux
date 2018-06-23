@@ -27,7 +27,7 @@
 #include <iostream>
 #include <jsonrpccpp/server.h>
 #include <jsonrpccpp/common/exception.h>
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 #include "SessionManager.h"
 #include "EthFace.h"
 

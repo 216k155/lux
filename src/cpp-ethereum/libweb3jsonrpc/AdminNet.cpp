@@ -1,7 +1,7 @@
 #include <jsonrpccpp/common/exception.h>
 #include <libwebthree/WebThree.h>
-#include <libdevcore/CommonJS.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include "AdminNet.h"
 #include "SessionManager.h"
 #include "JsonHelper.h"

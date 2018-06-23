@@ -31,16 +31,16 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/filesystem.hpp>
 
-#include <libdevcore/FileSystem.h>
-#include <libethashseal/EthashAux.h>
-#include <libevm/VM.h>
-#include <libevm/VMFactory.h>
-#include <libethcore/KeyManager.h>
-#include <libethcore/ICAP.h>
-#include <libethereum/Defaults.h>
-#include <libethereum/BlockChainSync.h>
-#include <libethashseal/EthashClient.h>
-#include <libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libethashseal/EthashAux.h>
+#include <cpp-ethereum/libevm/VM.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
+#include <cpp-ethereum/libethcore/ICAP.h>
+#include <cpp-ethereum/libethereum/Defaults.h>
+#include <cpp-ethereum/libethereum/BlockChainSync.h>
+#include <cpp-ethereum/libethashseal/EthashClient.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
 #include <libwebthree/WebThree.h>
 
 #include <libweb3jsonrpc/AccountHolder.h>

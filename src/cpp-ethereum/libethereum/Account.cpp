@@ -21,8 +21,8 @@
 
 #include "Account.h"
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libethcore/ChainOperationParams.h>
-#include <libethcore/Precompiled.h>
+#include <cpp-ethereum/libethcore/ChainOperationParams.h>
+#include <cpp-ethereum/libethcore/Precompiled.h>
 
 using namespace std;
 using namespace dev;

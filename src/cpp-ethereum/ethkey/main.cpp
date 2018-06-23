@@ -23,9 +23,9 @@
 #include <thread>
 #include <fstream>
 #include <iostream>
-#include <libdevcore/FileSystem.h>
-#include <libdevcore/Log.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 #include "BuildInfo.h"
 #include "KeyAux.h"
 using namespace std;

@@ -20,8 +20,8 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <libdevcore/Log.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

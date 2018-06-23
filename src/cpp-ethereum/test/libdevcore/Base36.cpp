@@ -21,7 +21,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <test/libtesteth/TestHelper.h>
-#include <libdevcore/Base64.h>
+#include <cpp-ethereum/libdevcore/Base64.h>
 
 using namespace std;
 using namespace dev;

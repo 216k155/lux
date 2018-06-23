@@ -22,7 +22,7 @@
 #pragma once
 
 #include <string>
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 
 namespace dev
 {

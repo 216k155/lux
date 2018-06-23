@@ -23,15 +23,15 @@
 
 #include <array>
 #include <unordered_map>
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/TrieDB.h>
-#include <libdevcore/OverlayDB.h>
-#include <libethcore/Exceptions.h>
-#include <libethcore/BlockHeader.h>
-#include <libethereum/CodeSizeCache.h>
-#include <libethereum/GenericMiner.h>
-#include <libevm/ExtVMFace.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/TrieDB.h>
+#include <cpp-ethereum/libdevcore/OverlayDB.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
+#include <cpp-ethereum/libethereum/CodeSizeCache.h>
+#include <cpp-ethereum/libethereum/GenericMiner.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"

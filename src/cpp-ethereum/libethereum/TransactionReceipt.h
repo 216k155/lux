@@ -22,9 +22,9 @@
 #pragma once
 
 #include <array>
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libevm/ExtVMFace.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
 
 namespace dev
 {

@@ -21,7 +21,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace dev::test;

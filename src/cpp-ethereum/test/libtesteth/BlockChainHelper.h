@@ -19,11 +19,11 @@
 
 #pragma once
 #include "JsonSpiritHeaders.h"
-#include <libethereum/BlockChain.h>
-#include <libethereum/TransactionQueue.h>
-#include <libdevcore/TransientDirectory.h>
-#include <libethashseal/GenesisInfo.h>
-#include <libethashseal/Ethash.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/TransactionQueue.h>
+#include <cpp-ethereum/libdevcore/TransientDirectory.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
 
 using namespace std;
 using namespace json_spirit;

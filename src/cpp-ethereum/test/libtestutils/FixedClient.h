@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <libethereum/ClientBase.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
+#include <cpp-ethereum/libethereum/ClientBase.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/State.h>
 
 namespace dev
 {

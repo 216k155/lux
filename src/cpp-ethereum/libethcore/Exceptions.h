@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
 #include "Common.h"
 
 namespace dev

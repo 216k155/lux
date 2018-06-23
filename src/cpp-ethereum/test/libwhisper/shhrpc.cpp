@@ -21,9 +21,9 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
-#include <libdevcore/Log.h>
-#include <libdevcore/CommonIO.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include <libwebthree/WebThree.h>
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Whisper.h>
@@ -39,7 +39,7 @@
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/libweb3jsonrpc/WebThreeStubClient.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 #include <libp2p/Common.h>
 #include <libwhisper/WhisperHost.h>
 

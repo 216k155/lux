@@ -25,8 +25,8 @@
 
 #include <string>
 #include <chrono>
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 
 namespace dev
 {

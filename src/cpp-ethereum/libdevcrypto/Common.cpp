@@ -20,7 +20,7 @@
  * @date 2014
  */
 
-#include <libdevcore/Guards.h>  // <boost/thread> conflicts with <thread>
+#include <cpp-ethereum/libdevcore/Guards.h>  // <boost/thread> conflicts with <thread>
 #include "Common.h"
 #include <secp256k1.h>
 #include <secp256k1_ecdh.h>
@@ -30,8 +30,8 @@
 #include <cryptopp/sha.h>
 #include <cryptopp/modes.h>
 #include <libscrypt/libscrypt.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
 #include "AES.h"
 #include "CryptoPP.h"
 #include "Exceptions.h"

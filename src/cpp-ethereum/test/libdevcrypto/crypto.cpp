@@ -21,7 +21,7 @@
  * Crypto test functions.
  */
 
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 #include <secp256k1.h>
 #include <cryptopp/keccak.h>
 #include <cryptopp/pwdbased.h>
@@ -31,13 +31,13 @@
 #include <cryptopp/osrng.h>
 #include <cryptopp/oids.h>
 #include <cryptopp/dsa.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 #include <boost/test/unit_test.hpp>
-#include <libdevcore/SHA3.h>
-#include <libdevcrypto/ECDHE.h>
-#include <libdevcrypto/CryptoPP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcrypto/ECDHE.h>
+#include <cpp-ethereum/libdevcrypto/CryptoPP.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

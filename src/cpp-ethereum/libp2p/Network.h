@@ -26,8 +26,8 @@
 #include <vector>
 #include <deque>
 #include <array>
-#include <libdevcore/RLP.h>
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;

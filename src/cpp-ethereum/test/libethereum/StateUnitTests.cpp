@@ -18,10 +18,10 @@
 /// State unit tests.
 
 #include <test/libtesteth/TestHelper.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/Block.h>
-#include <libethcore/BasicAuthority.h>
-#include <libethereum/Defaults.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/Block.h>
+#include <cpp-ethereum/libethcore/BasicAuthority.h>
+#include <cpp-ethereum/libethereum/Defaults.h>
 
 using namespace std;
 using namespace dev;

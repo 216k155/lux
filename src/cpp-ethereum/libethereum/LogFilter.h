@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include "TransactionReceipt.h"
 
 #ifdef __INTEL_COMPILER

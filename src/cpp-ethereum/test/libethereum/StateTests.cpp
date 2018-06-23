@@ -24,12 +24,12 @@
 #include <boost/test/unit_test.hpp>
 
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/CommonIO.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
-#include <libethereum/ExtVM.h>
-#include <libethereum/Defaults.h>
-#include <libevm/VM.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/State.h>
+#include <cpp-ethereum/libethereum/ExtVM.h>
+#include <cpp-ethereum/libethereum/Defaults.h>
+#include <cpp-ethereum/libevm/VM.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

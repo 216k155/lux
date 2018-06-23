@@ -20,9 +20,9 @@
  * Transaction test functions.
  */
 
-#include <libethcore/SealEngine.h>
-#include <libethashseal/GenesisInfo.h>
-#include <libethereum/ChainParams.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
 #include <test/libtestutils/Common.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/fuzzTesting/fuzzHelper.h>

@@ -1,15 +1,15 @@
 #pragma once
 
-#include <libethereum/State.h>
-#include <libevm/ExtVMFace.h>
+#include <cpp-ethereum/libethereum/State.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
 #include <crypto/sha256.h>
 #include <crypto/ripemd160.h>
 #include <uint256.h>
 #include <primitives/transaction.h>
 #include <lux/luxtransaction.h>
 
-#include <libethereum/Executive.h>
-#include <libethcore/SealEngine.h>
+#include <cpp-ethereum/libethereum/Executive.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
 
 using OnOpFunc = std::function<void(uint64_t, uint64_t, dev::eth::Instruction, dev::bigint, dev::bigint, 
     dev::bigint, dev::eth::VM*, dev::eth::ExtVMFace const*)>;

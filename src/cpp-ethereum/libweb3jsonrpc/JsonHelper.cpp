@@ -22,12 +22,12 @@
 
 #include "JsonHelper.h"
 
-#include <libevmcore/Instruction.h>
-#include <libethcore/SealEngine.h>
-#include <libethereum/Client.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
+#include <cpp-ethereum/libethereum/Client.h>
 #include <libwebthree/WebThree.h>
-#include <libethcore/CommonJS.h>
-#include <libethcore/ICAP.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/ICAP.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
 #include <jsonrpccpp/common/exception.h>

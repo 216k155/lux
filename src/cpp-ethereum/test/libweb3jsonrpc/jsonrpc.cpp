@@ -26,9 +26,9 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
-#include <libdevcore/Log.h>
-#include <libdevcore/CommonIO.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include <libwebthree/WebThree.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>

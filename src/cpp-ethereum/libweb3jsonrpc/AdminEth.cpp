@@ -1,10 +1,10 @@
 #include <jsonrpccpp/common/exception.h>
-#include <libdevcore/CommonJS.h>
-#include <libethcore/KeyManager.h>
-#include <libethcore/ICAP.h>
-#include <libethereum/Client.h>
-#include <libethereum/Executive.h>
-#include <libethashseal/EthashClient.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
+#include <cpp-ethereum/libethcore/ICAP.h>
+#include <cpp-ethereum/libethereum/Client.h>
+#include <cpp-ethereum/libethereum/Executive.h>
+#include <cpp-ethereum/libethashseal/EthashClient.h>
 #include "AdminEth.h"
 #include "SessionManager.h"
 #include "JsonHelper.h"

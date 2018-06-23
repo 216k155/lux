@@ -28,9 +28,9 @@
 #include <vector>
 #include <map>
 #include <chrono>
-#include <libdevcrypto/Common.h>
-#include <libethcore/CommonJS.h>
-#include <libethereum/Transaction.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
+#include <cpp-ethereum/libethereum/Transaction.h>
 
 namespace dev
 {

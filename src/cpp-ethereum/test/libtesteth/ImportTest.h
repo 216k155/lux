@@ -20,9 +20,9 @@
 
 #pragma once
 #include <test/libtestutils/Common.h>
-#include <libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
 #include <test/libtesteth/JsonSpiritHeaders.h>
-#include <libethereum/State.h>
+#include <cpp-ethereum/libethereum/State.h>
 
 namespace dev
 {

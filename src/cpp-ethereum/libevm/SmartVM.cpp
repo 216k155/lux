@@ -18,9 +18,9 @@
 #include "SmartVM.h"
 #include <unordered_map>
 #include <thread>
-#include <libdevcore/concurrent_queue.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/concurrent_queue.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 #include "VMFactory.h"
 #include "JitVM.h"
 

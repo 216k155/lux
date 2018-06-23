@@ -27,10 +27,10 @@
 #include <memory>
 #include <utility>
 
-#include <libdevcore/RLP.h>
-#include <libdevcore/Guards.h>
-#include <libdevcrypto/Common.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include "Common.h"
 
 namespace dev

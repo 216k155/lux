@@ -23,8 +23,8 @@
 #include "Test.h"
 #include <jsonrpccpp/common/errors.h>
 #include <jsonrpccpp/common/exception.h>
-#include <libethereum/ClientTest.h>
-#include <libethereum/ChainParams.h>
+#include <cpp-ethereum/libethereum/ClientTest.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
 
 using namespace std;
 using namespace dev;

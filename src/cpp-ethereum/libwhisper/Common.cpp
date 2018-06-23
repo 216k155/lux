@@ -20,7 +20,7 @@
  */
 
 #include "Common.h"
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include "Message.h"
 #include "BloomFilter.h"
 

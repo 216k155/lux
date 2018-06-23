@@ -22,9 +22,9 @@
 
 #include <fstream>
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/CommonIO.h>
-#include <libethashseal/Ethash.h>
-#include <libethashseal/EthashAux.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libethashseal/EthashAux.h>
 #include <boost/test/unit_test.hpp>
 #include <test/libtesteth/TestHelper.h>
 

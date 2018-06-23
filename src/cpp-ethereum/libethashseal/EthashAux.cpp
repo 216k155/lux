@@ -26,14 +26,14 @@
 #include <array>
 #include <thread>
 #include <libethash/internal.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/Log.h>
-#include <libdevcrypto/CryptoPP.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
-#include <libethcore/Exceptions.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcrypto/CryptoPP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 #include "Ethash.h"
 using namespace std;
 using namespace chrono;

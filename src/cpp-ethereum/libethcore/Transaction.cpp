@@ -19,12 +19,12 @@
  * @date 2014
  */
 
-#include <libdevcore/vector_ref.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcrypto/Common.h>
-#include <libevmcore/EVMSchedule.h>
-#include <libethcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/vector_ref.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libevmcore/EVMSchedule.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
 #include "Transaction.h"
 
 using namespace std;

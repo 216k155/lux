@@ -21,7 +21,7 @@
 
 #include "Capability.h"
 
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 #include "Session.h"
 #include "Host.h"
 using namespace std;

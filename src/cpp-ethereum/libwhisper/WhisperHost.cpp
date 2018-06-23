@@ -20,8 +20,8 @@
  */
 
 #include "WhisperHost.h"
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 #include <libp2p/All.h>
 #include "WhisperDB.h"
 

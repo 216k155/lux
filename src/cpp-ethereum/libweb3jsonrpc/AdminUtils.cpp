@@ -1,6 +1,6 @@
 #include <jsonrpccpp/common/exception.h>
-#include <libdevcore/Log.h>
-#include <libethereum/Client.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethereum/Client.h>
 #include "SessionManager.h"
 #include "AdminUtils.h"
 

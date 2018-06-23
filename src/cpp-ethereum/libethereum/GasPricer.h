@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libethcore/Common.h>
 
 namespace dev
 {

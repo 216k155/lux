@@ -27,14 +27,14 @@
 #include <atomic>
 #include <boost/asio.hpp> // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/utility.hpp>
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
 #include <libwhisper/WhisperHost.h>
-#include <libethereum/Client.h>
-#include <libethereum/ChainParams.h>
+#include <cpp-ethereum/libethereum/Client.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
 
 namespace dev
 {

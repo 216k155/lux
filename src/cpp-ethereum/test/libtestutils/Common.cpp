@@ -21,9 +21,9 @@
 
 #include <random>
 #include <boost/filesystem.hpp>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
 #include "Common.h"
 
 using namespace std;

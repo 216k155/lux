@@ -21,10 +21,10 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
-#include <libethcore/Common.h>
-#include <libethcore/ChainOperationParams.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libethcore/ChainOperationParams.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 #include "Account.h"
 
 namespace dev

@@ -22,9 +22,9 @@
 
 #include <boost/filesystem.hpp>
 
-#include <libethereum/Executive.h>
-#include <libevm/VMFactory.h>
-#include <libevm/ExtVMFace.h>
+#include <cpp-ethereum/libethereum/Executive.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
 #include "vm.h"
 
 using namespace std;

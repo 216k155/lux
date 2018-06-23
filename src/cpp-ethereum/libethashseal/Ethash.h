@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <libethcore/SealEngine.h>
-#include <libethereum/GenericFarm.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
+#include <cpp-ethereum/libethereum/GenericFarm.h>
 #include "EthashProofOfWork.h"
 
 namespace dev

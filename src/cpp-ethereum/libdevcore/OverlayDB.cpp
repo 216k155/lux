@@ -21,8 +21,8 @@
 #if !defined(ETH_EMSCRIPTEN)
 
 #include <thread>
-#include <libdevcore/db.h>
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/db.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 #include "OverlayDB.h"
 using namespace std;
 using namespace dev;

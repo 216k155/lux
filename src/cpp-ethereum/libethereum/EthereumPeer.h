@@ -26,9 +26,9 @@
 #include <memory>
 #include <utility>
 
-#include <libdevcore/RLP.h>
-#include <libdevcore/Guards.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
 

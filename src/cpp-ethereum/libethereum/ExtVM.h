@@ -23,9 +23,9 @@
 
 #include <map>
 #include <functional>
-#include <libethcore/Common.h>
-#include <libevm/ExtVMFace.h>
-#include <libethcore/SealEngine.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
 #include "State.h"
 #include "Executive.h"
 

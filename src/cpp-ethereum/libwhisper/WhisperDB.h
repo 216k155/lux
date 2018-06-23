@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include <libdevcore/db.h>
-#include <libdevcore/FixedHash.h>
+#include <cpp-ethereum/libdevcore/db.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
 #include "Common.h"
 #include "Message.h"
 

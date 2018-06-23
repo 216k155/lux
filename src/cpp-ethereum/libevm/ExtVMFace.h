@@ -24,14 +24,14 @@
 #include <set>
 #include <functional>
 #include <boost/optional.hpp>
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
-#include <libevmcore/Instruction.h>
-#include <libethcore/Common.h>
-#include <libethcore/BlockHeader.h>
-#include <libethcore/ChainOperationParams.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
+#include <cpp-ethereum/libethcore/ChainOperationParams.h>
 
 namespace dev
 {

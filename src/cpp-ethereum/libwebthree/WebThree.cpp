@@ -22,12 +22,12 @@
 #include "WebThree.h"
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-#include <libethereum/Defaults.h>
-#include <libethereum/EthereumHost.h>
-#include <libethereum/ClientTest.h>
-#include <libethashseal/EthashClient.h>
+#include <cpp-ethereum/libethereum/Defaults.h>
+#include <cpp-ethereum/libethereum/EthereumHost.h>
+#include <cpp-ethereum/libethereum/ClientTest.h>
+#include <cpp-ethereum/libethashseal/EthashClient.h>
 #include "BuildInfo.h"
-#include <libethashseal/Ethash.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;

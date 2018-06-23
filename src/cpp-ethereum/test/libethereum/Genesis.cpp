@@ -25,9 +25,9 @@
 
 #include <boost/test/unit_test.hpp>
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/CommonIO.h>
-#include <libethereum/BlockChain.h>
-#include <libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

@@ -19,12 +19,12 @@
  * @date 2014
  */
 
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/TrieDB.h>
-#include <libdevcore/TrieHash.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/TrieDB.h>
+#include <cpp-ethereum/libdevcore/TrieHash.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include "Exceptions.h"
 #include "BlockHeader.h"
 using namespace std;

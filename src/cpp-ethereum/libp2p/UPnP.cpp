@@ -30,10 +30,10 @@
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
 #endif
-#include <libdevcore/Exceptions.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;

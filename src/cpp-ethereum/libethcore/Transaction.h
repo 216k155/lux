@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libethcore/Common.h>
 
 namespace dev
 {

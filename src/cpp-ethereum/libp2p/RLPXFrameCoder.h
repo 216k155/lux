@@ -23,9 +23,9 @@
 #pragma once
 
 #include <memory>
-#include <libdevcore/Guards.h>
-#include <libdevcrypto/ECDHE.h>
-#include <libdevcrypto/CryptoPP.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcrypto/ECDHE.h>
+#include <cpp-ethereum/libdevcrypto/CryptoPP.h>
 #include "Common.h"
 
 namespace dev

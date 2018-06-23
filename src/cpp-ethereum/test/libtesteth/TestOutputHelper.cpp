@@ -19,8 +19,8 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <libethashseal/Ethash.h>
-#include <libethcore/BasicAuthority.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libethcore/BasicAuthority.h>
 #include <test/libtesteth/TestOutputHelper.h>
 #include <test/libtesteth/Options.h>
 

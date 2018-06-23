@@ -1,9 +1,9 @@
 #include <jsonrpccpp/common/exception.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/CommonJS.h>
-#include <libethcore/CommonJS.h>
-#include <libethereum/Client.h>
-#include <libethereum/Executive.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
+#include <cpp-ethereum/libethereum/Client.h>
+#include <cpp-ethereum/libethereum/Executive.h>
 #include "Debug.h"
 #include "JsonHelper.h"
 using namespace std;

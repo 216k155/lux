@@ -27,9 +27,9 @@
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Eth.h>
-#include <libdevcore/TransientDirectory.h>
-#include <libdevcore/FileSystem.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libdevcore/TransientDirectory.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #include <libp2p/Network.h>
 #include <test/libtesteth/TestHelper.h>

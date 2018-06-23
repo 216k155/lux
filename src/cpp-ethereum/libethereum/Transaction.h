@@ -21,11 +21,11 @@
 
 #pragma once
 
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
-#include <libethcore/Common.h>
-#include <libethcore/Transaction.h>
-#include <libethcore/ChainOperationParams.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libethcore/Transaction.h>
+#include <cpp-ethereum/libethcore/ChainOperationParams.h>
 
 namespace dev
 {

@@ -23,8 +23,8 @@
 #include <cryptopp/aes.h>
 #include <cryptopp/keccak.h>
 #include <cryptopp/modes.h>
-#include <libdevcore/Assertions.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include "RLPxHandshake.h"
 #include "RLPXPacket.h"
 

@@ -23,8 +23,8 @@
 
 #include <condition_variable>
 #include <libethash/ethash.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Worker.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Worker.h>
 #include "EthashProofOfWork.h"
 #include "Ethash.h"
 

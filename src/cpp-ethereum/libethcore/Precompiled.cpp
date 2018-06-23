@@ -20,11 +20,11 @@
  */
 
 #include "Precompiled.h"
-#include <libdevcore/Log.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/Hash.h>
-#include <libdevcrypto/Common.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/Hash.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libethcore/Common.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;

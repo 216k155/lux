@@ -22,10 +22,10 @@
 #pragma once
 
 #include <memory>
-#include <libdevcore/db.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/MemoryDB.h>
+#include <cpp-ethereum/libdevcore/db.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/MemoryDB.h>
 
 namespace dev
 {

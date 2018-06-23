@@ -1,7 +1,7 @@
 #ifndef LUXTRANSACTION_H
 #define LUXTRANSACTION_H
 
-#include <libethcore/Transaction.h>
+#include <cpp-ethereum/libethcore/Transaction.h>
 
 struct VersionVM{
     //this should be portable, see https://stackoverflow.com/questions/31726191/is-there-a-portable-alternative-to-c-bitfields

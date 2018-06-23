@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 
 namespace dev
 {

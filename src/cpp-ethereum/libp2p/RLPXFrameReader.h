@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 #include "RLPXFrameCoder.h"
 #include "RLPXPacket.h"
 namespace ba = boost::asio;

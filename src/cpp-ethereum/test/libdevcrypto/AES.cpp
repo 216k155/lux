@@ -16,11 +16,11 @@
 */
 
 #include <boost/test/unit_test.hpp>
-#include <libdevcore/Common.h>
-#include <libdevcrypto/Common.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/Log.h>
-#include <libdevcrypto/AES.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcrypto/AES.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

@@ -23,8 +23,8 @@
 
 #include <unordered_map>
 #include <functional>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
 
 namespace dev
 {

@@ -21,11 +21,11 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Guards.h>
-#include <libdevcrypto/Common.h>
-#include <libethcore/SealEngine.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libethcore/SealEngine.h>
 #include "GasPricer.h"
 #include "LogFilter.h"
 #include "Transaction.h"

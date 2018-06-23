@@ -22,8 +22,8 @@
  */
 
 #include <libwebthree/WebThree.h>
-#include <libdevcore/CommonJS.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include "Net.h"
 
 using namespace dev;

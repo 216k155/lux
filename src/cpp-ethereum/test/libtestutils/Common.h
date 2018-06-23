@@ -23,7 +23,7 @@
 
 #include <string>
 #include <json/json.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 
 namespace dev
 {

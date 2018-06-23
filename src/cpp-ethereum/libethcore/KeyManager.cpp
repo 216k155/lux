@@ -24,10 +24,10 @@
 #include <mutex>
 #include <boost/filesystem.hpp>
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace eth;

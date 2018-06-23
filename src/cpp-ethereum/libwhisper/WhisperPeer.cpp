@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 #include <libp2p/All.h>
 #include "WhisperHost.h"
 

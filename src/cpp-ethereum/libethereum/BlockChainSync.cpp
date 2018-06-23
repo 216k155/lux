@@ -22,11 +22,11 @@
 #include "BlockChainSync.h"
 
 #include <chrono>
-#include <libdevcore/Common.h>
-#include <libdevcore/TrieHash.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/TrieHash.h>
 #include <libp2p/Host.h>
 #include <libp2p/Session.h>
-#include <libethcore/Exceptions.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "BlockQueue.h"
 #include "EthereumPeer.h"

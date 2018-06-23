@@ -23,10 +23,10 @@
  */
 
 #include <boost/algorithm/string/case_conv.hpp>
-#include <libdevcore/CommonJS.h>
-#include <libethcore/BasicAuthority.h>
-#include <libethcore/Exceptions.h>
-#include <libethashseal/EthashCPUMiner.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libethcore/BasicAuthority.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
+#include <cpp-ethereum/libethashseal/EthashCPUMiner.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
 

@@ -21,8 +21,8 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace dev::test;

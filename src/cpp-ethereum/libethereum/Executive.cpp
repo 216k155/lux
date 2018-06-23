@@ -22,10 +22,10 @@
 #ifndef LUX_BUILD
 #include <json/json.h>
 #endif
-#include <libdevcore/CommonIO.h>
-#include <libevm/VMFactory.h>
-#include <libevm/VM.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
+#include <cpp-ethereum/libevm/VM.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include "Interface.h"
 #include "State.h"
 #include "ExtVM.h"

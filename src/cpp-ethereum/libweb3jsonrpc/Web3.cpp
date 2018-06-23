@@ -1,5 +1,5 @@
-#include <libdevcore/SHA3.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include "Web3.h"
 
 using namespace std;

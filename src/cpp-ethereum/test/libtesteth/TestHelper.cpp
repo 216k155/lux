@@ -25,7 +25,7 @@
 #include <stdio.h>
 #endif
 #include <boost/algorithm/string/trim.hpp>
-#include <libethereum/Client.h>
+#include <cpp-ethereum/libethereum/Client.h>
 #include <test/libtesteth/Stats.h>
 
 using namespace std;

@@ -24,8 +24,8 @@
 #include "LevelDB.h"
 #include <leveldb/db.h>
 #include <boost/filesystem.hpp>
-#include <libdevcore/FileSystem.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 
 using namespace std;
 using namespace dev;

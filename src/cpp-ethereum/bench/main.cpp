@@ -25,13 +25,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/MemoryDB.h>
-#include <libdevcore/TrieDB.h>
-#include <libdevcrypto/Common.h>
-#include <libdevcrypto/CryptoPP.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/MemoryDB.h>
+#include <cpp-ethereum/libdevcore/TrieDB.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/CryptoPP.h>
 using namespace std;
 using namespace dev;
 namespace js = json_spirit;

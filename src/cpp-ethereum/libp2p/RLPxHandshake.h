@@ -23,8 +23,8 @@
 #pragma once
 
 #include <memory>
-#include <libdevcrypto/Common.h>
-#include <libdevcrypto/ECDHE.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/ECDHE.h>
 #include "RLPXSocket.h"
 #include "RLPXFrameCoder.h"
 #include "Common.h"

@@ -20,9 +20,9 @@
  */
 
 #include "BasicAuthority.h"
-#include <libdevcore/CommonJS.h>
-#include <libdevcore/Log.h>
-#include <libethereum/Interface.h>
+#include <cpp-ethereum/libdevcore/CommonJS.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethereum/Interface.h>
 #include "Exceptions.h"
 #include "BlockHeader.h"
 using namespace std;

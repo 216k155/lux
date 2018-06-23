@@ -24,9 +24,9 @@
 #include <boost/filesystem/path.hpp>
 
 #include <test/libtesteth/TestHelper.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/CommonData.h>
-#include <libevmcore/Instruction.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
 
 #pragma once
 

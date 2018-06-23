@@ -29,9 +29,9 @@
 #include <memory>
 #include <utility>
 
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 #include "RLPXFrameCoder.h"
 #include "RLPXSocket.h"
 #include "Common.h"

@@ -19,8 +19,8 @@
  * @date 2015
  */
 
-#include <libdevcore/FixedHash.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

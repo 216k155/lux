@@ -1,8 +1,8 @@
 #include "JitVM.h"
 
-#include <libdevcore/Log.h>
-#include <libevm/VM.h>
-#include <libevm/VMFactory.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libevm/VM.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
 
 namespace dev
 {

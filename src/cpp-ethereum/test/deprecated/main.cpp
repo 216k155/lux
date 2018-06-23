@@ -31,8 +31,8 @@ int vmTest();
 int hexPrefixTest();
 int peerTest(int argc, char** argv);
 
-#include <libdevcore/Log.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;

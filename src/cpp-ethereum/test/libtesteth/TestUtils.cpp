@@ -20,7 +20,7 @@
 #include <thread>
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 #include <test/libtestutils/Common.h>
 #include <test/libtestutils/BlockChainLoader.h>
 #include <test/libtestutils/FixedClient.h>

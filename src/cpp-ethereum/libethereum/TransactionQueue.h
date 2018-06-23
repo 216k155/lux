@@ -25,10 +25,10 @@
 #include <condition_variable>
 #include <thread>
 #include <deque>
-#include <libdevcore/Common.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/Log.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/Common.h>
 #include "Transaction.h"
 
 namespace dev

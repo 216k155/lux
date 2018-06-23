@@ -20,8 +20,8 @@
  */
 
 
-#include <libdevcore/Common.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 
 #pragma once
 

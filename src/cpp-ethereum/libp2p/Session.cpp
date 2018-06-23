@@ -23,9 +23,9 @@
 #include "Session.h"
 
 #include <chrono>
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
 #include "Host.h"
 #include "Capability.h"
 using namespace std;

@@ -22,9 +22,9 @@
 #include "Ethash.h"
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
-#include <libethereum/Interface.h>
-#include <libethcore/ChainOperationParams.h>
-#include <libethcore/CommonJS.h>
+#include <cpp-ethereum/libethereum/Interface.h>
+#include <cpp-ethereum/libethcore/ChainOperationParams.h>
+#include <cpp-ethereum/libethcore/CommonJS.h>
 #include "EthashCPUMiner.h"
 using namespace std;
 using namespace dev;

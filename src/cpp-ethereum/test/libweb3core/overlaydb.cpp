@@ -21,8 +21,8 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <libdevcore/TransientDirectory.h>
-#include <libdevcore/OverlayDB.h>
+#include <cpp-ethereum/libdevcore/TransientDirectory.h>
+#include <cpp-ethereum/libdevcore/OverlayDB.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

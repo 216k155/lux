@@ -23,9 +23,9 @@
 
 #include <functional>
 #include <mutex>
-#include <libdevcore/FileSystem.h>
-#include <libdevcore/CommonData.h>
-#include <libdevcrypto/SecretStore.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/CommonData.h>
+#include <cpp-ethereum/libdevcrypto/SecretStore.h>
 
 namespace dev
 {

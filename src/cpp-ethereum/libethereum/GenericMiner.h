@@ -21,10 +21,10 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Worker.h>
+#include <cpp-ethereum/libethcore/Common.h>
 
 namespace dev
 {

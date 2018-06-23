@@ -26,9 +26,9 @@
 #include <string>
 #include <functional>
 #include <boost/algorithm/string/case_conv.hpp>
-#include <libdevcore/Common.h>
-#include <libdevcore/Exceptions.h>
-#include <libdevcore/FixedHash.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Exceptions.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
 #include "Common.h"
 
 namespace dev

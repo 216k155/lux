@@ -22,7 +22,7 @@
 #include <chrono>
 #include <boost/random.hpp>
 #include <boost/filesystem/path.hpp>
-#include <libevmcore/Instruction.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
 #include <test/fuzzTesting/fuzzHelper.h>
 #include <test/libtesteth/TestOutputHelper.h>
 

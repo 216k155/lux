@@ -21,7 +21,7 @@
 
 #include "Defaults.h"
 
-#include <libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;

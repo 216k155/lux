@@ -27,10 +27,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/progress.hpp>
 
-#include <libethashseal/Ethash.h>
-#include <libethereum/State.h>
-#include <libethashseal/GenesisInfo.h>
-#include <libevm/ExtVMFace.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libethereum/State.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libevm/ExtVMFace.h>
 #include <test/libtestutils/Common.h>
 
 #include <test/libtesteth/JsonSpiritHeaders.h>

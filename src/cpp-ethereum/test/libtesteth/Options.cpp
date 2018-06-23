@@ -18,7 +18,7 @@
  * Class for handling testeth custom options
  */
 
-#include <libevm/VMFactory.h>
+#include <cpp-ethereum/libevm/VMFactory.h>
 #include <test/libtesteth/Options.h>
 
 using namespace std;

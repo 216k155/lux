@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include <libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
 #include <json_spirit/JsonSpiritHeaders.h>
 #include "GenesisInfo.h"
 

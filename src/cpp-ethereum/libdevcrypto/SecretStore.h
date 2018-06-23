@@ -23,8 +23,8 @@
 
 #include <functional>
 #include <mutex>
-#include <libdevcore/FixedHash.h>
-#include <libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/FixedHash.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
 #include "Common.h"
 
 namespace dev

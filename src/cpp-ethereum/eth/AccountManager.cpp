@@ -19,10 +19,10 @@
  * @date 2016
  */
 
-#include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
-#include <libethcore/ICAP.h>
-#include <libethcore/KeyManager.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libethcore/ICAP.h>
+#include <cpp-ethereum/libethcore/KeyManager.h>
 #include "AccountManager.h"
 using namespace std;
 using namespace dev;

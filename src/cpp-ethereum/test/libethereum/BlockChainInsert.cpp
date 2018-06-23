@@ -23,11 +23,11 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
-#include <libdevcore/FileSystem.h>
-#include <libethcore/BasicAuthority.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/Block.h>
-#include <libethereum/GenesisInfo.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
+#include <cpp-ethereum/libethcore/BasicAuthority.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/Block.h>
+#include <cpp-ethereum/libethereum/GenesisInfo.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/libtesteth/BlockChainHelper.h>
 using namespace std;

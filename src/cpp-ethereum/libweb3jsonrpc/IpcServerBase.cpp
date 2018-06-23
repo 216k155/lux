@@ -24,8 +24,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <string>
-#include <libdevcore/Guards.h>
-#include <libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Log.h>
 
 using namespace std;
 using namespace jsonrpc;

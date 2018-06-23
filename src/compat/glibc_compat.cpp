@@ -10,6 +10,9 @@
 
 #if defined(HAVE_SYS_SELECT_H)
 #include <sys/select.h>
+
+class FDELT_TYPE;
+
 #endif
 
 // Prior to GLIBC_2.14, memcpy was aliased to memmove.
@@ -20,10 +23,16 @@ extern "C" void* memcpy(void* a, const void* b, size_t c)
 }
 
 extern "C" void __chk_fail(void) __attribute__((__noreturn__));
-extern "C" FDELT_TYPE __fdelt_warn(FDELT_TYPE a)
-{
-    if (a >= FD_SETSIZE)
+extern "C" FDELT_TYPE __fdelt_warn(FDELT_TYPE a);
+
+FDELT_TYPE __fdelt_warn(FDELT_TYPE a) {
+    return FDELT_TYPE();
+}
+
+FDELT_TYPE __fdelt_warn(FDELT_TYPE a) {
+    if (FD_SETSIZE <= a)
         __chk_fail();
     return a / __NFDBITS;
 }
+
 extern "C" FDELT_TYPE __fdelt_chk(FDELT_TYPE) __attribute__((weak, alias("__fdelt_warn")));

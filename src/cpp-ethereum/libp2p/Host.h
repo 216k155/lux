@@ -31,10 +31,10 @@
 #include <thread>
 #include <chrono>
 
-#include <libdevcore/Guards.h>
-#include <libdevcore/Worker.h>
-#include <libdevcrypto/Common.h>
-#include <libdevcrypto/ECDHE.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Worker.h>
+#include <cpp-ethereum/libdevcrypto/Common.h>
+#include <cpp-ethereum/libdevcrypto/ECDHE.h>
 #include "NodeTable.h"
 #include "HostCapability.h"
 #include "Network.h"

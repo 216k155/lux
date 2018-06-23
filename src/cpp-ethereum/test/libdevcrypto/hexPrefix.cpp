@@ -18,10 +18,10 @@
 #include <fstream>
 #include <boost/test/unit_test.hpp>
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Base64.h>
-#include <libdevcore/TrieCommon.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/Base64.h>
+#include <cpp-ethereum/libdevcore/TrieCommon.h>
 #include <test/libtesteth/TestHelper.h>
 
 using namespace std;

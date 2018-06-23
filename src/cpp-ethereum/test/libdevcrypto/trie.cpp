@@ -18,9 +18,9 @@
 #include <fstream>
 #include <boost/test/unit_test.hpp>
 #include <json_spirit/JsonSpiritHeaders.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/TrieDB.h>
-#include <libdevcore/TrieHash.h>
+#include <cpp-ethereum/libdevcore/CommonIO.h>
+#include <cpp-ethereum/libdevcore/TrieDB.h>
+#include <cpp-ethereum/libdevcore/TrieHash.h>
 #include "MemTrie.h"
 #include <test/libtesteth/TestHelper.h>
 

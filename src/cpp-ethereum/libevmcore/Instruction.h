@@ -22,8 +22,8 @@
 #pragma once
 
 #include <functional>
-#include <libdevcore/Common.h>
-#include <libdevcore/Assertions.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Assertions.h>
 #include "Exceptions.h"
 
 #ifdef MSIZE

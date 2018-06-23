@@ -1,4 +1,4 @@
-#include <libdevcore/Base64.h>
+#include <cpp-ethereum/libdevcore/Base64.h>
 #include "SessionManager.h"
 
 using namespace std;

@@ -22,10 +22,10 @@
 #ifndef LUX_BUILD
 #include <json/json.h>
 #endif
-#include <libdevcore/Log.h>
-#include <libevmcore/Instruction.h>
-#include <libethcore/Common.h>
-#include <libevm/VMFace.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libevmcore/Instruction.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libevm/VMFace.h>
 #include "Transaction.h"
 
 namespace Json

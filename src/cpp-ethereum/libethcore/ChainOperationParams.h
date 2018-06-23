@@ -21,11 +21,11 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Common.h>
 #include "Common.h"
-#include <libethcore/Precompiled.h>
+#include <cpp-ethereum/libethcore/Precompiled.h>
 
-#include <libevmcore/EVMSchedule.h>
+#include <cpp-ethereum/libevmcore/EVMSchedule.h>
 
 namespace dev
 {

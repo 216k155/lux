@@ -21,9 +21,9 @@
  */
 
 #include "test/libtesteth/TestHelper.h"
-#include <libethcore/Exceptions.h>
-#include <libethcore/Common.h>
-#include <libevm/VMFace.h>
+#include <cpp-ethereum/libethcore/Exceptions.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libevm/VMFace.h>
 using namespace dev;
 using namespace eth;
 using namespace dev::test;

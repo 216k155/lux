@@ -20,11 +20,11 @@
  * Gas pricer tests
  */
 
-#include <libethashseal/Ethash.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/ChainParams.h>
-#include <libethereum/GasPricer.h>
-#include <libethereum/BasicGasPricer.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libethereum/BlockChain.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
+#include <cpp-ethereum/libethereum/GasPricer.h>
+#include <cpp-ethereum/libethereum/BasicGasPricer.h>
 #include <test/libtesteth/TestHelper.h>
 #include <test/libtestutils/BlockChainLoader.h>
 

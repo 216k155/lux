@@ -22,9 +22,9 @@
 #pragma once
 
 #include <algorithm>
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
 #include "Common.h"
 #include "ChainOperationParams.h"
 #include "Exceptions.h"

@@ -21,7 +21,7 @@
 
 #include "WhisperDB.h"
 #include <boost/filesystem.hpp>
-#include <libdevcore/FileSystem.h>
+#include <cpp-ethereum/libdevcore/FileSystem.h>
 #include "WhisperHost.h"
 
 using namespace std;

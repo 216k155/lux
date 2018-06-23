@@ -48,9 +48,9 @@
 /////////////////////////////////////////// lux
 #include <lux/luxstate.h>
 #include <lux/luxDGP.h>
-#include <libethereum/ChainParams.h>
-#include <libethashseal/Ethash.h>
-#include <libethashseal/GenesisInfo.h>
+#include <cpp-ethereum/libethereum/ChainParams.h>
+#include <cpp-ethereum/libethashseal/Ethash.h>
+#include <cpp-ethereum/libethashseal/GenesisInfo.h>
 #include <script/standard.h>
 #include <lux/storageresults.h>
 ///////////////////////////////////////////

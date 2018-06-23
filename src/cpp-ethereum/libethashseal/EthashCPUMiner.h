@@ -24,7 +24,7 @@
 #pragma once
 
 #include "libdevcore/Worker.h"
-#include <libethereum/GenericMiner.h>
+#include <cpp-ethereum/libethereum/GenericMiner.h>
 #include "EthashAux.h"
 
 namespace dev

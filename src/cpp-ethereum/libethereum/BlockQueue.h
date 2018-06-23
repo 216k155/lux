@@ -25,12 +25,12 @@
 #include <thread>
 #include <deque>
 #include <boost/thread.hpp>
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
-#include <libethcore/Common.h>
-#include <libdevcore/Guards.h>
-#include <libethcore/Common.h>
-#include <libethcore/BlockHeader.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
+#include <cpp-ethereum/libethcore/Common.h>
+#include <cpp-ethereum/libethcore/BlockHeader.h>
 #include "VerifiedBlock.h"
 
 namespace dev

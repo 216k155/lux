@@ -20,7 +20,7 @@
  * RLPx test functions.
  */
 
-#include <libdevcore/Guards.h>
+#include <cpp-ethereum/libdevcore/Guards.h>
 #include <boost/asio.hpp>
 #include <boost/test/unit_test.hpp>
 #include <cryptopp/aes.h>
@@ -28,12 +28,12 @@
 #include <cryptopp/keccak.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/sha.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcrypto/ECDHE.h>
-#include <libdevcrypto/CryptoPP.h>
+#include <cpp-ethereum/libdevcore/Common.h>
+#include <cpp-ethereum/libdevcore/RLP.h>
+#include <cpp-ethereum/libdevcore/Log.h>
+#include <cpp-ethereum/libdevcore/SHA3.h>
+#include <cpp-ethereum/libdevcrypto/ECDHE.h>
+#include <cpp-ethereum/libdevcrypto/CryptoPP.h>
 #include <libp2p/RLPxHandshake.h>
 #include <libp2p/RLPXFrameWriter.h>
 #include <libp2p/RLPXFrameReader.h>
