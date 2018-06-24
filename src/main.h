@@ -75,6 +75,7 @@ class CConnman;
 class CScriptCheck;
 class CValidationInterface;
 class CValidationState;
+struct CDiskTxPos;
 
 struct CBlockTemplate;
 struct CNodeStateStats;
@@ -85,6 +86,7 @@ struct CNodeStateStats;
 static const int64_t DARKSEND_COLLATERAL = (16120*COIN); //161.20 LUX
 static const int64_t DARKSEND_FEE = (0.002*COIN); // reward masternode
 static const int64_t DARKSEND_POOL_MAX = (1999999.99*COIN);
+static const uint32_t MAX_BIP125_RBF_SEQUENCE = 0xfffffffd;
 
 /** The maximum size for mined blocks */
 static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_BASE_SIZE/2;
@@ -425,6 +427,9 @@ struct CHeightTxIndexKey {
 };
 
 ////////////////////////////////////////////////////////////
+
+/** Check if the transaction is confirmed in previous blocks */
+bool TXConfirmedInPrevBlocks(const CDiskTxPos& txindex, const CBlockIndex* pindexFrom, int nMaxDepth, int& nActualDepth);
 
 int GetInputAge(CTxIn& vin);
 int GetInputAgeIX(uint256 nTXHash, CTxIn& vin);

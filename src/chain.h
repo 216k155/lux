@@ -223,12 +223,13 @@ public:
         nStakeTime = 0;
 
         nVersion = 0;
-        hashMerkleRoot = 0;
+        hashMerkleRoot = uint256();
         nTime = 0;
         nBits = 0;
         nNonce = 0;
         hashStateRoot  = uint256(); // lux
         hashUTXORoot   = uint256(); // lux
+
     }
 
     CBlockIndex()
@@ -247,6 +248,7 @@ public:
         nNonce = block.nNonce;
         hashStateRoot  = block.hashStateRoot; // lux
         hashUTXORoot   = block.hashUTXORoot; // lux
+
 
         //Proof of Stake
         bnChainTrust = 0;

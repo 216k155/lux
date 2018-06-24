@@ -19,6 +19,7 @@
 #include "script/standard.h"
 #include "uint256.h"
 #include "univalue/univalue.h"
+#include "utilmoneystr.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet.h"
@@ -351,15 +352,32 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VARR)(UniValue::VOBJ));
+    RPCTypeCheck(params, {UniValue::VARR, UniValue::VOBJ, UniValue::VNUM}, true);
+
+    if (params[0].isNull() || params[1].isNull())
+    {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, arguments 1 and 2 must be non-null");
+    }
 
     UniValue inputs = params[0].get_array();
     UniValue sendTo = params[1].get_obj();
 
     CMutableTransaction rawTx;
 
+    if (params.size() > 2 && !params[2].isNull())
+    {
+        int64_t nLockTime = params[2].get_int64();
+        if (nLockTime < 0 || nLockTime > std::numeric_limits<uint32_t>::max())
+        {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, locktime out of range");
+        }
+        rawTx.nLockTime = nLockTime;
+    }
 
-    for (unsigned int i = 0; i < inputs.size(); i++) {
+    bool rbfOptIn = params.size() > 3 ? params[3].isTrue() : false;
+
+    for (unsigned int i = 0; i < inputs.size(); i++)
+    {
          UniValue input = inputs[i];
 
         const UniValue& o = input.get_obj();
@@ -373,26 +391,143 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
         if (nOutput < 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, vout must be positive");
 
-        CTxIn in(COutPoint(txid, nOutput));
+        uint32_t nSequence = 0;
+        if (rbfOptIn)
+        {
+            nSequence = MAX_BIP125_RBF_SEQUENCE;
+        }
+        else if (rawTx.nLockTime)
+        {
+            nSequence = std::numeric_limits<uint32_t>::max() - 1;
+        }
+        else
+        {
+            nSequence = std::numeric_limits<uint32_t>::max();
+        }
+
+        // set the sequence number if passed in the parameters object
+        const UniValue& sequenceObj = find_value(o, "sequence");
+        if (sequenceObj.isNum())
+        {
+            int64_t seqNr64 = sequenceObj.get_int64();
+            if (seqNr64 < 0 || seqNr64 > std::numeric_limits<uint32_t>::max())
+            {
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, sequence number is out of range");
+            }
+            else
+            {
+                nSequence = (uint32_t)seqNr64;
+            }
+        }
+
+        CTxIn in(COutPoint(txid, nOutput), CScript(), nSequence);
         rawTx.vin.push_back(in);
     }
 
     set<CTxDestination > destinations;
     vector<string> addrList = sendTo.getKeys();
     BOOST_FOREACH(const string& name_, addrList) {
-        CTxDestination dest = DecodeDestination(name_);
+        if (name_ == "data") 
+        {
+            std::vector<unsigned char> data = ParseHexV(sendTo[name_].getValStr(),"Data");
 
-        if (!IsValidDestination(dest))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid LUX address: ") + name_);
+            CTxOut out(0, CScript() << OP_RETURN << data);
+            rawTx.vout.push_back(out);
+        }
+        else if (name_ == "callcontract") 
+        {
+            // Get the call object
+            UniValue callContract = sendTo[name_];
+            if(!callContract.isObject())
+                throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, need to be object: ")+name_);
 
-        if (!destinations.insert(dest).second)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ") + name_);
+            // Get dgp gas limit and gas price
+            LOCK2(cs_main, pwalletMain->cs_wallet);
+            LuxDGP luxDGP(globalState.get(), fGettingValuesDGP);
+            uint64_t blockGasLimit = luxDGP.getBlockGasLimit(chainActive.Height());
+            uint64_t minGasPrice = CAmount(luxDGP.getMinGasPrice(chainActive.Height()));
+            CAmount nGasPrice = (minGasPrice>DEFAULT_GAS_PRICE)?minGasPrice:DEFAULT_GAS_PRICE;
 
-        CScript scriptPubKey = GetScriptForDestination(dest);
-        CAmount nAmount = AmountFromValue(sendTo[name_]);
+            // Get the contract address
+            if(!callContract.exists("contractAddress") || !callContract["contractAddress"].isStr())
+                throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, contract address is mandatory."));
 
-        CTxOut out(nAmount, scriptPubKey);
-        rawTx.vout.push_back(out);
+            std::string contractaddress = callContract["contractAddress"].get_str();
+            if(contractaddress.size() != 40 || !CheckHex(contractaddress))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect contract address");
+
+            dev::Address addrAccount(contractaddress);
+            if(!globalState->addressInUse(addrAccount))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "contract address does not exist");
+
+            // Get the contract data
+            if(!callContract.exists("data") || !callContract["data"].isStr())
+                throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, contract data is mandatory."));
+
+            string datahex = callContract["data"].get_str();
+            if(datahex.size() % 2 != 0 || !CheckHex(datahex))
+                throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
+
+            // Get amount
+            CAmount nAmount = 0;
+            if (callContract.exists("amount"))
+            {
+                nAmount = AmountFromValue(callContract["amount"]);
+                if (nAmount < 0)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for call contract");
+            }
+
+            // Get gas limit
+            uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_SEND;
+            if (callContract.exists("gasLimit"))
+            {
+                nGasLimit = callContract["gasLimit"].get_int64();
+                if (nGasLimit > blockGasLimit)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Maximum is: "+i64tostr(blockGasLimit)+")");
+                if (nGasLimit < MINIMUM_GAS_LIMIT)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Minimum is: "+i64tostr(MINIMUM_GAS_LIMIT)+")");
+                if (nGasLimit <= 0)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit");
+            }
+
+            // Get gas price
+            if (callContract.exists("gasPrice"))
+            {
+                UniValue uGasPrice = callContract["gasPrice"];
+                if(!ParseMoney(uGasPrice.getValStr(), nGasPrice))
+                {
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice");
+                }
+                CAmount maxRpcGasPrice = GetArg("-rpcmaxgasprice", MAX_RPC_GAS_PRICE);
+                if (nGasPrice > (int64_t)maxRpcGasPrice)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice, Maximum allowed in RPC calls is: "+FormatMoney(maxRpcGasPrice)+" (use -rpcmaxgasprice to change it)");
+                if (nGasPrice < (int64_t)minGasPrice)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice (Minimum is: "+FormatMoney(minGasPrice)+")");
+                if (nGasPrice <= 0)
+                    throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice");
+            }
+
+            // Add call contract output
+            CScript scriptPubKey = CScript() << CScriptNum(VersionVM::GetEVMDefault().toRaw()) << CScriptNum(nGasLimit) << CScriptNum(nGasPrice) << ParseHex(datahex) << ParseHex(contractaddress) << OP_CALL;
+            CTxOut out(nAmount, scriptPubKey);
+            rawTx.vout.push_back(out);
+        }
+        else
+        {
+            CTxDestination dest = DecodeDestination(name_);
+
+            if (!IsValidDestination(dest))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid LUX address: ") + name_);
+
+            if (!destinations.insert(dest).second)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ") + name_);
+
+            CScript scriptPubKey = GetScriptForDestination(dest);
+            CAmount nAmount = AmountFromValue(sendTo[name_]);
+
+            CTxOut out(nAmount, scriptPubKey);
+            rawTx.vout.push_back(out);
+        }
     }
 
     return EncodeHexTx(rawTx);

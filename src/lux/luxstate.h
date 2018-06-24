@@ -54,6 +54,65 @@ namespace lux{
     }
 }
 
+
+struct AccountVin{
+    AccountVin(){
+        txid.SetNull();
+        nVout = 0;
+        value = 0;
+        alive = false;
+    }
+    uint256 txid;
+    uint32_t nVout;
+    uint64_t value;
+    bool alive; //true if not spent, and account exists
+    static AccountVin fromVin(Vin vin){
+        AccountVin a;
+        a.txid = h256Touint(vin.hash);
+        a.alive = vin.alive > 0;
+        a.nVout = vin.nVout;
+        a.value = (uint64_t) vin.value;
+        return a;
+    }
+    Vin toVin() const{
+        Vin v;
+        v.nVout = nVout;
+        v.alive = alive ? 1 : 0;
+        v.value = dev::u256(value);
+        v.hash = uintToh256(txid);
+        return v;
+    }
+};
+struct AccountTransfer{
+    UniversalAddress from;
+    UniversalAddress to;
+    uint64_t value;
+    AccountVin fromVin; //current vin owned by from
+    AccountVin toVin; //current vin owned by to
+};
+
+class AccountAbstractionLayer{
+public:
+    AccountAbstractionLayer(const std::vector<AccountTransfer> &_transfers, AccountTransfer _senderTransfer)
+            : transfers(_transfers), senderTransfer(_senderTransfer) {}
+    CTransaction createCondensingTx(bool &voutsBeyondMax);
+    std::map<UniversalAddress, uint32_t> getNewVoutNumbers(){
+        return voutNumbers;
+    }
+    const std::map<UniversalAddress, AccountVin>& spentVins(){
+        return selectedVins;
+    };
+private:
+    bool calculateBalances();
+    void selectVins();
+    std::map<UniversalAddress, AccountVin> selectedVins;
+    const std::vector<AccountTransfer> &transfers;
+    std::map<UniversalAddress, CAmount> balances;
+    std::map<UniversalAddress, uint32_t> voutNumbers;
+    AccountTransfer senderTransfer;
+
+};
+
 class CondensingTX;
 
 class LuxState : public dev::eth::State {
@@ -72,7 +131,8 @@ public:
 
     dev::h256 rootHashUTXO() const { return stateUTXO.root(); }
 
-    std::unordered_map<dev::Address, Vin> vins() const; // temp
+    //vins() is only used for getting a list of vins to display
+    std::unordered_map<dev::Address, Vin> vins() const;
 
     dev::OverlayDB const& dbUtxo() const { return dbUTXO; }
 
@@ -81,8 +141,10 @@ public:
     virtual ~LuxState(){}
 
     friend CondensingTX;
+    friend EVMContractVM;
 
 private:
+    bool addressIsPubKeyHash(dev::Address const& a);
 
     void transferBalance(dev::Address const& _from, dev::Address const& _to, dev::u256 const& _value);
 
@@ -106,7 +168,7 @@ private:
 
     dev::Address newAddress;
 
-    std::vector<TransferInfo> transfers;
+    std::vector<AccountTransfer> transfers;
 
     dev::OverlayDB dbUTXO;
 
