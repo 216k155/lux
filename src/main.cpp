@@ -2729,7 +2729,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                 countCumulativeGasUsed += bcer.usedGas;
                 std::vector<TransactionReceiptInfo> tri;
-                if (fLogEvents && !fJustCheck)
+                if (fLogEvents)
                 {
                     for(size_t k = 0; k < resultConvertLuxTX.first.size(); k ++){
                         dev::Address key = resultExec[k].execRes.newAddress;
@@ -3204,8 +3204,11 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     LogPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
     {
         CInv inv(MSG_BLOCK, pindexNew->GetBlockHash());
+        CCoinsViewCache view(pcoinsTip);
+
         dev::h256 oldHashStateRoot;
         dev::h256 oldHashUTXORoot;
+
         if (pindexNew->nHeight >= chainparams.FirstSCBlock()) {
             oldHashStateRoot = dev::h256(globalState->rootHash()); // lux
             oldHashUTXORoot = dev::h256(globalState->rootHashUTXO()); // lux
@@ -3219,6 +3222,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             if (pindexNew->nHeight >= chainparams.FirstSCBlock()) {
                 globalState->setRoot(oldHashStateRoot); // lux
                 globalState->setRootUTXO(oldHashUTXORoot); // lux
+                pstorageresult->CleanCacheInStorageResults();
             }
 
             return error("ConnectTip() : ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
@@ -4024,7 +4028,7 @@ bool CheckWork(const CBlock &block, CBlockIndex* const pindexPrev)
     return true;
 }
 
-bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, CBlockIndex* const pindexPrev)
+bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, CBlockIndex* const pindexPrev, int64_t nAdjustedTime)
 {
     const CChainParams& chainParams = Params();
     uint256 hash;
@@ -4178,18 +4182,27 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, const CChai
     }
 
     if (!CheckBlockHeader(block, state, chainparams.GetConsensus(), block.IsProofOfWork())) {
-        LogPrintf("%s: CheckBlockHeader failed \n", __func__);
-        return false;
+        return error("%s: Consensus::CheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
     }
 
-    if (!ContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev))
-        return false;
+    // Get prev block index
+    BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
+    if (mi == mapBlockIndex.end())
+        return state.DoS(10, error("%s: prev block not found", __func__), 0, "bad-prevblk");
+    pindexPrev = (*mi).second;
+    if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
+        return state.DoS(100, error("%s: prev block invalid", __func__), REJECT_INVALID, "bad-prevblk");
+
+    if (!ContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, GetAdjustedTime()))
+        return error("%s: Consensus::ContextualCheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
 
     if (pindex == NULL)
         pindex = AddToBlockIndex(block);
 
     if (ppindex)
         *ppindex = pindex;
+
+    CheckBlockIndex(chainparams.GetConsensus());
 
     return true;
 }
@@ -4459,12 +4472,12 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
     index.nHeight = pindexPrev->nHeight + 1;
 
     // NOTE: CheckBlockHeader is called by CheckBlock
-    if (!ContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev))
-        return false;
+    if (!ContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, GetAdjustedTime()))
+        return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
     if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
-        return false;
+        return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
     if (!ContextualCheckBlock(block, state, pindexPrev))
-        return false;
+        return error("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
     if (block.IsProofOfStake() && !stake->CheckProof(pindexPrev, block, index.hashProofOfStake))
         return false;
 
@@ -4478,6 +4491,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
         if (index.nHeight >= chainparams.FirstSCBlock()) {
             globalState->setRoot(oldHashStateRoot); // lux
             globalState->setRootUTXO(oldHashUTXORoot); // lux
+            pstorageresult->CleanCacheInStorageResults();
         }
         return false;
     }
@@ -5001,6 +5015,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
                 if (chainActive.Tip()->nHeight >= chainparams.FirstSCBlock()) {
                     globalState->setRoot(oldHashStateRoot); // lux
                     globalState->setRootUTXO(oldHashUTXORoot); // lux
+                    pstorageresult->CleanCacheInStorageResults();
                 }
                 return error("VerifyDB() : *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             }

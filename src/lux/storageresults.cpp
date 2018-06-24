@@ -50,6 +50,10 @@ void StorageResults::addResult(dev::h256 hashTx, std::vector<TransactionReceiptI
 	m_cache_result.insert(std::make_pair(hashTx, result));
 }
 
+void StorageResults::CleanCacheInStorageResults(){
+    m_cache_result.clear();
+}
+
 void StorageResults::wipeResults(){
     LogPrintf("Wiping LevelDB in %s\n", path);
     leveldb::Status result = leveldb::DestroyDB(path, leveldb::Options());

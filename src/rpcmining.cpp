@@ -751,7 +751,12 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         nSizeLimit /= WITNESS_SCALE_FACTOR;
     }
     result.push_back(Pair("sigoplimit", nSigOpLimit));
-    result.push_back(Pair("sizelimit", nSizeLimit));
+    if (fPreSegWit) {
+        result.push_back(Pair("sizelimit", (int64_t)dgpMaxBlockSize)); // lux
+    } else {
+        result.push_back(Pair("sizelimit", (int64_t)dgpMaxBlockSerSize));
+        result.push_back(Pair("weightlimit", (int64_t)dgpMaxBlockWeight));
+    }
     result.push_back(Pair("curtime", pblock->GetBlockTime()));
     result.push_back(Pair("bits", strprintf("%08x", pblock->nBits)));
     result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight + 1)));

@@ -51,6 +51,8 @@ public:
 
     void wipeResults();
 
+	void CleanCacheInStorageResults();
+
 private:
 
 	bool readResult(dev::h256 const& _key, std::vector<TransactionReceiptInfo>& _result);
