@@ -2263,7 +2263,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
         globalState->setRoot(uintToh256(pindex->pprev->hashStateRoot)); // lux
         globalState->setRootUTXO(uintToh256(pindex->pprev->hashUTXORoot)); // lux
 
-        if (pfClean == NULL && fLogEvents) {
+          if(!(!fLogEvents || !*pfClean)) {
             pstorageresult->deleteResults(block.vtx);
             //pblocktree->EraseHeightIndex(pindex->nHeight);
         }
@@ -3136,8 +3136,9 @@ static bool DisconnectTip(CValidationState& state, const CChainParams& chainpara
     // Apply the block atomically to the chain state.
     int64_t nStart = GetTimeMicros();
     {
+        bool fClean=true;
         CCoinsViewCache view(pcoinsTip);
-        if (!DisconnectBlock(block, state, pindexDelete, view))
+        if (!DisconnectBlock(block, state, pindexDelete, view, &fClean))
             return error("DisconnectTip() : DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         assert(view.Flush());
     }
