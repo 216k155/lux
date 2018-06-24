@@ -125,3 +125,7 @@ qa/pull-tester/test.*/*
 contrib/devtools/split-debug.sh
 
 /src/DEBUG_DUMP_STAKING_INFO.hpp
+
+CMakeLists.txt
+cmake-build-debug/
+cmake/

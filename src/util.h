@@ -17,19 +17,33 @@
 #endif
 
 #include "compat.h"
+#include "sync.h"
 #include "tinyformat.h"
 #include "utiltime.h"
 
+#include <atomic>
 #include <exception>
 #include <map>
 #include <stdint.h>
 #include <string>
 #include <vector>
 
+#include <boost/signals2/signal.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/thread/exceptions.hpp>
 
-//LUX only features
+#ifndef WIN32
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
+#include <regex>
+
+extern std::regex hexData;
+
+// Application startup time (used for uptime calculation)
+int64_t GetStartupTime();
 
 extern bool fMasterNode;
 extern bool fEnableInstanTX;

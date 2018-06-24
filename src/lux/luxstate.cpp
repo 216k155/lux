@@ -64,16 +64,63 @@ ResultExecute LuxState::execute(EnvInfo const& _envInfo, SealEngineFace const& _
         } else {
             deleteAccounts(_sealEngine.deleteAddresses);
             if(res.excepted == TransactionException::None){
-                CondensingTX ctx(this, transfers, _t, _sealEngine.deleteAddresses);
-                tx = MakeTransactionRef(ctx.createCondensingTX());
-                if(ctx.reachedVoutLimit()){
+                AccountTransfer senderTransfer;
+                senderTransfer.value = (uint64_t) _t.value();
+                senderTransfer.from.version = AddressVersion::PUBKEYHASH;
+                senderTransfer.from.data = _t.sender().asBytes();
+                senderTransfer.fromVin.value = (uint64_t)_t.value();
+                senderTransfer.fromVin.alive = true;
+                senderTransfer.fromVin.nVout = _t.getNVout();
+                senderTransfer.fromVin.txid = h256Touint(_t.getHashWith());
+                senderTransfer.to.version = AddressVersion::EVM;
+                senderTransfer.to.data = _t.receiveAddress().asBytes();
+                if(_t.value() != 0) {
 
+                    Vin const *v = vin(_t.receiveAddress());
+                    if (v != NULL) {
+                        senderTransfer.toVin = AccountVin::fromVin(*v);
+                    }
+                    transfers.insert(transfers.begin(), senderTransfer);
+                }
+                AccountAbstractionLayer aal(transfers, senderTransfer);
+                bool reachedVoutLimit = false;
+                tx = MakeTransactionRef(aal.createCondensingTx(reachedVoutLimit));
+                if(reachedVoutLimit){
                     voutLimit = true;
                     e.revert();
                     throw Exception();
                 }
-                std::unordered_map<dev::Address, Vin> vins = ctx.createVin(*tx);
-                updateUTXO(vins);
+
+                if(!tx.get()->IsNull()) {
+                    //no condensing transaction to update
+                    std::unordered_map<dev::Address, Vin> vins;
+                    for (auto &kv : aal.spentVins()) {
+                        //first, update all of the spent vins
+                        vins[dev::Address(kv.first.data)] = kv.second.toVin();
+                        vins[dev::Address(kv.first.data)].alive = false; //spent
+                    }
+                    //now update all of the accounts that have new vins
+                    for (auto &kv : aal.getNewVoutNumbers()) {
+                        Vin v;
+                        v.alive = true;
+                        v.hash = uintToh256(tx.get()->GetHash());
+                        v.nVout = kv.second;
+                        v.value = tx.get()->vout[v.nVout].nValue;
+                        vins[dev::Address(kv.first.data)] = v;
+                    }
+
+                    updateUTXO(vins); //write vins to database
+                }else if(senderTransfer.value > 0){
+                    //still need to update that the executed contract has a new vin
+                    std::unordered_map<dev::Address, Vin> vins;
+                    Vin v;
+                    v.alive = true;
+                    v.hash = uintToh256(senderTransfer.fromVin.txid);
+                    v.nVout = senderTransfer.fromVin.nVout;
+                    v.value = senderTransfer.value;
+                    vins[dev::Address(senderTransfer.to.data)] = v;
+                    updateUTXO(vins);
+                }
             } else {
                 printfErrorLog(res.excepted);
             }
@@ -84,15 +131,19 @@ ResultExecute LuxState::execute(EnvInfo const& _envInfo, SealEngineFace const& _
             commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts : State::CommitBehaviour::KeepEmptyAccounts);
         }
     }
-    catch(Exception const& _e){
+    catch(Exception const& _e) {
 
         printfErrorLog(dev::eth::toTransactionException(_e));
         res.excepted = dev::eth::toTransactionException(_e);
         res.gasUsed = _t.gas();
-        m_cache.clear();
-        cacheUTXO.clear();
+        if (_p != Permanence::Reverted) {
+            deleteAccounts(_sealEngine.deleteAddresses);
+            commit(CommitBehaviour::RemoveEmptyAccounts);
+        } else {
+            m_cache.clear();
+            cacheUTXO.clear();
+        }
     }
-
     if(!_t.isCreation())
         res.newAddress = _t.receiveAddress();
     newAddress = dev::Address();
@@ -116,7 +167,7 @@ ResultExecute LuxState::execute(EnvInfo const& _envInfo, SealEngineFace const& _
         //make sure to use empty transaction if no vouts made
         return ResultExecute{ex, dev::eth::TransactionReceipt(oldStateRoot, gas, e.logs()), refund.vout.empty() ? CTransaction() : CTransaction(refund)};
     }else{
-        return ResultExecute{res, dev::eth::TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()), tx ? *tx : CTransaction()};
+        return ResultExecute{res, dev::eth::TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()), tx.get() ? *tx.get() : CTransaction()};
     }
 }
 
@@ -134,11 +185,45 @@ std::unordered_map<dev::Address, Vin> LuxState::vins() const // temp
     return ret;
 }
 
+bool LuxState::addressIsPubKeyHash(dev::Address const &a) {
+    //pubkeyhash inserted addresses will not have any code
+    return globalSealEngine.get()->deleteAddresses.count(a); // && !addressInUse(a);
+}
+
 void LuxState::transferBalance(dev::Address const& _from, dev::Address const& _to, dev::u256 const& _value) {
     subBalance(_from, _value);
     addBalance(_to, _value);
-    if (_value > 0)
-        transfers.push_back({_from, _to, _value});
+    if (_value > 0) {
+        AccountTransfer t;
+        if(addressIsPubKeyHash(_from)) {
+            //don't add a transfer for transfers from pubkeyhash
+            //this is only possible in the initial sender transaction, and we handle that elsewhere
+            return; //don't add a transfer for this.
+        }else{
+            t.from.version = AddressVersion::EVM;
+        }
+        t.from.data = _from.asBytes();
+        if(addressIsPubKeyHash(_to)) {
+            t.to.version = AddressVersion::PUBKEYHASH;
+        }else{
+            t.to.version = AddressVersion::EVM;
+        }
+        t.to.data = _to.asBytes();
+        Vin* toVin = vin(_to);
+        if(toVin != NULL){
+            t.toVin = AccountVin::fromVin(*toVin);
+        }
+        Vin* fromVin = vin(_from);
+        if(fromVin != NULL){
+            if(_value > 0){
+                LogPrintf("Value transfered from address with no vin!");
+            }
+            t.fromVin = AccountVin::fromVin(*fromVin);
+        }
+        //overflow check?
+        t.value = (uint64_t) _value;
+        transfers.push_back(t);
+    }
 }
 
 Vin const* LuxState::vin(dev::Address const& _a) const
@@ -331,6 +416,8 @@ void CondensingTX::calculatePlusAndMinus(){
 bool CondensingTX::createNewBalances(){
     for(auto& p : plusMinusInfo){
         dev::u256 balance = 0;
+
+        //!alive & checkDelete means that this address is for a pubkeyhash, and so don't track it's balance
         if((vins.count(p.first) && vins[p.first].alive) || (!vins[p.first].alive && !checkDeleteAddress(p.first))){
             balance = vins[p.first].value;
         }
@@ -346,6 +433,8 @@ bool CondensingTX::createNewBalances(){
 std::vector<CTxIn> CondensingTX::createVins(){
     std::vector<CTxIn> ins;
     for(auto& v : vins){
+
+        //!alive & checkDelete means that this address is for a pubkeyhash, and so don't track it's balance
         if((v.second.value > 0 && v.second.alive) || (v.second.value > 0 && !vins[v.first].alive && !checkDeleteAddress(v.first)))
             ins.push_back(CTxIn(h256Touint(v.second.hash), v.second.nVout, CScript() << OP_SPEND));
     }
@@ -381,3 +470,121 @@ bool CondensingTX::checkDeleteAddress(dev::Address addr){
     return deleteAddresses.count(addr) != 0;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
+static bool int64AddWillOverflow(int64_t a, int64_t b){
+    return a > 0 && (b > INT64_MAX - a);
+}
+
+bool AccountAbstractionLayer::calculateBalances() {
+    //requiredVins contains only 1 record per address. note: sort order is consensus-critical
+    for(auto &t : transfers){
+        //populate initial balances to greatly simplify this algorithm
+        if(!balances.count(t.from)) {
+            balances[t.from] = t.fromVin.value;
+        }
+        if(!balances.count(t.to)) {
+            balances[t.to] = 0;
+        }
+    }
+    for(auto &t : transfers){
+        if(int64AddWillOverflow(t.value, balances[t.to])){
+            LogPrintf("Account balance change would cause overflow!");
+            return false;
+        }
+        balances[t.to] += t.value;
+        if((uint32_t)balances[t.from] < t.value){
+            LogPrintf("Account balance change would cause underflow!");
+            //return false;
+        }
+        balances[t.to] += t.value;
+        balances[t.from] -= t.value;
+    }
+    for(auto b : balances){
+        if(b.second < 0){
+            LogPrintf("underflow in final balance of AAL");
+            return false;
+        }
+    }
+    return true;
+}
+
+void AccountAbstractionLayer::selectVins() {
+    for(auto &t : transfers){
+        if(!selectedVins.count(t.from)){
+            if(t.from == senderTransfer.from && t.value > 0){
+                selectedVins[t.from] = senderTransfer.fromVin;
+            }else {
+                selectedVins[t.from] = t.fromVin;
+            }
+        }
+
+        //if an account has a vin, then spend it to condense it into 1 output
+        if(!selectedVins.count(t.to)){
+            selectedVins[t.to] = t.toVin;
+        }
+    }
+}
+
+CTransaction AccountAbstractionLayer::createCondensingTx(bool &voutsBeyondMax) {
+
+    if(!calculateBalances()){
+        return CTransaction();
+    }
+
+    //note: vout and vin order are consensus-critical!
+    //map isn't particularly necessary, but the sort order is
+    selectVins();
+
+    CMutableTransaction tx;
+    //generate vins
+    //note: the executing output and the previously owned output must be condensed.
+    //In order to do this, they are both placed in the vin list.
+    //the confusing part is that the sender vin is inserted as "fromAddress" rather than "toAddress"
+    //So, it looks like you are spending a pubkeyhash output, but actually it's an OP_CALL
+    //this can't be changed or fixed because sort order is consensus-critical
+    for(auto &v : selectedVins){
+        if(!v.second.alive){
+            continue;
+        }
+
+        if(v.first.version != AddressVersion::PUBKEYHASH && v.first != senderTransfer.from){
+            tx.vin.push_back(CTxIn(v.second.txid, v.second.nVout, CScript() << OP_SPEND));
+        }
+     }
+
+    //generate vouts
+    int n = 0;
+    for(auto &balance : balances){
+        if(balance.second == 0){
+            continue;
+        }
+        CScript script;
+        if(balance.first.version == AddressVersion::PUBKEYHASH){
+            script = CScript() << OP_DUP << OP_HASH160 << balance.first.data << OP_EQUALVERIFY << OP_CHECKSIG;
+        } else {
+            //create a no-exec contract output
+            script = CScript() << valtype{0} << valtype{0} << valtype{0} << valtype{0} << balance.first.data << OP_CALL;
+            voutNumbers[balance.first] = n;
+        }
+        tx.vout.push_back(CTxOut(balance.second, script));
+        if(tx.vout.size() > MAX_CONTRACT_VOUTS){
+            voutsBeyondMax = true;
+            if(!tx.vin.size() && tx.vout.size() > 1){
+                LogPrintf("AAL Transaction has a vout, but no vins");
+                return CTransaction();
+            }
+            return !tx.vin.size() || !tx.vout.size() ? CTransaction() : CTransaction(tx);
+        }
+        n++;
+    }
+    if(!tx.vin.size() && tx.vout.size()>1){
+        LogPrintf("AAL Transaction has a vout, but no vins");
+        return CTransaction();
+    }
+    if(!tx.vout.size() && tx.vin.size()>1){
+        LogPrintf("AAL Transaction has a vin, but no vouts");
+        return CTransaction();
+    }
+    return !tx.vin.size() || !tx.vout.size() ? CTransaction() : CTransaction(tx);
+}
+
+

@@ -84,6 +84,8 @@ static const int POS_REWARD_CHANGED_BLOCK = 300000;
 #include <bitset>
 #include "pubkey.h"
 
+extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry);
+
 std::unique_ptr<LuxState> globalState;
 std::shared_ptr<dev::eth::SealEngineFace> globalSealEngine;
 bool fRecordLogOpcodes = false;
@@ -237,13 +239,12 @@ map<uint256, NodeId> mapBlockSource;
 struct QueuedBlock {
     uint256 hash;
     CBlockIndex* pindex;        //! Optional.
-    int64_t nTime;              //! Time of "getdata" request in microseconds.
-    int nValidatedQueuedBefore; //! Number of blocks queued with validated headers (globally) at the time this one is requested.
     bool fValidatedHeaders;     //! Whether this block has validated headers at the time of request.
+    int64_t nTime;
+    int64_t nTimeDisconnect;
 };
 map<uint256, pair<NodeId, list<QueuedBlock>::iterator> > mapBlocksInFlight;
 
-/** Number of blocks in flight with validated headers. */
 int nQueuedValidatedHeaders = 0;
 
 /** Number of preferable block download peers. */
@@ -256,6 +257,10 @@ set<CBlockIndex*> setDirtyBlockIndex;
 
 /** Dirty block file entries. */
 set<int> setDirtyFileInfo;
+
+/** Number of peers from which we're downloading blocks. */
+int nPeersWithValidatedDownloads = 0;
+
 } // anon namespace
 
 //////////////////////////////////////////////////////////////////////////////
@@ -306,7 +311,10 @@ struct CNodeState {
     //! Since when we're stalling block download progress (in microseconds), or 0.
     int64_t nStallingSince;
     list<QueuedBlock> vBlocksInFlight;
+    //! When the first entry in vBlocksInFlight started downloading. Don't care when vBlocksInFlight is empty.
+    int64_t nDownloadingSince;
     int nBlocksInFlight;
+    int nBlocksInFlightValidHeaders;
     //! Whether we consider this a preferred download peer.
     bool fPreferredDownload;
     //! Whether this peer can give us witnesses
@@ -322,11 +330,18 @@ struct CNodeState {
         pindexLastCommonBlock = NULL;
         fSyncStarted = false;
         nStallingSince = 0;
+        nDownloadingSince = 0;
         nBlocksInFlight = 0;
+        nBlocksInFlightValidHeaders = 0;
         fPreferredDownload = false;
         fHaveWitness = false;
     }
 };
+
+// Returns time at which to timeout block request (nTime in microseconds)
+int64_t GetBlockTimeout(int64_t nTime, int nValidatedQueuedBefore) {
+return nTime + 500000 * Params().GetConsensus().nPowTargetSpacing * (4 + nValidatedQueuedBefore);
+}
 
 /** Map maintaining per-node state. Requires cs_main. */
 map<NodeId, CNodeState> mapNodeState;
@@ -377,12 +392,12 @@ void FinalizeNode(NodeId nodeid)
     }
 
     BOOST_FOREACH (const QueuedBlock& entry, state->vBlocksInFlight) {
-        nQueuedValidatedHeaders -= entry.fValidatedHeaders;
         mapBlocksInFlight.erase(entry.hash);
     }
     EraseOrphansFor(nodeid);
     nPreferredDownload -= state->fPreferredDownload;
-
+    nPeersWithValidatedDownloads -= (state->nBlocksInFlightValidHeaders != 0);
+    assert(nPeersWithValidatedDownloads >= 0);
     mapNodeState.erase(nodeid);
 }
 
@@ -393,6 +408,15 @@ void MarkBlockAsReceived(const uint256& hash)
     if (itInFlight != mapBlocksInFlight.end()) {
         CNodeState* state = State(itInFlight->second.first);
         nQueuedValidatedHeaders -= itInFlight->second.second->fValidatedHeaders;
+        state->nBlocksInFlightValidHeaders -= itInFlight->second.second->fValidatedHeaders;
+        if (state->nBlocksInFlightValidHeaders == 0 && itInFlight->second.second->fValidatedHeaders) {
+            // Last validated block on the queue was received.
+            nPeersWithValidatedDownloads--;
+        }
+        if (state->vBlocksInFlight.begin() == itInFlight->second.second) {
+            // First block on the queue was received, update the start download time for the next one
+            state->nDownloadingSince = std::max(state->nDownloadingSince, GetTimeMicros());
+        }
         state->vBlocksInFlight.erase(itInFlight->second.second);
         state->nBlocksInFlight--;
         state->nStallingSince = 0;
@@ -411,10 +435,19 @@ void MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const Consensus::Pa
     // Make sure it's not listed somewhere already.
     MarkBlockAsReceived(hash);
 
-    QueuedBlock newentry = {hash, pindex, GetTimeMicros(), nQueuedValidatedHeaders, pindex != NULL};
+    int64_t nNow = GetTimeMicros();
+    QueuedBlock newentry = {hash, pindex, nNow, pindex != NULL, GetBlockTimeout(nNow, nQueuedValidatedHeaders)};
     nQueuedValidatedHeaders += newentry.fValidatedHeaders;
     list<QueuedBlock>::iterator it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(), newentry);
     state->nBlocksInFlight++;
+    state->nBlocksInFlightValidHeaders += newentry.fValidatedHeaders;
+    if (state->nBlocksInFlight == 1) {
+        // We're starting a block download (batch) from this peer.
+        state->nDownloadingSince = GetTimeMicros();
+    }
+    if (state->nBlocksInFlightValidHeaders == 1 && pindex != NULL) {
+        nPeersWithValidatedDownloads++;
+    }
     mapBlocksInFlight[hash] = std::make_pair(nodeid, it);
 }
 
@@ -962,6 +995,16 @@ bool CheckFinalTx(const CTransaction& tx, int flags)
     return IsFinalTx(tx, nBlockHeight, nBlockTime);
 }
 
+bool TXConfirmedInPrevBlocks(const CDiskTxPos& txindex, const CBlockIndex* pindexFrom, int nMaxDepth, int& nActualDepth) {
+    for (const CBlockIndex* pindex = pindexFrom; pindex && pindexFrom->nHeight - pindex->nHeight < nMaxDepth; pindex = pindex->pprev) {
+        if (pindex->nDataPos == txindex.nPos && pindex->nFile == txindex.nFile) {
+            nActualDepth = pindexFrom->nHeight - pindex->nHeight;
+            return true;
+        }
+    }
+    return false;
+}
+
 CAmount GetMinRelayFee(const CTransaction& tx, unsigned int nBytes, bool fAllowFree)
 {
     {
@@ -1231,7 +1274,10 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                     REJECT_INSUFFICIENTFEE, "insufficient fee");
 
             // Require that free transactions have sufficient priority to be mined in the next block.
-            if (GetBoolArg("-relaypriority", true) && nFees < ::minRelayTxFee.GetFee(nSize) && !AllowFree(entry.GetPriority(chainActive.Height() + 1))) {
+            CAmount mempoolRejectFee = pool.GetMinFee(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFee(nSize);
+            if (mempoolRejectFee > 0 && nFees < mempoolRejectFee) {
+                return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool min fee not met", false, strprintf("%d < %d", nFees, mempoolRejectFee));
+            } else if (GetBoolArg("-relaypriority", true) && nFees < ::minRelayTxFee.GetFee(nSize) && !AllowFree(entry.GetPriority(chainActive.Height() + 1))) {
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "insufficient priority");
             }
 
@@ -1845,14 +1891,10 @@ bool IsInitialBlockDownload()
     LOCK(cs_main);
     if (fImporting || fReindex || chainActive.Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
         return true;
-    static bool lockIBDState = false;
-    if (lockIBDState)
-        return false;
-    bool state = (chainActive.Height() < pindexBestHeader->nHeight - 24 * 6 ||
-                  pindexBestHeader->GetBlockTime() < GetTime() - 8 * 60 * 60); // ~144 blocks behind -> 2 x fork detection time
-    if (!state)
-        lockIBDState = true;
-    return state;
+    // ~144 blocks behind -> 2 x fork detection time
+    bool lock = (chainActive.Height() < pindexBestHeader->nHeight - 24 * 6 ||
+        (!IsTestNet() && pindexBestHeader->GetBlockTime() < GetTime() - 8 * 60 * 60));
+    return lock;
 }
 
 bool fLargeWorkForkFound = false;
@@ -2538,6 +2580,76 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     return state.DoS(100, false, REJECT_INVALID, "bad-txns-invalid-sender-script");
                 }
 
+                //begin contract handling!
+
+                CAmount nTxFee = view.GetValueIn(tx)-tx.GetValueOut();
+                //uint64_t gasFeeSum=0;
+                //uint64_t gasLimitSum=0;
+                bool nonZeroVersion = false;
+#if 0
+                for(uint32_t nvout=0; i<tx.vout.size(); nvout++) {
+                    ContractOutputParser parser(tx, nvout, &view, &block.vtx);
+                    ContractOutput output;
+                    if(!parser.parseOutput(output)){
+                        return state.DoS(100, error("ConnectBlock(): Contract transaction script is incorrect or invalid"));
+                    }
+                    uint64_t totalGas = output.gasPrice * output.gasLimit;
+                    if((output.gasPrice != 0 && totalGas / output.gasPrice != output.gasLimit) || totalGas > INT64_MAX) {
+                        return state.DoS(100, error("ConnectBlock(): Transaction's gas stipend overflows"), REJECT_INVALID,
+                                         "bad-tx-gas-stipend-overflow");
+                    }
+                    gasFeeSum += totalGas;
+                    if(gasFeeSum < totalGas || gasFeeSum > INT64_MAX) {
+                        return state.DoS(100, error("ConnectBlock(): Transaction's gas sum overflows"), REJECT_INVALID,
+                                         "bad-tx-gas-sum-overflow");
+                    }
+#if 0
+                    if(gasFeeSum > nTxFee) {
+                        return state.DoS(100, error("ConnectBlock(): Transaction fee does not cover the gas stipend"), REJECT_INVALID, "bad-txns-fee-notenough");
+                    }
+#endif
+                    VersionVM v = output.version;
+                    if(v.format!=0)
+                        return state.DoS(100, error("ConnectBlock(): Contract execution uses unknown version format"), REJECT_INVALID, "bad-tx-version-format");
+                    if(v.rootVM != 0){
+                        nonZeroVersion=true;
+                    }else{
+                        if(nonZeroVersion){
+                            //If an output is version 0, then do not allow any other versions in the same tx
+                            return state.DoS(100, error("ConnectBlock(): Contract tx has mixed version 0 and non-0 VM executions"), REJECT_INVALID, "bad-tx-mixed-zero-versions");
+                        }
+                    }
+                    if(!(v.rootVM == VM_NULL || v.rootVM == EVM_VM || v.rootVM == LUX_VM))
+                        return state.DoS(100, error("ConnectBlock(): Contract execution uses unknown root VM"), REJECT_INVALID, "bad-tx-version-rootvm");
+                    if(v.vmVersion != 0)
+                        return state.DoS(100, error("ConnectBlock(): Contract execution uses unknown VM version"), REJECT_INVALID, "bad-tx-version-vmversion");
+                    if(v.flagOptions != 0)
+                        return state.DoS(100, error("ConnectBlock(): Contract execution uses unknown flag options"), REJECT_INVALID, "bad-tx-version-flags");
+
+                    //check gas limit is not less than minimum gas limit (unless it is a no-exec tx)
+                    if(output.gasLimit < MINIMUM_GAS_LIMIT && v.rootVM != 0)
+                        return state.DoS(100, error("ConnectBlock(): Contract execution has lower gas limit than allowed"), REJECT_INVALID, "bad-tx-too-little-gas");
+
+                    if(output.gasLimit > UINT32_MAX)
+                        return state.DoS(100, error("ConnectBlock(): Contract execution can not specify greater gas limit than can fit in 32-bits"), REJECT_INVALID, "bad-tx-too-much-gas");
+
+                    gasLimitSum += output.gasLimit;
+                    if(gasFeeSum > blockGasLimit)
+                        return state.DoS(1, false, REJECT_INVALID, "bad-txns-gas-exceeds-blockgaslimit");
+
+                    //don't allow less than DGP set minimum gas price to prevent MPoS greedy mining/spammers
+                    if(v.rootVM != 0 && output.gasPrice < minGasPrice)
+                        return state.DoS(100, error("ConnectBlock(): Contract execution has lower gas price than allowed"), REJECT_INVALID, "bad-tx-low-gas-price");
+                }
+                //done testing outputs, now process the entire transaction
+
+                if(!nonZeroVersion){
+                    //if tx is 0 version, then the tx must already have been added by a previous contract execution
+                    if(!tx.HasOpSpend()){
+                        return state.DoS(100, error("ConnectBlock(): Version 0 contract executions are not allowed unless created by the AAL "), REJECT_INVALID, "bad-tx-improper-version-0");
+                    }
+                }
+#endif
                 LuxTxConverter convert(tx, &view, &block.vtx);
 
                 ExtractLuxTX resultConvertLuxTX;
@@ -2552,9 +2664,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 //validate VM version and other ETH params before execution
                 //Reject anything unknown (could be changed later by DGP)
                 //TODO evaluate if this should be relaxed for soft-fork purposes
-                bool nonZeroVersion = false;
                 dev::u256 sumGas = dev::u256(0);
-                CAmount nTxFee = view.GetValueIn(tx) - tx.GetValueOut();
                 for(LuxTransaction& ltx : resultConvertLuxTX.first) {
                     sumGas += ltx.gas() * ltx.gasPrice();
 
@@ -2711,9 +2821,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         checkBlock.hashStateRoot = h256Touint(globalState->rootHash());
         checkBlock.hashUTXORoot = h256Touint(globalState->rootHashUTXO());
 
-        bool usePhi2 = pindex->nHeight >= Params().SwitchPhi2Block();
+        //bool usePhi2 = pindex->nHeight >= Params().SwitchPhi2Block();
         //If this error happens, it probably means that something with AAL created transactions didn't match up to what is expected
-        if ((checkBlock.GetHash(usePhi2) != block.GetHash(usePhi2)) && !fJustCheck) {
+        if ((checkBlock.GetHash() != block.GetHash()) && !fJustCheck) {
             LogPrintf("Actual block data does not match block expected by AAL\n");
             //Something went wrong with AAL, compare different elements and determine what the problem is
             if (checkBlock.hashMerkleRoot != block.hashMerkleRoot) {
@@ -2722,13 +2832,19 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     LogPrintf("Unexpected AAL transactions in block. Actual txs: %i, expected txs: %i\n",
                               block.vtx.size(), checkBlock.vtx.size());
                     for (size_t i = 0; i < block.vtx.size(); i++) {
-                        if (i > checkBlock.vtx.size()) {
-                            LogPrintf("Unexpected transaction: %s\n", block.vtx[i].ToString());
-                        } else {
-                            if (block.vtx[i].GetHash() != block.vtx[i].GetHash()) {
-                                LogPrintf("Mismatched transaction at entry %i\n", i);
-                                LogPrintf("Actual: %s\n", block.vtx[i].ToString());
-                                LogPrintf("Expected: %s\n", checkBlock.vtx[i].ToString());
+                        if(i >= checkBlock.vtx.size()){
+                            UniValue result(UniValue::VOBJ);
+                            TxToJSON(block.vtx[i], block.GetHash(), result);
+                            LogPrintf("Unexpected transaction: %s\n", result.write(true, 2));
+                     }else {
+                        if (block.vtx[i].GetHash() != checkBlock.vtx[i].GetHash()) {
+                             LogPrintf("Mismatched transaction at entry %i\n", i);
+                             UniValue resultActual(UniValue::VOBJ);
+                             TxToJSON(block.vtx[i], block.GetHash(), resultActual);
+                             LogPrintf("Actual: %s\n", resultActual.write(true, 2));
+                             UniValue resultExpected(UniValue::VOBJ);
+                             TxToJSON(checkBlock.vtx[i], block.GetHash(), resultExpected);
+                             LogPrintf("Expected: %s\n", resultExpected.write(true, 2));
                             }
                         }
                     }
@@ -2739,7 +2855,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         if (i > block.vtx.size()) {
                             LogPrintf("Missing transaction: %s\n", checkBlock.vtx[i].ToString());
                         } else {
-                            if (block.vtx[i].GetHash() != block.vtx[i].GetHash()) {
+                            if (block.vtx[i].GetHash() != checkBlock.vtx[i].GetHash()) {
                                 LogPrintf("Mismatched transaction at entry %i\n", i);
                                 LogPrintf("Actual: %s\n", block.vtx[i].ToString());
                                 LogPrintf("Expected: %s\n", checkBlock.vtx[i].ToString());
@@ -6495,7 +6611,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
         // Don't send anything until we get their version message
-        if (pto->nVersion == 0)
+        if (!pto->fSuccessfullyConnected || pto->fDisconnect)
             return true;
 
         //
@@ -6510,7 +6626,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             // Ping automatically sent as a latency probe & keepalive.
             pingSend = true;
         }
-        if (pingSend && !pto->fDisconnect) {
+        if (pingSend) {
             uint64_t nonce = 0;
             while (nonce == 0) {
                 GetRandBytes((unsigned char*)&nonce, sizeof(nonce));
@@ -6592,22 +6708,26 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         if (pindexBestHeader == NULL)
             pindexBestHeader = chainActive.Tip();
         bool fFetch = state.fPreferredDownload || (nPreferredDownload == 0 && !pto->fClient && !pto->fOneShot); // Download if this is a nice peer, or we have no nice peers and this one might do.
-        if (!state.fSyncStarted && !pto->fClient && !pto->fDisconnect && !fImporting && !fReindex) {
+        if (!state.fSyncStarted && !pto->fClient/*&& !pto->fDisconnect*/ && !fImporting && !fReindex) {
             // Only actively request headers from a single peer, unless we're close to end of initial download.
             if (nSyncStarted == 0 || pindexBestHeader->GetBlockTime() > GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
                 state.fSyncStarted = true;
                 nSyncStarted++;
+                const CBlockIndex *pindexStart = pindexBestHeader;
                 //CBlockIndex *pindexStart = chainActive.Tip()->pprev ? chainActive.Tip()->pprev : chainActive.Tip();
                 //LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
                 //pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256(0));
-                pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
+                if (pindexStart->pprev)
+                    pindexStart = pindexStart->pprev;
+                LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
+                pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256());
             }
         }
 
         // Resend wallet transactions that haven't gotten in a block yet
         // Except during reindex, importing and IBD, when old wallet
         // transactions become unconfirmed and spams other nodes.
-        if (!fReindex /*&& !fImporting && !IsInitialBlockDownload()*/) {
+        if (!fReindex && !fImporting && !IsInitialBlockDownload()) {
             GetMainSignals().Broadcast(nTimeBestReceived);
         }
 
@@ -6656,7 +6776,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 
         // Detect whether we're stalling
         int64_t nNow = GetTimeMicros();
-        if (!pto->fDisconnect && state.nStallingSince && state.nStallingSince < nNow - 1000000 * BLOCK_STALLING_TIMEOUT) {
+        if (state.nStallingSince && state.nStallingSince < nNow - 1000000 * BLOCK_STALLING_TIMEOUT) {
             // Stalling only triggers when the block download window cannot move. During normal steady state,
             // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
             // should only happen during initial block download.
@@ -6668,16 +6788,24 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         // timeout. We compensate for in-flight blocks to prevent killing off peers due to our own downstream link
         // being saturated. We only count validated in-flight blocks so peers can't advertize nonexisting block hashes
         // to unreasonably increase our timeout.
-        if (!pto->fDisconnect && state.vBlocksInFlight.size() > 0 && state.vBlocksInFlight.front().nTime < nNow - 500000 * Params().TargetSpacing() * (4 + state.vBlocksInFlight.front().nValidatedQueuedBefore)) {
-            LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", state.vBlocksInFlight.front().hash.ToString(), pto->id);
-            pto->fDisconnect = true;
+        if (!pto->fDisconnect && state.vBlocksInFlight.size() > 0) {
+            QueuedBlock &queuedBlock = state.vBlocksInFlight.front();
+            int64_t nTimeoutIfRequestedNow = GetBlockTimeout(nNow, nQueuedValidatedHeaders - state.nBlocksInFlightValidHeaders);
+            if (queuedBlock.nTimeDisconnect > nTimeoutIfRequestedNow) {
+                LogPrint("net", "Reducing block download timeout for peer=%d block=%s, orig=%d new=%d\n", pto->id, queuedBlock.hash.ToString(), queuedBlock.nTimeDisconnect, nTimeoutIfRequestedNow);
+                queuedBlock.nTimeDisconnect = nTimeoutIfRequestedNow;
+            }
+            if (queuedBlock.nTimeDisconnect < nNow) {
+                LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
+                pto->fDisconnect = true;
+            }
         }
 
         //
         // Message: getdata (blocks)
         //
         vector<CInv> vGetData;
-        if (!pto->fDisconnect && !pto->fClient && fFetch && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+        if (!pto->fClient && fFetch && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
             vector<CBlockIndex*> vToDownload;
             NodeId staller = -1;
             FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
@@ -6701,7 +6829,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         //
         // Message: getdata (non-blocks)
         //
-        while (!pto->fDisconnect && !pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow) {
+        while (!pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow) {
             const CInv& inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(inv)) {
                 if (fDebug)

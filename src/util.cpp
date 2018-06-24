@@ -105,6 +105,8 @@ std::string to_internal(const std::string&);
 
 using namespace std;
 
+std::regex hexData("^([0-9a-fA-f]{2,}$)");
+
 //LUX only features
 bool fMasterNode = false;
 string strMasterNodePrivKey = "";

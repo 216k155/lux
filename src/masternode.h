@@ -104,11 +104,11 @@ public:
         protocolVersion = protocolVersionIn;
     }
 
-    uint256 CalculateScore(int mod=1, int64_t nBlockHeight=0);
+    uint256 CalculateScore(int mod=1, int64_t nBlockHeight = 0);
 
-    void UpdateLastSeen(int64_t override=0)
+    void UpdateLastSeen(int64_t override = 0)
     {
-        if(override == 0){
+        if (override == 0) {
             lastTimeSeen = GetAdjustedTime();
         } else {
             lastTimeSeen = override;
@@ -143,14 +143,14 @@ public:
 
     int GetMasternodeInputAge()
     {
-        if(chainActive.Tip() == NULL) return 0;
+        if (chainActive.Tip() == NULL) return 0;
 
-        if(cacheInputAge == 0){
+        if (cacheInputAge == 0) {
             cacheInputAge = GetInputAge(vin);
             cacheInputAgeBlock = chainActive.Tip()->nHeight;
         }
 
-        return cacheInputAge+(chainActive.Tip()->nHeight-cacheInputAgeBlock);
+        return cacheInputAge + (chainActive.Tip()->nHeight - cacheInputAgeBlock);
     }
 };
 
