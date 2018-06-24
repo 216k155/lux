@@ -1378,9 +1378,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
 
                 if (fReindex) {
+#if 0
                     boost::filesystem::path stateDir = GetDataDir() / "stateLux";
                     StorageResults storageRes(stateDir.string());
                     storageRes.wipeResults();
+#endif
                     pblocktree->WriteReindexing(true);
                     if (fPruneMode)
                         DeleteAllBlockFiles();
@@ -1427,6 +1429,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 globalSealEngine = std::unique_ptr<dev::eth::SealEngineFace>(cp.createSealEngine());
 
                 pstorageresult = new StorageResults(luxStateDir.string());
+
+                if (fReindex && GetBoolArg("-logevents", DEFAULT_LOGEVENTS))
+                    pstorageresult->wipeResults();
 
                 if(chainActive.Tip() != nullptr && chainActive.Tip()->nHeight > Params().FirstSCBlock()){
                     globalState->setRoot(uintToh256(chainActive.Tip()->hashStateRoot));
