@@ -137,6 +137,60 @@ UniValue getblockcount(const UniValue& params, bool fHelp)
     return chainActive.Height();
 }
 
+UniValue mempoolToJSON(bool fVerbose = false)
+{
+    if (fVerbose)
+    {
+        LOCK(mempool.cs);
+        UniValue o(UniValue::VOBJ);
+        BOOST_FOREACH (const CTxMemPoolEntry& e, mempool.mapTx)
+        {
+            const uint256& hash = e.GetTx().GetHash();
+
+            UniValue info(UniValue::VOBJ);
+            info.push_back(Pair("size", (int)e.GetTxSize()));
+            info.push_back(Pair("fee", ValueFromAmount(e.GetFee())));
+            info.push_back(Pair("time", e.GetTime()));
+            info.push_back(Pair("height", (int)e.GetHeight()));
+            info.push_back(Pair("startingpriority", e.GetPriority(e.GetHeight())));
+            info.push_back(Pair("currentpriority", e.GetPriority(chainActive.Height())));
+
+            const CTransaction& tx = e.GetTx();
+            set<string> setDepends;
+            BOOST_FOREACH (CTxIn txin, tx.vin)
+            {
+                if (mempool.exists(txin.prevout.hash))
+                {
+                    setDepends.insert(txin.prevout.hash.ToString());
+                }
+            }
+
+            UniValue depends(UniValue::VARR);
+            BOOST_FOREACH(const string& dep, setDepends)
+            {
+                depends.push_back(dep);
+            }
+
+            info.push_back(Pair("depends", depends));
+            o.push_back(Pair(hash.ToString(), info));
+        }
+        return o;
+    }
+    else
+    {
+        vector<uint256> vtxid;
+        mempool.queryHashes(vtxid);
+
+        UniValue a(UniValue::VARR);
+        BOOST_FOREACH (const uint256& hash, vtxid)
+        {
+            a.push_back(hash.ToString());
+        }
+
+        return a;
+    }
+}
+
 UniValue getbestblockhash(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
