@@ -1,7 +1,24 @@
 # Copyright (c) 2018 The Luxcore developers
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(secp256k1)
+
+# libsecp256k1 use a different set of flags.
+add_compiler_flag(
+		-pedantic
+		-Wshadow
+		-Wno-unused-function
+		-Wno-nonnull
+		-Wno-overlength-strings
+)
+
+add_c_compiler_flag(
+		-std=c89
+		-Wno-long-long
+)
+
+# Default visibility is hidden on all targets.
+set(CMAKE_C_VISIBILITY_PRESET hidden)
 
 include_directories(
 		.
@@ -64,6 +81,30 @@ option(SECP256K1_ENABLE_MODULE_ECDH "Build libsecp256k1's ECDH module" OFF)
 if(SECP256K1_ENABLE_MODULE_ECDH)
 	set(ENABLE_MODULE_ECDH 1)
 endif()
+
+# MultiSet module
+option(SECP256K1_ENABLE_MODULE_MULTISET "Build libsecp256k1's MULTISET module" ON)
+if(SECP256K1_ENABLE_MODULE_MULTISET)
+	set(ENABLE_MODULE_MULTISET 1)
+endif()
+
+
+# Static precomputation for eliptic curve mutliplication
+option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's eliptic curve mutliplication tables" ON)
+if(SECP256K1_ECMULT_STATIC_PRECOMPUTATION)
+	set(USE_ECMULT_STATIC_PRECOMPUTATION 1)
+
+	include(NativeExecutable)
+	add_native_executable(gen_context src/gen_context.c)
+
+	add_custom_command(
+			OUTPUT ecmult_static_context.h
+			COMMAND gen_context
+	)
+
+	target_sources(secp256k1 PRIVATE ecmult_static_context.h)
+endif()
+
 # Generate the config
 configure_file(src/libsecp256k1-config.h.cmake.in src/libsecp256k1-config.h ESCAPE_QUOTES)
 target_compile_definitions(secp256k1 PRIVATE HAVE_CONFIG_H)

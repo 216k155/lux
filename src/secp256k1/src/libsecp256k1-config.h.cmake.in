@@ -1,4 +1,4 @@
-# Copyright (c) 2018 The Luxcore developers
+// Copyright (c) 2018 The Luxcore developers
 
 #ifndef LIBSECP256K1_CONFIG_H
 #define LIBSECP256K1_CONFIG_H

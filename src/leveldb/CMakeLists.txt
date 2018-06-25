@@ -1,11 +1,16 @@
 # Copyright (c) 2018 The Luxcore developers
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 
 project(Leveldb VERSION 0.1.0 LANGUAGES C CXX)
 
 # This project can take advantage of C++11.
 set(CMAKE_CXX_STANDARD 11)
+
+# Remove some warnings for leveldb as they can get noisy.
+add_compiler_flag(-Wno-sign-compare -Wno-implicit-fallthrough)
+add_c_compiler_flag(-Wno-strict-prototypes)
+remove_compiler_flags(-Wstrict-prototypes)
 
 option(LEVELDB_BUILD_TESTS "Build LevelDB's unit tests" OFF)
 

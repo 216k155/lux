@@ -62,7 +62,7 @@ void MilliSleep(int64_t n)
     boost::this_thread::sleep(boost::posix_time::milliseconds(n));
 #else
 //should never get here
-#error missing boost sleep implementation
+//#error missing boost sleep implementation
 #endif
 }
 

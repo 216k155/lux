@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string>
 
+#include <event2/http.h>
 #include "univalue/univalue.h"
 #include "rpcutil.h"
 #include <boost/assign/list_of.hpp>
@@ -35,6 +36,18 @@ using namespace boost::assign;
 
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
+
+static std::string urlDecode(const std::string &urlEncoded) {
+    std::string res;
+    if (!urlEncoded.empty()) {
+        char *decoded = evhttp_uridecode(urlEncoded.c_str(), false, nullptr);
+        if (decoded) {
+            res = std::string(decoded);
+            free(decoded);
+        }
+    }
+    return res;
+}
 
 bool EnsureWalletIsAvailable(bool avoidException)
 {

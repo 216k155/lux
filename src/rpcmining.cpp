@@ -679,9 +679,10 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             case THRESHOLD_FAILED:
                 // Not exposed to GBT at all
                 break;
-            case THRESHOLD_LOCKED_IN:
+            case THRESHOLD_LOCKED_IN: {
                 // Ensure bit is set in block version
                 pblock->nVersion |= VersionBitsMask(consensusParams, pos);
+            }
                 // FALL THROUGH to get vbavailable set...
             case THRESHOLD_STARTED:
             {
