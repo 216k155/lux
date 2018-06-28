@@ -2345,6 +2345,8 @@ ThresholdState VersionBitsTipState(const Consensus::Params& params, Consensus::D
 // Protected by cs_main
 static ThresholdConditionCache warningcache[VERSIONBITS_NUM_BITS];
 
+static int64_t nTimeCheckBlock = 0;
+static int64_t nTimeForkBlock = 0;
 static int64_t nTimeVerify = 0;
 static int64_t nTimeConnect = 0;
 static int64_t nTimeIndex = 0;
@@ -2354,7 +2356,7 @@ static int64_t nTimeTotal = 0;
 bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& view, const CChainParams& chainparams, bool fJustCheck)
 {
     AssertLockHeld(cs_main);
-
+    int64_t nTimeStart = GetTimeMicros();
     ///////////////////////////////////////////////// // lux
 #if 0
     LuxDGP luxDGP(globalState.get(), fGettingValuesDGP);
@@ -2408,6 +2410,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
 
+    int64_t nTime1 = GetTimeMicros(); nTimeCheckBlock += nTime1 - nTimeStart;
+    LogPrint("bench", "    - Fork block checks: %.2fms [%.2fs]\n", 0.001 * (nTime1 - nTimeStart), nTimeCheckBlock * 0.000001);
+
+
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
     // unless those are already completely spent.
     // If such overwrites are allowed, coinbases and transactions depending upon those
@@ -2454,6 +2460,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         flags |= SCRIPT_VERIFY_WITNESS;
     }
 
+    int64_t nTime2 = GetTimeMicros(); nTimeForkBlock += nTime2 - nTime1;
+    LogPrint("bench", "    - Fork block checks: %.2fms [%.2fs]\n", 0.001 * (nTime2 - nTime1), nTimeForkBlock * 0.000001);
+
     CBlockUndo blockundo;
 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
@@ -2462,7 +2471,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::map<dev::Address, std::pair<CHeightTxIndexKey, std::vector<uint256>>> heightIndexes;
     /////////////////////////////////////////////////////////
 
-    int64_t nTimeStart = GetTimeMicros();
     CAmount nFees = 0;
     int nInputs = 0;
     int64_t nSigOpsCost = 0;
@@ -2672,9 +2680,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!pblocktree->WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("%s: WriteBlockIndex failed\n", __func__, pindex->ToString());
 
-    int64_t nTime1 = GetTimeMicros();
-    nTimeConnect += nTime1 - nTimeStart;
-    LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs - 1), nTimeConnect * 0.000001);
+    int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
+    LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime3 - nTime2), 0.001 * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * 0.000001);
+
 
     if (block.IsProofOfWork()) {
         auto nReward = GetProofOfWorkReward(nFees, pindex->nHeight/*pindex->pprev->nHeight*/);
@@ -2699,9 +2707,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!control.Wait())
         return state.DoS(100, false);
 
-    int64_t nTime2 = GetTimeMicros();
-    nTimeVerify += nTime2 - nTimeStart;
-    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs - 1), nTimeVerify * 0.000001);
+    int64_t nTime4 = GetTimeMicros(); nTimeVerify += nTime4 - nTime2;
+    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime4 - nTime2), nInputs <= 1 ? 0 : 0.001 * (nTime4 - nTime2) / (nInputs-1), nTimeVerify * 0.000001);
 
     ////////////////////////////////////////////////////////////////// // lux
     if (pindex->nHeight >= Params().FirstSCBlock()) {
@@ -2809,18 +2816,16 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    int64_t nTime3 = GetTimeMicros();
-    nTimeIndex += nTime3 - nTime2;
-    LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime3 - nTime2), nTimeIndex * 0.000001);
+    int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
+    LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeIndex * 0.000001);
 
     // Watch for changes to the previous coinbase transaction.
     static uint256 hashPrevBestCoinBase;
     GetMainSignals().UpdatedTransaction(hashPrevBestCoinBase);
     hashPrevBestCoinBase = block.vtx[0].GetHash();
 
-    int64_t nTime4 = GetTimeMicros();
-    nTimeCallbacks += nTime4 - nTime3;
-    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime4 - nTime3), nTimeCallbacks * 0.000001);
+    int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
+    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
     return true;
 }
