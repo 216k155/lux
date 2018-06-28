@@ -19,6 +19,11 @@
 #include <boost/lexical_cast.hpp>
 
 /**
+ * Re-activate blockchain with 5.0.1 update
+ */
+static const int64_t ACTIVATE_CHAIN = 1;
+
+/**
  * Maximum amount of time that a block timestamp is allowed to exceed the
  * current network-adjusted time before the block will be accepted.
  */
