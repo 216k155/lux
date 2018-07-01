@@ -489,7 +489,7 @@ UniValue decodescript(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("decodescript", "\"hexstring\"") + HelpExampleRpc("decodescript", "\"hexstring\""));
 
-    LOCK(cs_main);
+    //LOCK(cs_main);
 
     RPCTypeCheck(params, list_of(UniValue::VSTR));
 

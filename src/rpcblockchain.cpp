@@ -199,7 +199,7 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             "\nExamples\n" +
             HelpExampleCli("getrawmempool", "true") + HelpExampleRpc("getrawmempool", "true"));
 
-    LOCK(cs_main);
+    //LOCK(cs_main);
 
     bool fVerbose = false;
     if (params.size() > 0)
@@ -624,7 +624,7 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("gettxoutsetinfo", "") + HelpExampleRpc("gettxoutsetinfo", ""));
 
-    LOCK(cs_main);
+    //LOCK(cs_main);
 
     UniValue ret(UniValue::VOBJ);
 
