@@ -1845,7 +1845,7 @@ bool IsInitialBlockDownload()
         return true;
     // ~144 blocks behind -> 2 x fork detection time
     bool lock = (chainActive.Height() < pindexBestHeader->nHeight - 24 * 6 ||
-        (!IsTestNet() && pindexBestHeader->GetBlockTime() < GetTime() - 8 * 60 * 60));
+        (!IsTestNet() && pindexBestHeader->GetBlockTime() < GetTime() - 6 * 60 * 60));
     return lock;
 }
 
@@ -1882,7 +1882,10 @@ void CheckForkWarningConditions()
                 fLargeWorkForkFound = true;
             }
         } else {
-            LogPrintf("CheckForkWarningConditions: Warning: Found invalid chain at least ~6 blocks longer than our best chain.\nChain state database corruption likely.\n");
+            if(pindexBestInvalid->nHeight > chainActive.Height() + 6)
+                LogPrintf("%s: Warning: Found invalid chain at least ~6 blocks longer than our best chain.\nChain state database corruption likely.\n", __func__);
+            else
+                LogPrintf("%s: Warning: Found invalid chain which has higher work (at least ~6 blocks worth of work) than our best chain.\nChain state database corruption likely.\n", __func__);
             fLargeWorkInvalidChainFound = true;
         }
     } else {
