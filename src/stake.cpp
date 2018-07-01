@@ -929,9 +929,8 @@ bool Stake::GenBlockStake(CWallet* wallet, const CReserveKey& key, unsigned int&
 
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
 
-    bool usePhi2;
-    {
-        LOCK(cs_main);
+    bool usePhi2;{
+        //LOCK(cs_main);
         CBlockIndex* pindexPrev = LookupBlockIndex(block->hashPrevBlock);
         usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
     }
