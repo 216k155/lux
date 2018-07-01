@@ -37,13 +37,13 @@ void UnregisterValidationInterface(CValidationInterface *pwalletIn);
 void UnregisterAllValidationInterfaces();
 
 /** Push an updated transaction to all registered wallets */
-void SyncWithWallets(const CTransaction &tx, const CBlock *pblock);
+void SyncWithWallets(const CTransaction &tx, const CBlockIndex *pindex, int posInBlock = -1);
 
 class CValidationInterface {
 protected:
     virtual void UpdatedBlockTip(const CBlockIndex *pindex) {}
 
-    virtual void SyncTransaction(const CTransaction &tx, const CBlock *pblock) {}
+    virtual void SyncTransaction(const CTransaction &tx,  int posInBlock) {}
 
     virtual void NotifyTransactionLock(const CTransaction &tx) {}
 
@@ -73,7 +73,7 @@ struct CMainSignals {
     /** Notifies listeners of updated block chain tip */
     boost::signals2::signal<void(const CBlockIndex *)> UpdatedBlockTip;
     /** Notifies listeners of updated transaction data (transaction, and optionally the block it is found in. */
-    boost::signals2::signal<void(const CTransaction &, const CBlock *)> SyncTransaction;
+    boost::signals2::signal<void(const CTransaction &, int posInBlock)> SyncTransaction;
     /** Notifies listeners of an updated transaction lock without new data. */
     boost::signals2::signal<void(const CTransaction &)> NotifyTransactionLock;
     /** Notifies listeners of an updated transaction without new data (for now: a coinbase potentially becoming visible). */
