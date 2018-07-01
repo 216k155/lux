@@ -1197,14 +1197,12 @@ bool CWalletTx::RelayWalletTransaction(std::string strCommand) {
                 mapTxLockReq.insert(make_pair(hash, (CTransaction) *this));
                 CreateNewLock(((CTransaction) *this));
                 RelayTransactionLockReq((CTransaction) *this, true);
-            } else {
-                RelayTransaction((CTransaction) *this);
-                }
+            } else { RelayTransaction((CTransaction) *this); }
 #endif
         }
     }
     return false;
-        }
+}
 
 set<uint256> CWalletTx::GetConflicts() const
 {
