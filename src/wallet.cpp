@@ -39,6 +39,8 @@
 
 using namespace std;
 
+const uint256 CMerkleTx::ABANDON_HASH(uint256S("0000000000000000000000000000000000000000000000000000000000000001"));
+
 /**
  * Settings
  */
@@ -989,7 +991,7 @@ int CWalletTx::GetRequestCount() const
     int nRequests = -1;
     {
         LOCK(pwallet->cs_wallet);
-        if (IsCoinBase()) {
+        if (IsCoinBase() || IsCoinStake()) {
             // Generated block
             if (hashBlock != 0) {
                 map<uint256, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
@@ -1157,7 +1159,7 @@ void CWallet::ReacceptWalletTransactions()
 
         int nDepth = wtx.GetDepthInMainChain();
 
-        if (!wtx.IsCoinBase() && nDepth < 0 && !wtx.IsCoinStake()) {
+        if (!(wtx.IsCoinBase() || wtx.IsCoinStake()) && nDepth < 0) {
             mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
         }
     }
@@ -1182,23 +1184,27 @@ bool CWalletTx::InMempool() const
     return false;
 }
 
-void CWalletTx::RelayWalletTransaction(std::string strCommand)
-{
-    if (!IsCoinBase()) {
-        if (GetDepthInMainChain() == 0) {
-            uint256 hash = GetHash();
-            LogPrintf("%s: wtx %s (command=%s)\n", __func__, hash.ToString(), strCommand);
-
+bool CWalletTx::RelayWalletTransaction(std::string strCommand) {
+    if ((!(IsCoinBase() || IsCoinStake())) && (!isAbandoned() && GetDepthInMainChain() == 0)) {
+        CValidationState state;
+        if (InMempool() || AcceptToMemoryPool(false)) {
+            LogPrintf("Relaying wtx %s\n", GetHash().ToString());
+            RelayTransaction((CTransaction) *this);
+            return true;
+#if 0
             if (strCommand == "ix") {
-                mapTxLockReq.insert(make_pair(hash, (CTransaction) * this));
-                CreateNewLock(((CTransaction) * this));
-                RelayTransactionLockReq((CTransaction) * this, true);
+                uint256 hash = GetHash();
+                mapTxLockReq.insert(make_pair(hash, (CTransaction) *this));
+                CreateNewLock(((CTransaction) *this));
+                RelayTransactionLockReq((CTransaction) *this, true);
             } else {
-                RelayTransaction((CTransaction) * this);
-            }
+                RelayTransaction((CTransaction) *this);
+                }
+#endif
         }
     }
-}
+    return false;
+        }
 
 set<uint256> CWalletTx::GetConflicts() const
 {

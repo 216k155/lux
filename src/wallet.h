@@ -182,7 +182,7 @@ class CMerkleTx : public CTransaction
 {
 private:
     int GetDepthInMainChainINTERNAL(const CBlockIndex*& pindexRet) const;
-
+    static const uint256 ABANDON_HASH;
 public:
     uint256 hashBlock;
     std::vector<uint256> vMerkleBranch;
@@ -231,16 +231,9 @@ public:
      * >=1 : this many blocks deep in the main chain
      */
     int GetDepthInMainChain(const CBlockIndex*& pindexRet, bool enableIX = true) const;
-    int GetDepthInMainChain(bool enableIX = true) const
-    {
-        const CBlockIndex* pindexRet;
-        return GetDepthInMainChain(pindexRet, enableIX);
-    }
-    bool IsInMainChain() const
-    {
-        const CBlockIndex* pindexRet;
-        return GetDepthInMainChainINTERNAL(pindexRet) > 0;
-    }
+    int GetDepthInMainChain(bool enableIX = true) const { const CBlockIndex* pindexRet; return GetDepthInMainChain(pindexRet, enableIX); }
+    bool IsInMainChain() const { const CBlockIndex* pindexRet; return GetDepthInMainChainINTERNAL(pindexRet) > 0; }
+    bool isAbandoned() const { return (hashBlock == ABANDON_HASH); }
     int GetBlocksToMaturity() const;
     bool AcceptToMemoryPool(bool fLimitFree = true, bool fRejectInsaneFee = true, bool ignoreFees = false);
     int GetTransactionLockSignatures() const;
@@ -1286,7 +1279,7 @@ public:
     int64_t GetTxTime() const;
     int GetRequestCount() const;
 
-    void RelayWalletTransaction(std::string strCommand = "tx");
+    bool RelayWalletTransaction(std::string strCommand = "tx");
 
     std::set<uint256> GetConflicts() const;
 };
