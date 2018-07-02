@@ -714,7 +714,6 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
 
 bool IsFinalTx(const CTransaction& tx, int nBlockHeight, int64_t nBlockTime)
 {
-    AssertLockHeld(cs_main);
     // Time based nLockTime implemented in 0.1.6
     if (tx.nLockTime == 0)
         return true;
@@ -1302,7 +1301,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
 
 bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransaction& tx, bool fLimitFree, bool* pfMissingInputs, bool fRejectInsaneFee, bool isDSTX)
 {
-    AssertLockHeld(cs_main);
+    //AssertLockHeld(cs_main);
     if (pfMissingInputs)
         *pfMissingInputs = false;
 
@@ -1607,7 +1606,7 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, const Consensus::P
 {
     CBlockIndex* pindexSlow = NULL;
 
-    LOCK(cs_main);
+    //LOCK(cs_main);
 
     CTransactionRef ptx = mempool.get(hash);
     if (ptx)
@@ -1840,7 +1839,7 @@ CAmount GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCou
 bool IsInitialBlockDownload()
 {
     const CChainParams& chainParams = Params();
-    LOCK(cs_main);
+    //LOCK(cs_main);
     if (fImporting || fReindex || chainActive.Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
         return true;
     // ~144 blocks behind -> 2 x fork detection time
@@ -4442,7 +4441,7 @@ bool IsWitnessLocked(const CBlockIndex* pindexPrev){
 
 bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams, const CBlock& block, CBlockIndex* const pindexPrev, bool fCheckPOW, bool fCheckMerkleRoot)
 {
-    AssertLockHeld(cs_main);
+    //AssertLockHeld(cs_main);
     assert(pindexPrev == chainActive.Tip());
 
     CCoinsViewCache viewNew(pcoinsTip);
@@ -6628,9 +6627,9 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             }
         }
 
-        TRY_LOCK(cs_main, lockMain); // Acquire cs_main for IsInitialBlockDownload() and CNodeState()
-        if (!lockMain)
-            return true;
+        //TRY_LOCK(cs_main, lockMain); // Acquire cs_main for IsInitialBlockDownload() and CNodeState()
+        //if (!lockMain)
+        //    return true;
 
         // Address refresh broadcast
         static int64_t nLastRebroadcast;
