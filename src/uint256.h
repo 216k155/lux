@@ -20,7 +20,6 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/FixedHash.h>
 ////////////////////////////////////////
-
 class uint_error : public std::runtime_error
 {
 public:
@@ -360,7 +359,11 @@ public:
     uint32_t GetCompact(bool fNegative = false) const;
     uint64_t GetHash(const uint256& salt) const;
 
+    friend uint256 UintToArith256(const uint256 &);
+
 };
+
+    uint256 UintToArith256(const uint256 &);
 
 /* uint256 from const char *.
  * This is a separate function because the constructor uint256(const char*) can result
@@ -372,6 +375,7 @@ inline uint256 uint256S(const char* str)
     rv.SetHex(str);
     return rv;
 }
+
 /* uint256 from std::string.
  * This is a separate function because the constructor uint256(const std::string &str) can result
  * in dangerously catching uint256(0) via std::string(const char*).

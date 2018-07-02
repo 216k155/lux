@@ -380,6 +380,7 @@ public:
      * and going backwards.
      */
     static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned int nRequired, const Consensus::Params&);
+    static void CheckBlockIndex(const Consensus::Params& consensusParams);
 
     std::string ToString() const
     {

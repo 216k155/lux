@@ -36,6 +36,7 @@
 #include "txmempool.h"
 #include "ui_interface.h"
 #include "util.h"
+#include "uint256.h"
 #include "utilmoneystr.h"
 #include "validationinterface.h"
 #include "versionbits.h"
@@ -89,7 +90,7 @@ std::shared_ptr<dev::eth::SealEngineFace> globalSealEngine;
 bool fRecordLogOpcodes = false;
 bool fIsVMlogFile = false;
 bool fGettingValuesDGP = false;
-
+int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 
 /** The maximum allowed size for a serialized block, in bytes (only for buffer size limits) */
 unsigned int dgpMaxBlockSerSize = 8000000;
@@ -139,6 +140,8 @@ bool fCheckBlockIndex = false;
 unsigned int nCoinCacheSize = 5000;
 unsigned int nBytesPerSigOp = DEFAULT_BYTES_PER_SIGOP;
 bool fAlerts = DEFAULT_ALERTS;
+
+bool fCheckpointsEnabled = true;
 
 bool fHavePruned = false;
 bool fPruneMode = false;
@@ -1840,13 +1843,22 @@ CAmount GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCou
 bool IsInitialBlockDownload()
 {
     const CChainParams& chainParams = Params();
+    // This must remain false.
+    static std::atomic<bool> latchToFalse{false};
+    if (latchToFalse.load(std::memory_order_relaxed))
+        return false;
     LOCK(cs_main);
-    if (fImporting || fReindex || chainActive.Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
+    if (chainActive.Tip() == NULL)
         return true;
-    // ~144 blocks behind -> 2 x fork detection time
-    bool lock = (chainActive.Height() < pindexBestHeader->nHeight - 24 * 6 ||
-        (!IsTestNet() && pindexBestHeader->GetBlockTime() < GetTime() - 8 * 60 * 60));
-    return lock;
+    if (chainActive.Tip()->nChainWork < UintToArith256(Params().ChainWorkLimit()))
+        return true;
+    if (fCheckpointsEnabled && chainActive.Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
+        return true;
+    bool state = (chainActive.Height() < pindexBestHeader->nHeight - 24 * 6 ||
+                  std::max(chainActive.Tip()->GetBlockTime(), pindexBestHeader->GetBlockTime()) < GetTime() - nMaxTipAge);
+    if (!state)
+        latchToFalse.store(true, std::memory_order_relaxed);
+    return state;
 }
 
 bool fLargeWorkForkFound = false;
@@ -2402,7 +2414,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return state.DoS(100, error("%s: PoW period ended", __func__),
             REJECT_INVALID, "PoW-ended");
 
-    bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
+    bool fScriptChecks = (!fCheckpointsEnabled || pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints()));
 
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
     // unless those are already completely spent.
@@ -3381,6 +3393,7 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
  */
 bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams, const CBlock* pblock)
 {
+    const CChainParams& chainParams = Params();
     CBlockIndex* pindexNewTip = NULL;
     CBlockIndex* pindexMostWork = NULL;
     do {
@@ -3417,7 +3430,10 @@ bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams,
         if (!fInitialDownload) {
             uint256 hashNewTip = pindexNewTip->GetBlockHash();
             // Relay inventory, but don't relay old inventory during initial block download.
-            int nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
+            int nBlockEstimate = 0;
+            if (fCheckpointsEnabled)
+                nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints());
+
             if (nLocalServices & NODE_NETWORK) {
                 LOCK(cs_vNodes);
                 BOOST_FOREACH (CNode* pnode, vNodes)
@@ -4040,15 +4056,17 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 //            REJECT_INVALID, "time-too-old");
 //    }
 
-    // Check that the block chain matches the known block chain up to a checkpoint
-    if (!Checkpoints::CheckBlock(chainParams.Checkpoints(), nHeight, hash))
-        return state.DoS(100, error("%s : rejected by checkpoint lock-in at %d", __func__, nHeight),
-            REJECT_CHECKPOINT, "checkpoint mismatch");
+    if(fCheckpointsEnabled) {
+        // Check the block chain matched the known block chain up to a checkpoint
+        if (!Checkpoints::CheckBlock(chainParams.Checkpoints(), nHeight, hash))
+            return state.DoS(100, error("%s: rejected by checkpoint lock-in at %d", __func__, nHeight),
+                             REJECT_CHECKPOINT, "checkpoint mismatch");
 
-    // Don't accept any forks from the main chain prior to last checkpoint
-    CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(chainParams.Checkpoints());
-    if (pcheckpoint && nHeight < pcheckpoint->nHeight)
-        return state.DoS(0, error("%s : forked chain older than last checkpoint (height %d)", __func__, nHeight));
+        // Don't accept any forks from the main chain prior to last checkpoint
+        CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(chainParams.Checkpoints());
+        if (pcheckpoint && nHeight < pcheckpoint->nHeight)
+            return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight));
+    }
 
 //    // Reject block.nVersion=1 blocks when 95% (75% on testnet) of the network has upgraded:
 //    if (block.nVersion < 2 &&

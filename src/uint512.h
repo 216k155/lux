@@ -1,7 +1,5 @@
 // -*- c++ -*-
 #pragma once
-#include "arith_uint256.h"
-#include "uint256.h"
 
 /** 512-bit unsigned big integer. */
 class uint512 : public base_blob<512>

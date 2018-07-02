@@ -55,6 +55,7 @@ namespace Consensus {
         int64_t nPowTargetTimespan;
         uint256 powLimit;
         uint256 hashGenesisBlock;
+        uint256 nMinChainWork;
     };
 } // namespace Consensus
 

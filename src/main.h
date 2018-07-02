@@ -137,6 +137,8 @@ static const unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
 /** Bloomfilter setting. */
 static const bool DEFAULT_PEERBLOOMFILTERS = true;
 
+static const int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
+
 static const unsigned int DEFAULT_BYTES_PER_SIGOP = 20;
 
 static const int64_t STATIC_POS_REWARD = 1 * COIN; //Constant reward 8%
@@ -209,7 +211,8 @@ extern bool fCheckBlockIndex;
 extern unsigned int nCoinCacheSize;
 extern CFeeRate minRelayTxFee;
 extern bool fAlerts;
-
+extern bool fCheckpointsEnabled;
+extern int64_t nMaxTipAge;
 extern bool fLargeWorkForkFound;
 extern bool fLargeWorkInvalidChainFound;
 

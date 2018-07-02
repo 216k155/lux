@@ -148,6 +148,8 @@ public:
         consensus.nRuleChangeActivationThreshold = 1026; // 95% of 1080 is 1026
         consensus.nMinerConfirmationWindow = 1080; // nPowTargetTimespan / nPowTargetSpacing
         consensus.nLastPOWBlock = 6000000;
+        // The best chain should have at least this much work at "height": 303112 - "difficulty": 2760.90986756972
+        consensus.nMinChainWork = uint256S("0x0000000000000000000000000000000000000000000000011b3998941edf7946");
         // Deployment of SegWit (BIP141 and BIP143)
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1530428034; // 01/07/2018
@@ -281,6 +283,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 2577836900; // Never / undefined
         consensus.nLastPOWBlock = 6000000;
 
+        // The best chain should have at least this much work.
+        //consensus.nMinChainWork = uint256S("0x0000000000000000000000000000000000000000000000011b3998941edf7946");
+
         networkID = CBaseChainParams::TESTNET;
         strNetworkID = "test";
         pchMessageStart[0] = 0x54;
@@ -411,6 +416,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 999999999999ULL;
         consensus.powLimit = ~uint256(0) >> 1;
 
+        // The best chain should have at least this much work.
+        //consensus.nMinChainWork = uint256S("0x0000000000000000000000000000000000000000000000011b3998941edf7946");
+
         pchMessageStart[0] = 0xa1;
         pchMessageStart[1] = 0xcf;
         pchMessageStart[2] = 0x7e;
@@ -505,6 +513,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 999999999999ULL;
         consensus.nLastPOWBlock = 6000000;
+
+        // The best chain should have at least this much work.
+        //consensus.nMinChainWork = uint256S("0x0000000000000000000000000000000000000000000000011b3998941edf7946");
 
         nSwitchPhi2Block = 1200;
         //nFirstSCBlock = 300000;

@@ -27,12 +27,12 @@ namespace Checkpoints
      */
 static const double SIGCHECK_VERIFICATION_FACTOR = 5.0;
 
-bool fEnabled = true;
+//bool fEnabled = true;
 
 bool CheckBlock(const CCheckpointData& data, int nHeight, const uint256& hash)
 {
-    if (!fEnabled)
-        return true;
+//  if (!fEnabled)
+//     return true;
 
     const MapCheckpoints& checkpoints = *data.mapCheckpoints;
 
@@ -76,18 +76,18 @@ double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pinde
 
 int GetTotalBlocksEstimate(const CCheckpointData& data)
 {
-    if (!fEnabled)
-        return 0;
-
     const MapCheckpoints& checkpoints = *data.mapCheckpoints;
+
+    if (checkpoints.empty())
+        return 0;
 
     return checkpoints.rbegin()->first;
 }
 
 CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
 {
-    if (!fEnabled)
-        return NULL;
+//  if (!fEnabled)
+//      return NULL;
 
     const MapCheckpoints& checkpoints = *data.mapCheckpoints;
 

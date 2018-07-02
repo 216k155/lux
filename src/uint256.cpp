@@ -5,7 +5,10 @@
 
 #include "uint256.h"
 
+#include "crypto/common.h"
+//#include "uint512.h"
 #include "utilstrencodings.h"
+
 
 #include <stdio.h>
 #include <string.h>
@@ -374,3 +377,9 @@ uint64_t uint256::GetHash(const uint256& salt) const
     return ((((uint64_t)b) << 32) | c);
 }
 
+uint256 UintToArith256(const uint256 &a) {
+    uint256 b;
+    for(int x=0; x<b.WIDTH; ++x)
+        b.pn[x] = ReadLE32(a.begin() + x*4);
+    return b;
+}

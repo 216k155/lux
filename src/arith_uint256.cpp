@@ -7,7 +7,7 @@
 
 #include "crypto/common.h"
 #include "uint256.h"
-#include "uint512.h"
+//#include "uint512.h"
 #include "utilstrencodings.h"
 
 #include <stdio.h>

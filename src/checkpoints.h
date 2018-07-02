@@ -43,7 +43,7 @@ double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex* pinde
 //! Check against automatically selected checkpoint
     bool CheckSync(int nHeight);
 
-extern bool fEnabled;
+//extern bool fEnabled;
 
 } //namespace Checkpoints
 
