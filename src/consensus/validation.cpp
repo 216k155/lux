@@ -173,7 +173,7 @@ bool TestLockPointValidity(const LockPoints* lp)
 
 bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp, bool useExistingLockPoints)
 {
-    AssertLockHeld(cs_main);
+    //AssertLockHeld(cs_main);
     AssertLockHeld(mempool.cs);
 
     CBlockIndex* tip = chainActive.Tip();
