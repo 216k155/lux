@@ -52,7 +52,7 @@ SendTokenPage::SendTokenPage(QWidget *parent) :
     ui->lineEditGasLimit->setValue(DEFAULT_GAS_LIMIT_OP_SEND);
     ui->confirmButton->setEnabled(false);
 
-    // Connect signals with slots
+    // Connect signals with Q_SLOTS
     connect(ui->lineEditPayTo, SIGNAL(textChanged(QString)), SLOT(on_updateConfirmButton()));
     connect(ui->lineEditAmount, SIGNAL(textChanged(QString)), SLOT(on_updateConfirmButton()));
     connect(ui->confirmButton, SIGNAL(clicked()), SLOT(on_confirmClicked()));

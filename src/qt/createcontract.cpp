@@ -81,7 +81,7 @@ CreateContract::CreateContract(QWidget *parent) :
     m_execRPCCommand = new ExecRPCCommand(PRC_COMMAND, lstMandatory, lstOptional, lstTranslations, this);
     m_contractABI = new ContractABI();
 
-    // Connect signals with slots
+    // Connect signals with Q_SLOTS
     connect(ui->pushButtonClearAll, SIGNAL(clicked()), SLOT(on_clearAllClicked()));
     connect(ui->pushButtonCreateContract, SIGNAL(clicked()), SLOT(on_createContractClicked()));
     connect(ui->textEditBytecode, SIGNAL(textChanged()), SLOT(on_updateCreateButton()));

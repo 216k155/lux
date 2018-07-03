@@ -84,7 +84,7 @@ private:
     QLabel* transactionSum;
     //const PlatformStyle *platformStyle;
 
-public slots:
+public Q_SLOTS:
     /** Switch to overview (home) page */
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
@@ -144,7 +144,7 @@ public slots:
     /** Show used receiving addresses */
     void usedReceivingAddresses();
 
-    /** Re-emit encryption status signal */
+    /** Re-Q_EMIT encryption status signal */
     void updateEncryptionStatus();
 
     /** Show progress dialog e.g. for rescan */

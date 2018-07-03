@@ -246,7 +246,7 @@ OverviewPage::OverviewPage(QWidget* parent) : QWidget(parent),
 void OverviewPage::handleTransactionClicked(const QModelIndex& index)
 {
     if (filter)
-        emit transactionClicked(filter->mapToSource(index));
+        Q_EMIT transactionClicked(filter->mapToSource(index));
 }
 
 OverviewPage::~OverviewPage()
@@ -518,6 +518,7 @@ void OverviewPage::updateDarksendProgress()
 
 void OverviewPage::darksendStatus()
 {
+#if 0
     static int64_t nLastDSProgressBlockTime = 0;
 
     int nBestHeight = chainActive.Tip()->nHeight;
@@ -565,6 +566,7 @@ void OverviewPage::darksendStatus()
         QString s2(out.c_str());
         ui->labelSubmittedDenom->setText(s2);
     }
+#endif
 
 }
 

@@ -69,7 +69,7 @@ private:
     AmountSpinBox* amount;
     QValueComboBox* unit;
 
-private slots:
+private Q_SLOTS:
     void unitChanged(int idx);
 };
 

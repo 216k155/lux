@@ -93,7 +93,7 @@ protected:
 	unsigned m_failedAttempts = 0;
 	DisconnectReason m_lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
 
-	/// Used by isOffline() and (todo) for peer to emit session information.
+	/// Used by isOffline() and (todo) for peer to Q_EMIT session information.
 	std::weak_ptr<Session> m_session;
 };
 using Peers = std::vector<Peer>;

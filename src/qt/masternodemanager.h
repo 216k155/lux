@@ -35,7 +35,7 @@ public:
     void setWalletModel(WalletModel *walletModel);
     void updateListConc();
 
-public slots:
+public Q_SLOTS:
     void updateNodeList();
     void updateLuxNode(QString alias, QString addr, QString privkey, QString collateral);
     
@@ -53,7 +53,7 @@ private:
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
    
-private slots:
+private Q_SLOTS:
     void on_copyAddressButton_clicked();
     void on_createButton_clicked();
     void on_editButton_clicked();

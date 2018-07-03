@@ -38,7 +38,7 @@ public:
     void showOutOfSyncWarning(bool fShow);
     void updateDarksendProgress();
 
-public slots:
+public Q_SLOTS:
     void darksendStatus();
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& anonymizedBalance, const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
 
@@ -64,7 +64,7 @@ private:
     TknViewDelegate *tkndelegate;
     TransactionFilterProxy* filter;
 
-private slots:
+private Q_SLOTS:
     void toggleDarksend();
     void darksendAuto();
     void darksendReset();

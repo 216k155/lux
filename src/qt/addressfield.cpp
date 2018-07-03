@@ -27,7 +27,7 @@ AddressField::AddressField(QWidget *parent) :
     // Set editable state
     setComboBoxEditable(false);
 
-    // Connect signals and slots
+    // Connect signals and Q_SLOTS
     connect(this, SIGNAL(addressTypeChanged(AddressType)), SLOT(on_addressTypeChanged()));
 }
 

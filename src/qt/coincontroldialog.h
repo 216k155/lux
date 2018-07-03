@@ -101,7 +101,7 @@ private:
         return column;
     }
 
-private slots:
+private Q_SLOTS:
     void showMenu(const QPoint&);
     void copyAmount();
     void copyLabel();
@@ -126,7 +126,7 @@ private slots:
     void buttonToggleLockClicked();
     void updateLabelLocked();
 
-public slots:
+public Q_SLOTS:
     void updateInfoInDialog();
 };
 

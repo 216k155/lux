@@ -367,27 +367,27 @@ bool OptionsModel::setData(const QModelIndex& index, const QVariant& value, int 
         case DarksendRounds:
             nDarksendRounds = value.toInt();
             settings.setValue("nDarksendRounds", nDarksendRounds);
-            emit darksendRoundsChanged(nDarksendRounds);
+            Q_EMIT darksendRoundsChanged(nDarksendRounds);
             break;
         case AnonymizeLuxAmount:
             nAnonymizeLuxAmount = value.toInt();
             settings.setValue("nAnonymizeLuxAmount", nAnonymizeLuxAmount);
-            emit anonymizeLuxAmountChanged(nAnonymizeLuxAmount);
+            Q_EMIT anonymizeLuxAmountChanged(nAnonymizeLuxAmount);
             break;
         case CoinControlFeatures:
             fCoinControlFeatures = value.toBool();
             settings.setValue("fCoinControlFeatures", fCoinControlFeatures);
-            emit coinControlFeaturesChanged(fCoinControlFeatures);
+            Q_EMIT coinControlFeaturesChanged(fCoinControlFeatures);
             break;
         case showMasternodesTab:
             fshowMasternodesTab = value.toBool();
             settings.setValue("fshowMasternodesTab", fshowMasternodesTab);
-            emit showMasternodesTabChanged(fshowMasternodesTab);
+            Q_EMIT showMasternodesTabChanged(fshowMasternodesTab);
              break;
          case parallelMasterNode:
              fparallelMasterNode = value.toBool();
              settings.setValue("fparallelMasterNode", fparallelMasterNode);
-             emit parallelMasterNodeChanged(fparallelMasterNode);
+             Q_EMIT parallelMasterNodeChanged(fparallelMasterNode);
              break;
 
         case DatabaseCache:
@@ -425,7 +425,7 @@ bool OptionsModel::setData(const QModelIndex& index, const QVariant& value, int 
         }
     }
 
-    emit dataChanged(index, index);
+    Q_EMIT dataChanged(index, index);
 
     return successful;
 }
@@ -437,7 +437,7 @@ void OptionsModel::setDisplayUnit(const QVariant& value)
         QSettings settings;
         nDisplayUnit = value.toInt();
         settings.setValue("nDisplayUnit", nDisplayUnit);
-        emit displayUnitChanged(nDisplayUnit);
+        Q_EMIT displayUnitChanged(nDisplayUnit);
     }
 }
 

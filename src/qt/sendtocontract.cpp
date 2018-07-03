@@ -99,7 +99,7 @@ SendToContract::SendToContract(QWidget *parent) :
     m_execRPCCommand = new ExecRPCCommand(PRC_COMMAND, lstMandatory, lstOptional, lstTranslations, this);
     m_contractABI = new ContractABI();
 
-    // Connect signals with slots
+    // Connect signals with Q_SLOTS
     connect(ui->pushButtonClearAll, SIGNAL(clicked()), SLOT(on_clearAllClicked()));
     connect(ui->pushButtonSendToContract, SIGNAL(clicked()), SLOT(on_sendToContractClicked()));
     connect(ui->lineEditContractAddress, SIGNAL(textChanged(QString)), SLOT(on_updateSendToContractButton()));

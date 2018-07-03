@@ -30,7 +30,7 @@ signals:
 private:
     int role;
 
-private slots:
+private Q_SLOTS:
     void handleSelectionChanged(int idx);
 };
 

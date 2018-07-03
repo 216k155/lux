@@ -87,7 +87,7 @@ class RPCExecutor : public QObject
 {
     Q_OBJECT
 
-public slots:
+public Q_SLOTS:
     void request(const QString& command);
 
 signals:
@@ -430,7 +430,7 @@ RPCConsole::RPCConsole(QWidget* parent) : QDialog(parent),
 RPCConsole::~RPCConsole()
 {
     GUIUtil::saveWindowGeometry("nRPCConsoleWindow", this);
-    emit stopExecutor();
+    Q_EMIT stopExecutor();
     delete ui;
 }
 
@@ -463,7 +463,7 @@ bool RPCConsole::eventFilter(QObject* obj, QEvent* event)
             break;
         default:
             // Typing in messages widget brings focus to line edit, and redirects key there
-            // Exclude most combinations and keys that emit no text, except paste shortcuts
+            // Exclude most combinations and keys that Q_EMIT no text, except paste shortcuts
             if (obj == ui->messagesWidget && ((!mod && !keyevt->text().isEmpty() && key != Qt::Key_Tab) ||
                                                  ((mod & Qt::ControlModifier) && key == Qt::Key_V) ||
                                                  ((mod & Qt::ShiftModifier) && key == Qt::Key_Insert))) {
@@ -642,7 +642,7 @@ void RPCConsole::buildParameterlist(QString arg)
     args.append(arg);
 
     // Send command-line arguments to BitcoinGUI::handleRestart()
-    emit handleRestart(args);
+    Q_EMIT handleRestart(args);
 }
 
 void RPCConsole::clear()

@@ -302,7 +302,7 @@ signals:
 
     void AddTokenTxEntry(bool fHaveWatchonly);
 
-public slots:
+public Q_SLOTS:
     /* Wallet status might have changed */
     void updateStatus();
     /* New transaction, or transaction changed status */
@@ -311,7 +311,7 @@ public slots:
     void updateAddressBook(const QString& address, const QString& label, bool isMine, const QString& purpose, int status);
     /* Watch-only added */
     void updateWatchOnlyFlag(bool fHaveWatchonly);
-    /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
+    /* Current, immature or unconfirmed balance might have changed - Q_EMIT 'balanceChanged' if so */
     void pollBalanceChanged();
     /* New, updated or removed contract book entry */
     void updateContractBook(const QString &address, const QString &label, const QString &abi, int status);

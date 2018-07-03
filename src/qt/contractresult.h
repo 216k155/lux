@@ -28,7 +28,7 @@ public:
     void setModel(WalletModel *model) { walletModel = model; };
     void setABIText(const QString& abi) { abiText = abi; };
 
-public slots:
+public Q_SLOTS:
     void on_toContractBookStateChanged();
     void on_okButtonClicked();
 
