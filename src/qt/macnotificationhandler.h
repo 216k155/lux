@@ -16,15 +16,14 @@ class MacNotificationHandler : public QObject
 public:
     /** shows a 10.8+ UserNotification in the UserNotificationCenter
      */
-    void showNotification(const QString& title, const QString& text);
+    void showNotification(const QString &title, const QString &text);
 
     /** executes AppleScript */
-    void sendAppleScript(const QString& script);
+    void sendAppleScript(const QString &script);
 
     /** check if OS can handle UserNotifications */
     bool hasUserNotificationCenterSupport(void);
-    static MacNotificationHandler* instance();
+    static MacNotificationHandler *instance();
 };
-
 
 #endif // BITCOIN_QT_MACNOTIFICATIONHANDLER_H
