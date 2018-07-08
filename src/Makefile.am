@@ -602,6 +602,7 @@ libbitcoin_util_a_SOURCES = \
   clientversion.cpp \
   random.cpp \
   rpcprotocol.cpp \
+  support/cleanse.cpp \
   rpcutil.cpp \
   sync.cpp \
   uint256.cpp \
