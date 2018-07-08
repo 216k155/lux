@@ -117,45 +117,49 @@ struct CompactTallyItem {
 };
 
 /** A key pool entry */
-class CKeyPool
-{
+class CKeyPool {
 public:
     int64_t nTime;
     CPubKey vchPubKey;
+    bool fInternal; // for change outputs
 
     CKeyPool();
-    CKeyPool(const CPubKey& vchPubKeyIn);
+
+    CKeyPool(const CPubKey &vchPubKeyIn, bool internalIn);
 
     ADD_SERIALIZE_METHODS;
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
-    {
+    template<typename Stream, typename Operation>
+    inline void SerializationOp(Stream &s, Operation ser_action, int nType, int nVersion) {
         if (!(nType & SER_GETHASH))
             READWRITE(nVersion);
         READWRITE(nTime);
         READWRITE(vchPubKey);
+        if (ser_action.ForRead()) { try { READWRITE(fInternal); }
+            catch (std::ios_base::failure &) {
+                /* flag as external address if we can't read the internal boolean */
+                fInternal = false;
+            }
+        } else { READWRITE(fInternal); }
     }
 };
 
 /** Address book data */
-class CAddressBookData
-{
+class CAddressBookData {
 public:
     std::string name;
     std::string purpose;
 
     CAddressBookData() : purpose("unknown") {}
 
-    typedef std::map<std::string, std::string> StringMap;
+    typedef std::map <std::string, std::string> StringMap;
     StringMap destdata;
 };
 
-typedef std::map<std::string, std::string> mapValue_t;
+typedef std::map <std::string, std::string> mapValue_t;
 
 
-static void ReadOrderPos(int64_t& nOrderPos, mapValue_t& mapValue)
-{
+static void ReadOrderPos(int64_t &nOrderPos, mapValue_t &mapValue) {
     if (!mapValue.count("n")) {
         nOrderPos = -1; // TODO: calculate elsewhere
         return;
@@ -439,8 +443,7 @@ public:
      * keystore implementation
      * Generate a new key
      */
-    CPubKey GenerateNewKey();
-
+    CPubKey GenerateNewKey(bool internal = false);
     //! Adds a key to the store, and saves it to disk.
     bool AddKeyPubKey(const CKey& key, const CPubKey& pubkey);
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
@@ -560,11 +563,12 @@ public:
     static CAmount GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool);
 
     bool NewKeyPool();
+    size_t KeypoolCountExternalKeys();
     bool TopUpKeyPool(unsigned int kpSize = 0);
-    void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool);
+    void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool internal);
     void KeepKey(int64_t nIndex);
     void ReturnKey(int64_t nIndex);
-    bool GetKeyFromPool(CPubKey& key);
+    bool GetKeyFromPool(CPubKey &key, bool internal = false);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
@@ -772,7 +776,7 @@ public:
     }
 
     void ReturnKey();
-    bool GetReservedKey(CPubKey& pubkey);
+    bool GetReservedKey(CPubKey &pubkey, bool internal = false);
     void KeepKey();
 };
 
@@ -1070,7 +1074,7 @@ public:
                 const CTxOut& txout = vout[i];
                 nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
                 if (!MoneyRange(nCredit))
-                    throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
+                    throw std::runtime_error(std::string(__func__) + " : value out of range");
             }
         }
 
