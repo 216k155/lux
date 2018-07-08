@@ -257,6 +257,8 @@ public:
 */
 class CWallet : public CCryptoKeyStore, public CValidationInterface
 {
+    std::atomic<bool> fAbortRescan{false};
+
     static std::atomic<bool> fFlushScheduled;
     CWalletDB* pwalletdbEncryption;
 
@@ -438,6 +440,12 @@ public:
     void UnlockAllCoins();
     void ListLockedCoins(std::vector<COutPoint>& vOutpts);
     int64_t GetTotalValue(std::vector<CTxIn> vCoins);
+
+     /*
+     * Rescan abort properties
+     */
+    void AbortRescan() { fAbortRescan = true; }
+    bool IsAbortingRescan() { return fAbortRescan; }
 
     /**
      * keystore implementation
