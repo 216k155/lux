@@ -1044,6 +1044,8 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived, list<COutputEntry>&
         //   2) the output is to us (received)
         if (nDebit > 0) {
             // Don't report 'change' txouts
+            //if (pwallet->IsChange(txout))
+            //continue;
             fIsMine = pwallet->IsMine(txout);
         } else if (!(fIsMine & filter))
             continue;
