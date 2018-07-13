@@ -834,7 +834,8 @@ bool GetCoinAge(const CTransaction& tx, const unsigned int nTxTime, uint64_t& nC
     }
 
     uint256 bnCoinDay = bnCentSecond / COIN / (24 * 60 * 60);
-    LogPrintf("coin age bnCoinDay=%s\n", bnCoinDay.GetHex());
+    if (!hideLogMessage)
+        LogPrintf("coin age bnCoinDay=%s\n", bnCoinDay.GetHex());
     nCoinAge = bnCoinDay.GetCompact();
     return true;
 }
@@ -2903,7 +2904,8 @@ void static UpdateTip(CBlockIndex* pindexNew, const CChainParams& chainParams)
     nTimeBestReceived = GetTime();
     mempool.AddTransactionsUpdated(1);
 
-    LogPrintf("UpdateTip: new best=%s  height=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%u\n",
+    if (!hideLogMessage)
+        LogPrintf("UpdateTip: new best=%s  height=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%u\n",
         chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), log(chainActive.Tip()->nChainWork.getdouble()) / log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
         DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
         Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip()), (unsigned int)pcoinsTip->GetCacheSize());
@@ -3371,7 +3373,7 @@ bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams,
             if (nLocalServices & NODE_NETWORK) {
                 vector<CNode*> vNodesCopy;
                 {
-                    LOCK(cs_vNodes);
+                    //LOCK(cs_vNodes);
                     vNodesCopy = vNodes;
                 }
 
@@ -4380,7 +4382,7 @@ bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, C
     const char * const s = pindex->IsProofOfStake() ? "pos" : "pow";
     if (fDebug) {
         LogPrintf("%s: ACCEPTED %d %s (%s)\n%s\n", __func__, pindex->nHeight, hash.GetHex(), s, pblock->ToString());
-    } else {
+    } else if (!hideLogMessage) {
         LogPrintf("%s: ACCEPTED %d %s (%s)\n", __func__, pindex->nHeight, hash.GetHex(), s);
     }
 
@@ -5794,7 +5796,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                 {
                     vector<CNode*> vNodesCopy;
                     {
-                        LOCK(cs_vNodes);
+                        //LOCK(cs_vNodes);
                         vNodesCopy = vNodes;
                     }
 
@@ -6312,7 +6314,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                 {
                     vector<CNode*> vNodesCopy;
                     {
-                        LOCK(cs_vNodes);
+                        //LOCK(cs_vNodes);
                         vNodesCopy = vNodes;
                     }
 
@@ -6596,8 +6598,8 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         // Address refresh broadcast
         static int64_t nLastRebroadcast;
         if (!IsInitialBlockDownload() && (GetTime() - nLastRebroadcast > 24 * 60 * 60)) {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH (CNode* pnode, vNodes) {
+            vector<CNode*> vNodesCopy = vNodes;
+            BOOST_FOREACH (CNode* pnode, vNodesCopy) {
                 // Periodically clear setAddrKnown to allow refresh broadcasts
                 if (nLastRebroadcast)
                     pnode->setAddrKnown.clear();
@@ -6605,7 +6607,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                 // Rebroadcast our address
                 AdvertizeLocal(pnode);
             }
-            if (!vNodes.empty())
+            if (!vNodesCopy.empty())
                 nLastRebroadcast = GetTime();
         }
 
