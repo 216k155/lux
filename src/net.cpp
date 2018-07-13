@@ -238,7 +238,8 @@ void AdvertizeLocal(CNode* pnode)
             addrLocal.SetIP(pnode->addrLocal);
         }
         if (addrLocal.IsRoutable()) {
-            pnode->PushAddress(addrLocal);
+            Seed_Insecure_Rand insecure_rand;
+            pnode->PushAddress(addrLocal, insecure_rand);
         }
     }
 }
