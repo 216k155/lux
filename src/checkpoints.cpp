@@ -100,29 +100,26 @@ CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
 }
 
 // Automatically select a suitable sync-checkpoint
-const CBlockIndex* AutoSelectSyncCheckpoint()
-{
-    const CBlockIndex *pindexBest = chainActive.Tip();
-    const CBlockIndex *pindex = pindexBest;
+    const CBlockIndex* AutoSelectSyncCheckpoint()
+    {
+        const CBlockIndex *pindexBest = chainActive.Tip();
+        const CBlockIndex *pindex = pindexBest;
+        // Search backward for a block within max span and maturity window
+        while (pindex->pprev && pindex->nHeight + nCheckpointSpan > pindexBest->nHeight)
+            pindex = pindex->pprev;
+        return pindex;
+    }
 
-    if (!pindex) return NULL;
+    // Check against synchronized checkpoint
+    bool CheckSync(int nHeight)
+    {
+        const CBlockIndex* pindexSync;
+        if(nHeight)
+            pindexSync = AutoSelectSyncCheckpoint();
 
-    // Search backward for a block within max span and maturity window
-    while (pindex->pprev && pindex->nHeight + nCheckpointSpan > pindexBest->nHeight)
-        pindex = pindex->pprev;
-    return pindex;
-}
-
-// Check against synchronized checkpoint
-bool CheckSync(int nHeight)
-{
-    const CBlockIndex* pindexSync;
-    if(nHeight)
-        pindexSync = AutoSelectSyncCheckpoint();
-
-    if(nHeight && pindexSync && pindexSync->nHeight)
-        return false;
-    return true;
-}
+        if(nHeight && pindexSync->nHeight)
+            return false;
+        return true;
+    }
 
 } // namespace Checkpoints
