@@ -107,8 +107,6 @@ BITCOIN_CORE_H = \
   crypter.h \
   darksend.h \
   db.h \
-  eccryptoverify.h \
-  ecwrapper.h \
   hash.h \
   indirectmap.h \
   init.h \
@@ -352,8 +350,6 @@ libbitcoin_consensus_a_SOURCES = \
   consensus/validation.cpp \
   cpp-ethereum/libdevcore/CommonData.cpp \
   cpp-ethereum/libdevcore/CommonData.h \
-  eccryptoverify.cpp \
-  ecwrapper.cpp \
   hash.cpp \
   hash.h \
   key.cpp \
@@ -401,8 +397,6 @@ libbitcoin_common_a_SOURCES = \
   primitives/transaction.cpp \
   core_read.cpp \
   core_write.cpp \
-  eccryptoverify.cpp \
-  ecwrapper.cpp \
   hash.cpp \
   key.cpp \
   keystore.cpp \
