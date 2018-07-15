@@ -231,7 +231,7 @@ public:
     CDataStream& ignore(int nSize)
     {
         // Ignore from the beginning of the buffer
-        if (nSize < 0) { throw std::ios_base::failure("CDataStream::ignore(): nSize negative"); }
+        assert(nSize >= 0);
         unsigned int nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size()) {
             if (nReadPosNext > vch.size())
