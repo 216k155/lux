@@ -2464,8 +2464,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
             std::vector<CScriptCheck> vChecks;
             if (!CheckInputs(tx, state, view, fScriptChecks, flags, false, txdata[i], nScriptCheckThreads ? &vChecks : NULL))
-                return error("ConnectBlock(): CheckInputs on %s failed with %s",
-                             tx.GetHash().ToString(), FormatStateMessage(state));
+                return false;
             control.Add(vChecks);
         } else {
             nValueOut += tx.GetValueOut();

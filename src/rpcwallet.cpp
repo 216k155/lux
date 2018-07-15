@@ -244,7 +244,7 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
 
     CReserveKey reservekey(pwalletMain);
     CPubKey vchPubKey;
-    if (!reservekey.GetReservedKey(vchPubKey, true))
+    if (!reservekey.GetReservedKey(vchPubKey))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
     reservekey.KeepKey();
@@ -2109,7 +2109,8 @@ UniValue settxfee(const UniValue& params, bool fHelp)
     return true;
 }
 
-UniValue getwalletinfo(const UniValue &params, bool fHelp) {
+UniValue getwalletinfo(const UniValue& params, bool fHelp)
+{
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getwalletinfo\n"
