@@ -458,14 +458,14 @@ public:
         setAddrKnown.insert(addr);
     }
 
-    void PushAddress(const CAddress& addr)
+    void PushAddress(const CAddress& addr, Seed_Insecure_Rand &insecure_rand)
     {
         // Known checking here is only to save space from duplicates.
         // SendMessages will filter it again for knowns that were added
         // after addresses were pushed.
         if (addr.IsValid() && !setAddrKnown.count(addr)) {
             if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) {
-                vAddrToSend[insecure_rand() % vAddrToSend.size()] = addr;
+                vAddrToSend[insecure_rand.insecure_rand32() % vAddrToSend.size()] = addr;
             } else {
                 vAddrToSend.push_back(addr);
             }

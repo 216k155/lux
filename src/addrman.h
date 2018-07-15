@@ -175,6 +175,9 @@ private:
     //! secret key to randomize bucket select with
     uint256 nKey;
 
+    //! Source of random numbers for randomization  in inner loops
+    Seed_Insecure_Rand insecure_rand;
+
     //! last used nId
     int nIdCount;
 

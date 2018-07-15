@@ -117,9 +117,7 @@ uint256 GetRandHash()
     return hash;
 }
 
-uint32_t insecure_rand_Rz = 11;
-uint32_t insecure_rand_Rw = 11;
-void seed_insecure_rand(bool fDeterministic)
+Seed_Insecure_Rand::Seed_Insecure_Rand(bool fDeterministic)
 {
     // The seed values have some unlikely fixed points which we avoid.
     if (fDeterministic) {
