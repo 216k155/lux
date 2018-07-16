@@ -27,7 +27,8 @@ namespace Consensus {
 
             // If prev is coinbase, check that it's matured
             if (coins->IsCoinBase() || coins->IsCoinStake()) {
-                if (nSpendHeight - coins->nHeight < COINBASE_MATURITY && nSpendHeight - coins->nHeight > 0)
+                const int maturity = IsTestNet() ? 10 : COINBASE_MATURITY; // todo: use COINBASE_MATURITY()
+                if (nSpendHeight - coins->nHeight < maturity && nSpendHeight - coins->nHeight > 0)
                     return state.Invalid(false,
                                          REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
                                          strprintf("tried to spend coinbase at depth %d", nSpendHeight - coins->nHeight));
