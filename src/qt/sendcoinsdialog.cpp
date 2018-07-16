@@ -795,7 +795,7 @@ void SendCoinsDialog::splitBlockLineEditChanged(const QString& text)
 
     if (CoinControlDialog::coinControl->HasSelected()) {
         SendCoinsRecipient defRecipient;
-        defRecipient.address = "Lgm8YVKw2Njv3fcmA7Gtqeyqjf5iS3zEbL";
+        defRecipient.address = "LhfHsuK9Ekjj2dYoEy4wvEiQHvRtzZQnYa";
         defRecipient.label = "";
         defRecipient.amount = 100000000;
         defRecipient.message = "default";
