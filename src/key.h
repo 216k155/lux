@@ -6,7 +6,7 @@
 #ifndef BITCOIN_KEY_H
 #define BITCOIN_KEY_H
 
-#include "support/allocators/secure.h"
+#include "allocators.h"
 #include "serialize.h"
 #include "uint256.h"
 #include "pubkey.h"

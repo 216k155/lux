@@ -97,6 +97,7 @@ void CAddress::Init()
 {
     nServices = NODE_NONE;
     nTime = 100000000;
+    nLastTry = 0;
 }
 
 CInv::CInv()

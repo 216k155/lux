@@ -8,7 +8,7 @@
 #include "paymentrequestplus.h"
 #include "walletmodeltransaction.h"
 
-#include "support/allocators/secure.h"
+#include "allocators.h" /* for SecureString */
 #include "instantx.h"
 #include "wallet.h"
 #include "script/standard.h"
