@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <stdio.h>
 
 /** Double ended buffer combining vector and stream-like interfaces.
  *
