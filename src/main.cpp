@@ -1033,9 +1033,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     BOOST_FOREACH (const CTxIn& in, tx.vin) {
         if (mapLockedInputs.count(in.prevout)) {
             if (mapLockedInputs[in.prevout] != tx.GetHash()) {
-                return state.DoS(0,
-                    error("AcceptToMemoryPool : conflicts with existing transaction lock: %s", reason),
-                    REJECT_INVALID, "tx-lock-conflict");
+                return state.DoS(0, error("AcceptToMemoryPool : conflicts with existing transaction lock: %s", reason), REJECT_INVALID, "tx-lock-conflict");
             }
         }
     }
@@ -6004,11 +6002,6 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             RelayTransaction(tx);
             vWorkQueue.push_back(inv.hash);
             vEraseQueue.push_back(inv.hash);
-
-            LogPrint("mempool", "AcceptToMemoryPool: peer=%d %s : accepted %s (poolsz %u)\n",
-                pfrom->id,
-                tx.GetHash().ToString(),
-                mempool.mapTx.size());
 
             // Recursively process any orphan transactions that depended on this one
             set<NodeId> setMisbehaving;

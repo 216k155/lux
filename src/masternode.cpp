@@ -220,7 +220,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
         }
 
         // see if we have this masternode
-        LOCK(cs_masternodes);
+
         BOOST_FOREACH(CMasterNode& mn, vecMasternodes) {
             if (mn.vin.prevout == vin.prevout) {
                 // take this only if it's newer
@@ -283,9 +283,9 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
             if (i != askedForMasternodeList.end()) {
                 int64_t t = (*i).second;
                 if (GetTime() < t) {
-                    //Misbehaving(pfrom->GetId(), 34);
-                    //LogPrintf("dseg - peer already asked me for the list\n");
-                    //return;
+                    Misbehaving(pfrom->GetId(), 34);
+                    LogPrintf("dseg - peer already asked me for the list\n");
+                    return;
                 }
             }
 
@@ -294,7 +294,6 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
             //}
         } //else, asking for a specific node which is ok
 
-        LOCK(cs_masternodes);
         int count = vecMasternodes.size();
         int i = 0;
 
@@ -322,11 +321,11 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
     else if (strCommand == "mnget") { //Masternode Payments Request Sync
         isMasternodeCommand = true;
 
-        /*if(pfrom->HasFulfilledRequest("mnget")) {
+        if(pfrom->HasFulfilledRequest("mnget")) {
             LogPrintf("mnget - peer already asked me for the list\n");
             Misbehaving(pfrom->GetId(), 20);
             return;
-        }*/
+        }
 
         pfrom->FulfilledRequest("mnget");
         masternodePayments.Sync(pfrom);
@@ -392,7 +391,7 @@ struct CompareValueOnly2 {
 
 int CountMasternodesAboveProtocol(int protocolVersion) {
     int i = 0;
-    LOCK(cs_masternodes);
+
     BOOST_FOREACH(CMasterNode& mn, vecMasternodes) {
         if (mn.protocolVersion < protocolVersion) continue;
         i++;
@@ -405,7 +404,7 @@ int CountMasternodesAboveProtocol(int protocolVersion) {
 
 int GetMasternodeByVin(CTxIn& vin) {
     int i = 0;
-    LOCK(cs_masternodes);
+
     BOOST_FOREACH(CMasterNode& mn, vecMasternodes) {
         if (mn.vin == vin) return i;
         i++;
@@ -418,7 +417,7 @@ int GetCurrentMasterNode(int mod, int64_t nBlockHeight, int minProtocol) {
     int i = 0;
     unsigned int score = 0;
     int winner = -1;
-    //LOCK(cs_masternodes);
+
     // scan for winner
     BOOST_FOREACH(CMasterNode mn, vecMasternodes) {
         mn.Check();
@@ -444,7 +443,6 @@ int GetCurrentMasterNode(int mod, int64_t nBlockHeight, int minProtocol) {
 }
 
 int GetMasternodeByRank(int findRank, int64_t nBlockHeight, int minProtocol) {
-    LOCK(cs_masternodes);
     int i = 0;
 
     std::vector <pair<unsigned int, int>> vecMasternodeScores;
@@ -511,11 +509,6 @@ int GetMasternodeRank(CTxIn& vin, int64_t nBlockHeight, int minProtocol) {
 
 //Get the last hash that matches the modulus given. Processed in reverse order
 bool GetBlockHash(uint256& hash, int nBlockHeight) {
-    if (chainActive.Tip() == NULL) return false;
-
-    if (nBlockHeight == 0)
-        nBlockHeight = chainActive.Tip()->nHeight;
-
     if (mapCacheBlockHashes.count(nBlockHeight)) {
         hash = mapCacheBlockHashes[nBlockHeight];
         return true;
@@ -524,6 +517,7 @@ bool GetBlockHash(uint256& hash, int nBlockHeight) {
     const CBlockIndex* BlockLastSolved = chainActive.Tip();
     const CBlockIndex* BlockReading = chainActive.Tip();
 
+    if (chainActive.Tip() == NULL) return false;
     if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || chainActive.Tip()->nHeight + 1 < nBlockHeight) return false;
 
     int nBlocksAgo = 0;
@@ -539,10 +533,7 @@ bool GetBlockHash(uint256& hash, int nBlockHeight) {
         }
         n++;
 
-        if (BlockReading->pprev == NULL) {
-            assert(BlockReading);
-            break;
-        }
+        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
         BlockReading = BlockReading->pprev;
     }
 
@@ -646,10 +637,6 @@ uint64_t CMasternodePayments::CalculateScore(uint256 blockHash, CTxIn& vin) {
     uint256 n3 = Hash(BEGIN(vin.prevout.hash), END(vin.prevout.hash));
     uint256 n4 = n3 > n2 ? (n3 - n2) : (n2 - n3);
 
-    LogPrintf(" -- CMasternodePayments CalculateScore() n2 = %d \n", n2.Get64());
-    LogPrintf(" -- CMasternodePayments CalculateScore() n3 = %d \n", n3.Get64());
-    LogPrintf(" -- CMasternodePayments CalculateScore() n4 = %d \n", n4.Get64());
-
     return n4.Get64();
 }
 
@@ -726,16 +713,15 @@ void CMasternodePayments::CleanPaymentList() {
 }
 
 bool CMasternodePayments::ProcessBlock(int nBlockHeight) {
-    LOCK(cs_masternodes);
+
     if (!enabled) return false;
     CMasternodePaymentWinner winner;
 
     std::vector <CTxIn> vecLastPayments;
-    int c = 0;
     BOOST_REVERSE_FOREACH(CMasternodePaymentWinner& winner, vWinning) {
+        //if we already have the same vin - we have one full payment cycle, break
+        if(vecLastPayments.size() > 0 && std::find(vecLastPayments.begin(), vecLastPayments.end(), winner.vin) != vecLastPayments.end()) break;
         vecLastPayments.push_back(winner.vin);
-        //if we have one full payment cycle, break
-        if (++c > (int) vecMasternodes.size()) break;
     }
 
     std::random_shuffle(vecMasternodes.begin(), vecMasternodes.end());

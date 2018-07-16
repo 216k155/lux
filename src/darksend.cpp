@@ -626,7 +626,6 @@ void CDarkSendPool::Check() {
     if ((state == POOL_STATUS_TRANSMISSION && fMasterNode) || (state == POOL_STATUS_SIGNING && completedTransaction)) {
         if (fDebug) LogPrintf("CDarkSendPool::Check() -- COMPLETED -- RESETTING \n");
         SetNull(true);
-        UnlockCoins();
         if (fMasterNode) RelayDarkSendStatus(darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_RESET);
         pwalletMain->Lock();
     }
