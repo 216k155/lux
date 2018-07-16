@@ -302,6 +302,8 @@ public:
 
     bool SelectCoinsCollateral(std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet) const;
 
+    void LoadKeyPool(int64_t nIndex, const CKeyPool &keypool);
+
     /*
      * Main wallet lock.
      * This lock protects all the fields added by CWallet
@@ -315,7 +317,11 @@ public:
     bool fWalletUnlockAnonymizeOnly;
     std::string strWalletFile;
 
-    std::set<int64_t> setKeyPool;
+    //std::set<int64_t> setKeyPool;
+    std::set<int64_t> setInternalKeyPool;
+    std::set<int64_t> setExternalKeyPool;
+    int64_t m_max_keypool_index = 0;
+    std::map<CKeyID, int64_t> m_pool_key_to_index;
     std::map<CKeyID, CKeyMetadata> mapKeyMetadata;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
@@ -573,9 +579,9 @@ public:
     bool NewKeyPool();
     size_t KeypoolCountExternalKeys();
     bool TopUpKeyPool(unsigned int kpSize = 0);
-    void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool internal);
+    bool ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool internal);
     void KeepKey(int64_t nIndex);
-    void ReturnKey(int64_t nIndex);
+    void ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey);
     bool GetKeyFromPool(CPubKey &key, bool internal = false);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
@@ -685,7 +691,7 @@ public:
     unsigned int GetKeyPoolSize()
     {
         AssertLockHeld(cs_wallet); // setKeyPool
-        return setKeyPool.size();
+        return setInternalKeyPool.size() + setExternalKeyPool.size();
     }
 
     bool SetDefaultKey(const CPubKey& vchPubKey);
@@ -770,12 +776,14 @@ protected:
     CWallet* pwallet;
     int64_t nIndex;
     CPubKey vchPubKey;
+    bool fInternal;
 
 public:
     CReserveKey(CWallet* pwalletIn)
     {
         nIndex = -1;
         pwallet = pwalletIn;
+        fInternal = false;
     }
 
     ~CReserveKey()
