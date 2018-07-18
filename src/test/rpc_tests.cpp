@@ -7,6 +7,7 @@
 
 #include "base58.h"
 #include "netbase.h"
+#include "test/test_lux.cpp"
 #include "univalue/univalue.h"
 #include "util.h"
 
@@ -14,6 +15,17 @@
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
+
+UniValue createArgs(int nRequired, const char* address1 = NULL, const char* address2 = NULL)
+{
+    UniValue result;
+    result.push_back(nRequired);
+    UniValue addresses;
+    if (address1) addresses.push_back(address1);
+    if (address2) addresses.push_back(address2);
+    result.push_back(addresses);
+    return result;
+}
 
 UniValue CallRPC(string args)
 {
@@ -33,7 +45,7 @@ UniValue CallRPC(string args)
 }
 
 
-BOOST_AUTO_TEST_SUITE(rpc_tests)
+BOOST_FIXTURE_TEST_SUITE(rpc_tests, TestingSetup)
 
 BOOST_AUTO_TEST_CASE(rpc_rawparams)
 {

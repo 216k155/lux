@@ -466,3 +466,9 @@ CScript GetScriptForWitness(const CScript& redeemscript)
 bool IsValidDestination(const CTxDestination& dest) {
     return dest.which() != 0;
 }
+
+bool IsScriptDestination(const CTxDestination& dest) {
+    const CScriptID* script = boost::get<CScriptID>(&dest);
+    const WitnessV0ScriptHash* witnessScript = boost::get<WitnessV0ScriptHash>(&dest);
+    return IsValidDestination(dest) && (script || witnessScript);
+}

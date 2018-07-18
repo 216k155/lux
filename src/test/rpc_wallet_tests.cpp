@@ -7,15 +7,15 @@
 
 #include "base58.h"
 #include "wallet.h"
+#include "univalue/univalue.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
-using namespace json_spirit;
 
-extern Array createArgs(int nRequired, const char* address1 = NULL, const char* address2 = NULL);
-extern Value CallRPC(string args);
+extern UniValue createArgs(int nRequired, const char* address1 = NULL, const char* address2 = NULL);
+extern UniValue CallRPC(string args);
 
 extern CWallet* pwalletMain;
 
@@ -32,19 +32,19 @@ BOOST_AUTO_TEST_CASE(rpc_addmultisig)
     // new, compressed:
     const char address2Hex[] = "0388c2037017c62240b6b72ac1a2a5f94da790596ebd06177c8572752922165cb4";
 
-    Value v;
+    UniValue v;
     CTxDestination address;
     BOOST_CHECK_NO_THROW(v = addmultisig(createArgs(1, address1Hex), false));
-    address = DecodeDestination(v.get_str());
+    address = DecodeDestination(v.write());
     BOOST_CHECK(IsValidDestination(address) && IsScriptDestination(address));
 
     BOOST_CHECK_NO_THROW(v = addmultisig(createArgs(1, address1Hex, address2Hex), false));
-    address = DecodeDestination(v.get_str());
+    address = DecodeDestination(v.write());
     BOOST_CHECK(IsValidDestination(address) && IsScriptDestination(address));
 
     BOOST_CHECK_NO_THROW(v = addmultisig(createArgs(2, address1Hex, address2Hex), false));
-    address.SetString(v.get_str());
-    BOOST_CHECK(address.IsValid() && IsScriptDestination(address));
+    address = DecodeDestination(v.write());
+    BOOST_CHECK(IsValidDestination(address) && IsScriptDestination(address));
 
     BOOST_CHECK_THROW(addmultisig(createArgs(0), false), runtime_error);
     BOOST_CHECK_THROW(addmultisig(createArgs(1), false), runtime_error);
@@ -63,13 +63,13 @@ BOOST_AUTO_TEST_CASE(rpc_addmultisig)
 BOOST_AUTO_TEST_CASE(rpc_wallet)
 {
     // Test RPC calls for various wallet statistics
-    Value r;
+    UniValue r;
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     CPubKey demoPubkey = pwalletMain->GenerateNewKey();
     CTxDestination demoAddress = CTxDestination(demoPubkey.GetID());
-    Value retValue;
+    UniValue retValue;
     string strAccount = "walletDemoAccount";
     string strPurpose = "receive";
     BOOST_CHECK_NO_THROW({ /*Initialize Wallet with an account */
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     /*********************************
      * 			setaccount
      *********************************/
-    BOOST_CHECK_NO_THROW(CallRPC("setaccount " + setaccountDemoAddress.ToString() + " nullaccount"));
+    BOOST_CHECK_NO_THROW(CallRPC("setaccount " + EncodeDestination(setaccountDemoAddress) + " nullaccount"));
     /* 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ is not owned by the test wallet. */
     BOOST_CHECK_THROW(CallRPC("setaccount 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ nullaccount"), runtime_error);
     BOOST_CHECK_THROW(CallRPC("setaccount"), runtime_error);
@@ -141,40 +141,40 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     BOOST_CHECK_NO_THROW(CallRPC("getaccountaddress \"\""));
     BOOST_CHECK_NO_THROW(CallRPC("getaccountaddress accountThatDoesntExists")); // Should generate a new account
     BOOST_CHECK_NO_THROW(retValue = CallRPC("getaccountaddress " + strAccount));
-    BOOST_CHECK(DecodeDestination(retValue.get_str()) == demoAddress);
+    BOOST_CHECK(DecodeDestination(retValue.write()) == demoAddress);
 
     /*********************************
      * 			getaccount
      *********************************/
     BOOST_CHECK_THROW(CallRPC("getaccount"), runtime_error);
-    BOOST_CHECK_NO_THROW(CallRPC("getaccount " + demoAddress.ToString()));
+    BOOST_CHECK_NO_THROW(CallRPC("getaccount " + EncodeDestination(demoAddress));
 
     /*********************************
      * 	signmessage + verifymessage
      *********************************/
-    BOOST_CHECK_NO_THROW(retValue = CallRPC("signmessage " + demoAddress.ToString() + " mymessage"));
+    BOOST_CHECK_NO_THROW(retValue = CallRPC("signmessage " + EncodeDestination(demoAddress) + " mymessage"));
     BOOST_CHECK_THROW(CallRPC("signmessage"), runtime_error);
     /* Should throw error because this address is not loaded in the wallet */
     BOOST_CHECK_THROW(CallRPC("signmessage 1QFqqMUD55ZV3PJEJZtaKCsQmjLT6JkjvJ mymessage"), runtime_error);
 
     /* missing arguments */
-    BOOST_CHECK_THROW(CallRPC("verifymessage " + demoAddress.ToString()), runtime_error);
-    BOOST_CHECK_THROW(CallRPC("verifymessage " + demoAddress.ToString() + " " + retValue.get_str()), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress)), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.write())), runtime_error);
     /* Illegal address */
-    BOOST_CHECK_THROW(CallRPC("verifymessage 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4X " + retValue.get_str() + " mymessage"), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("verifymessage 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4X " + retValue.write() + " mymessage"), runtime_error);
     /* wrong address */
-    BOOST_CHECK(CallRPC("verifymessage 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ " + retValue.get_str() + " mymessage").get_bool() == false);
+    BOOST_CHECK(CallRPC("verifymessage 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ " + retValue.write() + " mymessage").get_bool() == false);
     /* Correct address and signature but wrong message */
-    BOOST_CHECK(CallRPC("verifymessage " + demoAddress.ToString() + " " + retValue.get_str() + " wrongmessage").get_bool() == false);
+    BOOST_CHECK(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.write() + " wrongmessage").get_bool() == false);
     /* Correct address, message and signature*/
-    BOOST_CHECK(CallRPC("verifymessage " + demoAddress.ToString() + " " + retValue.get_str() + " mymessage").get_bool() == true);
+    BOOST_CHECK(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.write() + " mymessage").get_bool() == true);
 
     /*********************************
      * 		getaddressesbyaccount
      *********************************/
     BOOST_CHECK_THROW(CallRPC("getaddressesbyaccount"), runtime_error);
     BOOST_CHECK_NO_THROW(retValue = CallRPC("getaddressesbyaccount " + strAccount));
-    Array arr = retValue.get_array();
+    UniValue arr = retValue.get_array();
     BOOST_CHECK(arr.size() > 0);
     BOOST_CHECK(DecodeDestination(arr[0].get_str()) == demoAddress);
 }
