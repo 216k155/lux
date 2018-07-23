@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
      * 			getaccount
      *********************************/
     BOOST_CHECK_THROW(CallRPC("getaccount"), runtime_error);
-    BOOST_CHECK_NO_THROW(CallRPC("getaccount " + EncodeDestination(demoAddress));
+    BOOST_CHECK_NO_THROW(CallRPC("getaccount " + EncodeDestination(demoAddress)));
 
     /*********************************
      * 	signmessage + verifymessage
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
 
     /* missing arguments */
     BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress)), runtime_error);
-    BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.write())), runtime_error);
+    BOOST_CHECK_THROW(CallRPC("verifymessage " + EncodeDestination(demoAddress) + " " + retValue.write()), runtime_error);
     /* Illegal address */
     BOOST_CHECK_THROW(CallRPC("verifymessage 1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4X " + retValue.write() + " mymessage"), runtime_error);
     /* wrong address */
