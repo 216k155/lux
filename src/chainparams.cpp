@@ -80,43 +80,33 @@ static void convertSeed6(std::vector<CAddress>& vSeedsOut, const SeedSpec6* data
 //    timestamp before)
 // + Contains no strange transactions
 static Checkpoints::MapCheckpoints mapCheckpoints =
-    boost::assign::map_list_of
-            ( 0,   uint256("0x00000759bb3da130d7c9aedae170da8335f5a0d01a9007e4c8d3ccd08ace6a42") )
-            ( 175,   uint256("0x000000000002611e8e3c2e460e7fcd0a39ee210b9915fc76a5573a0704bb2b33") )
-            ( 2241,   uint256("0x69e2e47fb84085c4b82b6090f701c7ac03a4e510bd1f41cc072c33061cf83a0d") )
-            ( 6901,   uint256("0x0000000000034bab666179e364e0cce7c19eaa255f1e4afd2170356acfa1a3ac") )
-            ( 25318,   uint256("0x092a04ee669d2d2241aba0ec9dcecb548c9cea9ff114b0ee52cdc7ddac98a1f4") )
-            ( 97176,   uint256("0x000000000004e4aac7926e7dbd778f21b15b62f0e4c1d424ac9e5a9889c1724a") )
-            ( 122237,   uint256("0x10f6d17326a0c439f61a21c44a172885469bb60668a0d77be82eead7209183b0") )
-            ( 203690,   uint256("0x00000000000180e78502c3c952f00bf8bba2bc9ffef60e7188c8763582f26ef4") )
-            ( 293220,   uint256("0xe90c89ff18e00b49be312aff64bcc18cba753ff36dde5c7fc216029d7bc2b457") )
-            ( 299500,   uint256("0x94c34653c7b107662f1f44d085be5817d03f8d3f0b3c29b970ce25eb44e03743") )
-            ( 303112,   uint256("0x0000000000026621b448ad1288a7f9762e78a0ef5ab87fcbc016cddc3ded4356") );
+        boost::assign::map_list_of
+                ( 0,   uint256("0") );
 
 static const Checkpoints::CCheckpointData data = {
-    &mapCheckpoints,
-    1530481662, // * UNIX timestamp of last checkpoint block
-    624779,     // * total number of transactions between genesis and last checkpoint
-                //   (the tx=... number in UpdateTip debug.log lines)
-    350058        // * estimated number of transactions per day after checkpoint
+        &mapCheckpoints,
+        0, // * UNIX timestamp of last checkpoint block
+        0,     // * total number of transactions between genesis and last checkpoint
+        //   (the tx=... number in UpdateTip debug.log lines)
+        0        // * estimated number of transactions per day after checkpoint
 };
 
 static Checkpoints::MapCheckpoints mapCheckpointsTestnet =
-    boost::assign::map_list_of(0, uint256("0"));
+        boost::assign::map_list_of(0, uint256("0"));
 static const Checkpoints::CCheckpointData dataTestnet = {
-    &mapCheckpointsTestnet,
-    0,
-    0,
-    0
+        &mapCheckpointsTestnet,
+        0,
+        0,
+        0
 };
 
 static Checkpoints::MapCheckpoints mapCheckpointsRegtest =
-    boost::assign::map_list_of(0, uint256("0"));
+        boost::assign::map_list_of(0, uint256("0"));
 static const Checkpoints::CCheckpointData dataRegtest = {
-    &mapCheckpointsRegtest,
-    0,
-    0,
-    0
+        &mapCheckpointsRegtest,
+        0,
+        0,
+        0
 };
 
 static Checkpoints::MapCheckpoints mapCheckpointsSegWittest =
@@ -141,8 +131,8 @@ public:
         //consensus.BIP34Height = 227931;
         //consensus.BIP34Hash = uint256S("0x000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8");
         consensus.powLimit = ~uint256(0) >> 20; // LUX starting difficulty is 1 / 2^12
-        consensus.nPowTargetTimespan = 30 * 60; //36 * 60 * 60; // LUX: 1 36hrs
-        consensus.nPowTargetSpacing = 2 * 60;  // LUX: 2 minute
+        consensus.nPowTargetTimespan = 30; //36 * 60 * 60; // LUX: 1 36hrs
+        consensus.nPowTargetSpacing = 60;  // LUX: 2 minute
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 1026; // 95% of 1080 is 1026
@@ -150,12 +140,12 @@ public:
         consensus.nLastPOWBlock = 6000000;
         // Deployment of SegWit (BIP141 and BIP143)
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1530428034; // 01/07/2018
-        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1561964034; // 01/07/2019
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 0; // 01/07/2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 999999999999ULL; // 01/07/2019
 
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 1530428034; // 01/07/2018
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1561964034; // 01/07/2019
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 0; // 01/07/2018
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 999999999999ULL; // 01/07/2019
 
         //SMART_CONTRACTS_HARDFORK deployment does not require start time and timeout, because it uses block number
         //This is not used now, because we need to check this bit in block.h using versionbits, which results in cyclic
@@ -163,8 +153,8 @@ public:
         //TODO: fix cyclic dependency
         consensus.vDeployments[Consensus::SMART_CONTRACTS_HARDFORK].bit = 30;
 
-        nSwitchPhi2Block = 299501;
-        nFirstSCBlock = 350000;
+        nSwitchPhi2Block = 0;
+        nFirstSCBlock = 20;
         nPruneAfterHeight = 300000;
         nSplitRewardBlock = 300000;
 
@@ -173,22 +163,22 @@ public:
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
          * a large 4-byte int at any alignment.
          */
-        pchMessageStart[0] = 0x6a;
-        pchMessageStart[1] = 0xb3;
-        pchMessageStart[2] = 0xc8;
-        pchMessageStart[3] = 0xa9;
+        pchMessageStart[0] = 0x67;
+        pchMessageStart[1] = 0x13;
+        pchMessageStart[2] = 0x28;
+        pchMessageStart[3] = 0x59;
         vAlertPubKey = ParseHex("042d13c016ed91528241bcff222989769417eb10cdb679228c91e26e26900eb9fd053cd9f16a9a2894ad5ebbd551be1a4bd23bd55023679be17f0bd3a16e6fbeba");
-        nDefaultPort = 26969;
+        nDefaultPort = 20000;
         nMaxReorganizationDepth = 100;
         nMinerThreads = 0;
-        nMaturity = 79;
+        nMaturity = 20;
         nMasternodeCountDrift = 20;
         nModifierUpdateBlock = 615800;
 
-        const char* pszTimestamp = "Lux - Implemented New PHI Algo PoW/PoS Hybird - Parallel Masternode - ThankYou - 216k155"; // Input Activation code to activate blockchain
+        const char* pszTimestamp = "Lux - smartcontract alpha test"; // Input Activation code to activate blockchain
         CMutableTransaction txNew;
         txNew.nVersion = 1;
-        txNew.nTime = 1507656633;
+        txNew.nTime = 1532435193;
         txNew.nLockTime = 0;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
@@ -199,26 +189,19 @@ public:
         genesis.hashPrevBlock = 0;
         genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
         genesis.nVersion = 1;
-        genesis.nTime = 1507656633; //10/10/2017
+        genesis.nTime = 1532435193; //10/10/2017
         genesis.nBits = 0x1e0fffff;
-        genesis.nNonce = 986946;
+        genesis.nNonce = 3298267;
         genesis.hashStateRoot = uint256(h256Touint(dev::h256("e965ffd002cd6ad0e2dc402b8044de833e06b23127ea8c3d80aec91410771495"))); // lux
         genesis.hashUTXORoot = uint256(h256Touint(dev::sha3(dev::rlp("")))); // lux
 
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256("0x00000759bb3da130d7c9aedae170da8335f5a0d01a9007e4c8d3ccd08ace6a42"));
-        assert(genesis.hashMerkleRoot == uint256("0xe08ae0cfc35a1d70e6764f347fdc54355206adeb382446dd54c32cd0201000d3"));
+        assert(consensus.hashGenesisBlock == uint256("0x00000cd57651c9d8cea977915d190f8200173518348c6d555472cd073675ff40"));
+        assert(genesis.hashMerkleRoot == uint256("0x0d580a04554f790033f902b916bab94f72b2b98c8a6dcd55d59ea3c0cc65c495"));
 
-        vSeeds.push_back(CDNSSeedData("140.82.21.110", "140.82.21.110"));        // Luxgate seed
-        vSeeds.push_back(CDNSSeedData("149.28.163.40", "149.28.163.40"));        // Main seed
-        vSeeds.push_back(CDNSSeedData("207.148.83.62", "207.148.83.62"));        // Chain state seed
-        vSeeds.push_back(CDNSSeedData("207.148.81.88", "207.148.81.88"));        // Global state seed
-        vSeeds.push_back(CDNSSeedData("149.28.172.147", "149.28.172.147"));      // Main seed
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-        vSeeds.push_back(CDNSSeedData("45.32.86.162", "45.32.86.162"));           // DNSSeed
-        vSeeds.push_back(CDNSSeedData("45.77.127.10", "45.77.127.10"));           // DNSSeed
-        vSeeds.push_back(CDNSSeedData("45.32.146.237", "45.32.146.237"));         // DNSSeed
+        vSeeds.push_back(CDNSSeedData("172.22.228.234", "172.22.228.234"));        // Luxgate seed
+        vSeeds.push_back(CDNSSeedData("172.23.80.139", "172.23.80.139"));        // Main seed
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,48); // LUX address start with 'L'
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,63); // LUX script addresses start with 'S'
@@ -242,7 +225,7 @@ public:
         strSporkKey = "04a983220ea7a38a7106385003fef77896538a382a0dcc389cc45f3c98751d9af423a097789757556259351198a8aaa628a1fd644c3232678c5845384c744ff8d7";
 
         strDarksendPoolDummyAddress = "LgcjpYxWa5EB9KCYaRtpPgG8kgiWRvJY38";
-        nStartMasternodePayments = 1507656633; // 10/10/2017
+        nStartMasternodePayments = 1532435193; // 10/10/2017
 
         nStakingRoundPeriod = 120; // 2 minutes a round
         nStakingInterval = 22;
@@ -613,35 +596,35 @@ const CChainParams& Params()
 CChainParams& Params(CBaseChainParams::Network network)
 {
     switch (network) {
-    case CBaseChainParams::MAIN:
-        return mainParams;
-    case CBaseChainParams::TESTNET:
-        return testNetParams;
-    case CBaseChainParams::REGTEST:
-        return regTestParams;
-    case CBaseChainParams::UNITTEST:
-        return unitTestParams;
-    case CBaseChainParams::SEGWITTEST:
-        return segwitParams;
-    default:
-        assert(false && "Unimplemented network");
-        return mainParams;
+        case CBaseChainParams::MAIN:
+            return mainParams;
+        case CBaseChainParams::TESTNET:
+            return testNetParams;
+        case CBaseChainParams::REGTEST:
+            return regTestParams;
+        case CBaseChainParams::UNITTEST:
+            return unitTestParams;
+        case CBaseChainParams::SEGWITTEST:
+            return segwitParams;
+        default:
+            assert(false && "Unimplemented network");
+            return mainParams;
     }
 }
 
 CChainParams* CreateChainParams(CBaseChainParams::Network network)
 {
     switch (network) {
-    case CBaseChainParams::MAIN:
-        return new CMainParams();
-    case CBaseChainParams::TESTNET:
-        return new CTestNetParams();
-    case CBaseChainParams::REGTEST:
-        return new CRegTestParams();
-    case CBaseChainParams::SEGWITTEST:
-        return new CSegWitTestnet();
-    default:
-        throw std::runtime_error(strprintf("%s: Unknown chain.", __func__));
+        case CBaseChainParams::MAIN:
+            return new CMainParams();
+        case CBaseChainParams::TESTNET:
+            return new CTestNetParams();
+        case CBaseChainParams::REGTEST:
+            return new CRegTestParams();
+        case CBaseChainParams::SEGWITTEST:
+            return new CSegWitTestnet();
+        default:
+            throw std::runtime_error(strprintf("%s: Unknown chain.", __func__));
     }
 }
 
