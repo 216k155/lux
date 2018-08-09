@@ -102,6 +102,8 @@ BITCOIN_CORE_H = \
   coincontrol.h \
   coins.h \
   compat.h \
+  compat/byteswap.h \
+  compat/endian.h \
   compat/sanity.h \
   compressor.h \
   consensus/consensus.h \
@@ -158,6 +160,8 @@ BITCOIN_CORE_H = \
   spork.h \
   stake.h \
   streams.h \
+  support/allocators/zeroafterfree.h \
+  support/cleanse.h \
   sync.h \
   threadsafety.h \
   timedata.h \
@@ -605,6 +609,7 @@ libbitcoin_util_a_SOURCES = \
   random.cpp \
   rpcprotocol.cpp \
   rpcutil.cpp \
+  support/cleanse.cpp \
   sync.cpp \
   uint256.cpp \
   util.cpp \
