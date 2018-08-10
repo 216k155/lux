@@ -147,6 +147,7 @@ BITCOIN_CORE_H = \
   spork.h \
   stake.h \
   streams.h \
+  support/cleanse.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
@@ -602,6 +603,7 @@ libbitcoin_util_a_SOURCES = \
   clientversion.cpp \
   random.cpp \
   rpcprotocol.cpp \
+  support/cleanse.cpp \
   rpcutil.cpp \
   support/cleanse.cpp \
   sync.cpp \
