@@ -73,7 +73,6 @@ BITCOIN_CORE_H = \
   activemasternode.h \
   addrman.h \
   alert.h \
-  allocators.h \
   amount.h \
   base58.h \
   bech32.h \
@@ -144,11 +143,15 @@ BITCOIN_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/script_error.h \
+  serialize.h \
   spork.h \
   stake.h \
   streams.h \
+  support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
+  support/pagelocker.h \
+  support/events.h \
   sync.h \
   threadsafety.h \
   timedata.h \
@@ -336,7 +339,6 @@ univalue_libbitcoin_univalue_a_SOURCES = \
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_consensus_a_SOURCES = \
-  allocators.cpp \
   amount.h \
   chainparamsbase.cpp \
   coins.cpp \
@@ -383,7 +385,6 @@ libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -DLUX_BUILD
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -std=c99
 libbitcoin_common_a_SOURCES = \
-  allocators.cpp \
   amount.cpp \
   base58.cpp \
   bech32.cpp \
@@ -593,7 +594,7 @@ endif
 # backward-compatibility objects and their sanity checks are linked.
 libbitcoin_util_a_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_a_SOURCES = \
-  allocators.cpp \
+  support/pagelocker.cpp \
   compat/strnlen.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \

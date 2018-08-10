@@ -122,9 +122,6 @@ public:
 
     // disk and network only
     unsigned int nTime;
-
-    // memory only
-    int64_t nLastTry;
 };
 
 /** getdata message types */
