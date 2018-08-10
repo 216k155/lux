@@ -19,6 +19,8 @@
 #include "checkpoints.h"
 #include "compat/sanity.h"
 #include "consensus/validation.h"
+#include "httpserver.h"
+#include "httprpc.h"
 #include "key.h"
 #include "main.h"
 #include "stake.h"
@@ -163,7 +165,16 @@ public:
 
 static CCoinsViewDB* pcoinsdbview = NULL;
 static CCoinsViewErrorCatcher* pcoinscatcher = NULL;
-static boost::scoped_ptr<ECCVerifyHandle> globalVerifyHandle;
+static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
+
+void Interrupt(boost::thread_group& threadGroup)
+{
+    InterruptHTTPServer();
+    InterruptHTTPRPC();
+    InterruptRPC();
+    InterruptREST();
+    threadGroup.interrupt_all();
+}
 
 /** Preparing steps before shutting down or restarting the wallet */
 void PrepareShutdown()
@@ -182,7 +193,10 @@ void PrepareShutdown()
     /// module was initialized.
     RenameThread("lux-shutoff");
     mempool.AddTransactionsUpdated(1);
-    StopRPCThreads();
+    StopHTTPRPC();
+    StopREST();
+    StopRPC();
+    StopHTTPServer();
 #ifdef ENABLE_WALLET
     if (pwalletMain)
         bitdb.Flush(false);
@@ -517,12 +531,6 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += "  -rpcthreads=<n>        " + strprintf(_("Set the number of threads to service RPC calls (default: %d)"), 4) + "\n";
     strUsage += "  -rpckeepalive          " + strprintf(_("RPC support for HTTP persistent connections (default: %d)"), 1) + "\n";
 
-    strUsage += "\n" + _("RPC SSL options: (see the Bitcoin Wiki for SSL setup instructions)") + "\n";
-    strUsage += "  -rpcssl                                  " + _("Use OpenSSL (https) for JSON-RPC connections") + "\n";
-    strUsage += "  -rpcsslcertificatechainfile=<file.cert>  " + strprintf(_("Server certificate file (default: %s)"), "server.cert") + "\n";
-    strUsage += "  -rpcsslprivatekeyfile=<file.pem>         " + strprintf(_("Server private key (default: %s)"), "server.pem") + "\n";
-    strUsage += "  -rpcsslciphers=<ciphers>                 " + strprintf(_("Acceptable ciphers (default: %s)"), "TLSv1.2+HIGH:TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!3DES:@STRENGTH") + "\n";
-
     return strUsage;
 }
 
@@ -683,6 +691,20 @@ bool InitSanityCheck(void)
     return true;
 }
 
+bool AppInitServers(boost::thread_group& threadGroup)
+{
+    RPCServer::OnStopped(&OnRPCStopped);
+    RPCServer::OnPreCommand(&OnRPCPreCommand);
+    if (!StartHTTPServer())
+        return false;
+    if (!StartRPC())
+        return false;
+    if (!StartHTTPRPC())
+        return false;
+    if (GetBoolArg("-rest", false) && !StartREST())
+        return false;
+    return true;
+}
 
 /** Initialize lux.
  *  @pre Parameters should be parsed and config file should be read.
@@ -1055,9 +1077,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
      */
     if (fServer) {
         uiInterface.InitMessage.connect(SetRPCWarmupStatus);
-        RPCServer::OnStopped(&OnRPCStopped);
-        RPCServer::OnPreCommand(&OnRPCPreCommand);
-        StartRPCThreads();
+        if (!AppInitServers(threadGroup))
+            return InitError(_("Unable to start HTTP server. See debug log for details."));
     }
 
     if (mapArgs.count("-masternodepaymentskey")) // masternode payments priv key
