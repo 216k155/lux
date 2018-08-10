@@ -127,7 +127,7 @@ BITCOIN_CORE_H = \
   pubkey.h \
   random.h \
   reverselock.h \
-  rpc/blockchain.h \
+  rpcblockchain.h \
   rpcclient.h \
   rpcprotocol.h \
   httprpc.h \
