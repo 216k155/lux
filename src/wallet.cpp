@@ -1318,7 +1318,7 @@ void CWallet::ReacceptWalletTransactions()
 
         int nDepth = wtx.GetDepthInMainChain();
 
-        if (!wtx.IsCoinGenerated() && (nDepth == 0 && !wtx.isAbandoned()))  {
+        if (!wtx.IsCoinBase() && nDepth < 0 && !wtx.IsCoinStake()) {
             mapSorted.insert(std::make_pair(wtx.nOrderPos, &wtx));
         }
     }
