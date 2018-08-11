@@ -47,9 +47,6 @@
 #include <QUrlQuery>
 #endif
 
-using namespace boost;
-using namespace std;
-
 const int BITCOIN_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
 const QString BITCOIN_IPC_PREFIX("lux:");
 // BIP70 payment protocol messages
@@ -62,20 +59,14 @@ const char* BIP71_MIMETYPE_PAYMENTREQUEST = "application/lux-paymentrequest";
 // BIP70 max payment request size in bytes (DoS protection)
 const qint64 BIP70_MAX_PAYMENTREQUEST_SIZE = 50000;
 
-struct X509StoreDeleter {
-      void operator()(X509_STORE* b) {
-          X509_STORE_free(b);
-      }
-};
-
-struct X509Deleter {
-      void operator()(X509* b) { X509_free(b); }
-};
-
-namespace // Anon namespace
+X509_STORE* PaymentServer::certStore = NULL;
+void PaymentServer::freeCertStore()
 {
-
-    std::unique_ptr<X509_STORE, X509StoreDeleter> certStore;
+    if (PaymentServer::certStore != NULL)
+    {
+        X509_STORE_free(PaymentServer::certStore);
+        PaymentServer::certStore = NULL;
+    }
 }
 
 //
@@ -105,7 +96,11 @@ static QList<QString> savedPaymentRequests;
 
 static void ReportInvalidCertificate(const QSslCertificate& cert)
 {
-    qDebug() << "ReportInvalidCertificate : Payment server found an invalid certificate: " << cert.subjectInfo(QSslCertificate::CommonName);
+#if QT_VERSION < 0x050000
+    qDebug() << QString("%1: Payment server found an invalid certificate: ").arg(__func__) << cert.serialNumber() << cert.subjectInfo(QSslCertificate::CommonName) << cert.subjectInfo(QSslCertificate::OrganizationalUnitName);
+#else
+    qDebug() << QString("%1: Payment server found an invalid certificate: ").arg(__func__) << cert.serialNumber() << cert.subjectInfo(QSslCertificate::CommonName) << cert.subjectInfo(QSslCertificate::DistinguishedNameQualifier) << cert.subjectInfo(QSslCertificate::OrganizationalUnitName);
+#endif
 }
 
 //
@@ -113,25 +108,36 @@ static void ReportInvalidCertificate(const QSslCertificate& cert)
 //
 void PaymentServer::LoadRootCAs(X509_STORE* _store)
 {
+    if (PaymentServer::certStore == NULL)
+        atexit(PaymentServer::freeCertStore);
+    else
+        freeCertStore();
+
     // Unit tests mostly use this, to pass in fake root CAs:
-    if (_store) {
-        certStore.reset(_store);
+    if (_store)
+    {
+        PaymentServer::certStore = _store;
         return;
     }
 
     // Normal execution, use either -rootcertificates or system certs:
-    certStore.reset(X509_STORE_new());
+    PaymentServer::certStore = X509_STORE_new();
 
     // Note: use "-system-" default here so that users can pass -rootcertificates=""
     // and get 'I don't like X.509 certificates, don't trust anybody' behavior:
     QString certFile = QString::fromStdString(GetArg("-rootcertificates", "-system-"));
 
-    if (certFile.isEmpty())
-        return; // Empty store
+    // Empty store
+    if (certFile.isEmpty()) {
+        qDebug() << QString("PaymentServer::%1: Payment request authentication via X.509 certificates disabled.").arg(__func__);
+        return;
+    }
 
     QList<QSslCertificate> certList;
 
     if (certFile != "-system-") {
+            qDebug() << QString("PaymentServer::%1: Using \"%2\" as trusted root certificate.").arg(__func__).arg(certFile);
+
         certList = QSslCertificate::fromPath(certFile);
         // Use those certificates when fetching payment requests, too:
         QSslSocket::setDefaultCaCertificates(certList);
@@ -140,7 +146,13 @@ void PaymentServer::LoadRootCAs(X509_STORE* _store)
 
     int nRootCerts = 0;
     const QDateTime currentTime = QDateTime::currentDateTime();
-    foreach (const QSslCertificate& cert, certList) {
+
+    Q_FOREACH (const QSslCertificate& cert, certList) {
+        // Don't log NULL certificates
+        if (cert.isNull())
+            continue;
+
+        // Not yet active/valid, or expired certificate
         if (currentTime < cert.effectiveDate() || currentTime > cert.expiryDate()) {
             ReportInvalidCertificate(cert);
             continue;
@@ -152,19 +164,22 @@ void PaymentServer::LoadRootCAs(X509_STORE* _store)
         }
 #endif
         QByteArray certData = cert.toDer();
-        const unsigned char* data = (const unsigned char*)certData.data();
+        const unsigned char *data = (const unsigned char *)certData.data();
 
-        std::unique_ptr<X509, X509Deleter> x509(d2i_X509(0, &data, certData.size()));
-        if (x509 && X509_STORE_add_cert(certStore.get(), x509.get())) {
-            // Note: X509_STORE increases the reference count to the X509 object,
-            // we still have to release our reference to it.
+        X509* x509 = d2i_X509(0, &data, certData.size());
+        if (x509 && X509_STORE_add_cert(PaymentServer::certStore, x509))
+        {
+            // Note: X509_STORE_free will free the X509* objects when
+            // the PaymentServer is destroyed
             ++nRootCerts;
-        } else {
+        }
+        else
+        {
             ReportInvalidCertificate(cert);
             continue;
         }
     }
-    qWarning() << "PaymentServer::LoadRootCAs : Loaded " << nRootCerts << " root certificates";
+    qWarning() << "PaymentServer::LoadRootCAs: Loaded " << nRootCerts << " root certificates";
 
     // Project for another day:
     // Fetch certificate revocation lists, and add them to certStore.
@@ -505,25 +520,24 @@ bool PaymentServer::readPaymentRequestFromFile(const QString& filename, PaymentR
     return request.parse(data);
 }
 
-bool PaymentServer::processPaymentRequest(PaymentRequestPlus& request, SendCoinsRecipient& recipient)
+bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, SendCoinsRecipient& recipient)
 {
     if (!optionsModel)
         return false;
 
     if (request.IsInitialized()) {
-        const payments::PaymentDetails& details = request.getDetails();
-
         // Payment request network matches client network?
-        if (details.network() != Params().NetworkIDString()) {
+        if (!verifyNetwork(request.getDetails())) {
             emit message(tr("Payment request rejected"), tr("Payment request network doesn't match client network."),
                 CClientUIInterface::MSG_ERROR);
 
             return false;
         }
 
-        // Expired payment request?
-        if (details.has_expires() && (int64_t)details.expires() < GetTime()) {
-            emit message(tr("Payment request rejected"), tr("Payment request has expired."),
+        // Make sure any payment requests involved are still valid.
+        // This is re-checked just before sending coins in WalletModel::sendCoins().
+        if (verifyExpired(request.getDetails())) {
+            emit message(tr("Payment request rejected"), tr("Payment request expired."),
                 CClientUIInterface::MSG_ERROR);
 
             return false;
@@ -538,7 +552,7 @@ bool PaymentServer::processPaymentRequest(PaymentRequestPlus& request, SendCoins
     recipient.paymentRequest = request;
     recipient.message = GUIUtil::HtmlEscape(request.getDetails().memo());
 
-    request.getMerchant(certStore.get(), recipient.authenticatedMerchant);
+    request.getMerchant(PaymentServer::certStore, recipient.authenticatedMerchant);
 
     QList<std::pair<CScript, CAmount> > sendingTos = request.getPayTo();
     QStringList addresses;
@@ -559,6 +573,14 @@ bool PaymentServer::processPaymentRequest(PaymentRequestPlus& request, SendCoins
             return false;
         }
 
+        // Bitcoin amounts are stored as (optional) uint64 in the protobuf messages (see paymentrequest.proto),
+        // but CAmount is defined as int64_t. Because of that we need to verify that amounts are in a valid range
+        // and no overflow has happened.
+        if (!verifyAmount(sendingTo.second)) {
+            emit message(tr("Payment request rejected"), tr("Invalid payment request."), CClientUIInterface::MSG_ERROR);
+            return false;
+        }
+
         // Extract and check amounts
         CTxOut txOut(sendingTo.second, sendingTo.first);
         if (txOut.IsDust(::minRelayTxFee)) {
@@ -569,6 +591,11 @@ bool PaymentServer::processPaymentRequest(PaymentRequestPlus& request, SendCoins
         }
 
         recipient.amount += sendingTo.second;
+        // Also verify that the final amount is still in a valid range after adding additional amounts.
+        if (!verifyAmount(recipient.amount)) {
+            emit message(tr("Payment request rejected"), tr("Invalid payment request."), CClientUIInterface::MSG_ERROR);
+            return false;
+        }
     }
     // Store addresses and format them to fit nicely into the GUI
     recipient.address = addresses.join("<br />");
@@ -722,7 +749,38 @@ void PaymentServer::handlePaymentACK(const QString& paymentACKMsg)
     emit message(tr("Payment acknowledged"), paymentACKMsg, CClientUIInterface::ICON_INFORMATION | CClientUIInterface::MODAL);
 }
 
-X509_STORE* PaymentServer::getCertStore()
+bool PaymentServer::verifyNetwork(const payments::PaymentDetails& requestDetails)
 {
-    return certStore.get();
+    bool fVerified = requestDetails.network() == Params().NetworkIDString();
+    if (!fVerified) {
+        qWarning() << QString("PaymentServer::%1: Payment request network \"%2\" doesn't match client network \"%3\".")
+            .arg(__func__)
+            .arg(QString::fromStdString(requestDetails.network()))
+            .arg(QString::fromStdString(Params().NetworkIDString()));
+    }
+    return fVerified;
+}
+
+bool PaymentServer::verifyExpired(const payments::PaymentDetails& requestDetails)
+{
+    bool fVerified = (requestDetails.has_expires() && (int64_t)requestDetails.expires() < GetTime());
+    if (fVerified) {
+        const QString requestExpires = QString::fromStdString(DateTimeStrFormat("%Y-%m-%d %H:%M:%S", (int64_t)requestDetails.expires()));
+        qWarning() << QString("PaymentServer::%1: Payment request expired \"%2\".")
+            .arg(__func__)
+            .arg(requestExpires);
+    }
+    return fVerified;
+}
+
+bool PaymentServer::verifyAmount(const CAmount& requestAmount)
+{
+    bool fVerified = MoneyRange(requestAmount);
+    if (!fVerified) {
+        qWarning() << QString("PaymentServer::%1: Payment request amount out of allowed range (%2, allowed 0 - %3).")
+            .arg(__func__)
+            .arg(requestAmount)
+            .arg(MAX_MONEY);
+    }
+    return fVerified;
 }

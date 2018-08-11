@@ -33,20 +33,7 @@ extern map<uint256, uint256> mapProofOfStake;
 
 using namespace std;
 
-void static BatchWriteCoins(CLevelDBBatch& batch, const uint256& hash, const CCoins& coins)
-{
-    if (coins.IsPruned())
-        batch.Erase(make_pair(DB_COINS, hash));
-    else
-        batch.Write(make_pair(DB_COINS, hash), coins);
-}
-
-void static BatchWriteHashBestChain(CLevelDBBatch& batch, const uint256& hash)
-{
-    batch.Write(DB_BEST_BLOCK, hash);
-}
-
-CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe)
+CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
 }
 
@@ -70,12 +57,15 @@ uint256 CCoinsViewDB::GetBestBlock() const
 
 bool CCoinsViewDB::BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock)
 {
-    CLevelDBBatch batch;
+    CLevelDBBatch batch(db.GetObfuscateKey());
     size_t count = 0;
     size_t changed = 0;
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
-            BatchWriteCoins(batch, it->first, it->second.coins);
+            if (it->second.coins.IsPruned())
+                batch.Erase(make_pair(DB_COINS, it->first));
+            else
+                batch.Write(make_pair(DB_COINS, it->first), it->second.coins);
             changed++;
         }
         count++;
@@ -83,7 +73,7 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock)
         mapCoins.erase(itOld);
     }
     if (hashBlock != uint256(0))
-        BatchWriteHashBestChain(batch, hashBlock);
+        batch.Write(DB_BEST_BLOCK, hashBlock);
 
     LogPrint("coindb", "Committing %u changed transactions (out of %u) to coin database...\n", (unsigned int)changed, (unsigned int)count);
     return db.WriteBatch(batch);
@@ -214,7 +204,7 @@ bool CBlockTreeDB::ReadTxIndex(const uint256& txid, CDiskTxPos& pos)
 
 bool CBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> >& vect)
 {
-    CLevelDBBatch batch;
+    CLevelDBBatch batch(GetObfuscateKey());
     for (std::vector<std::pair<uint256, CDiskTxPos> >::const_iterator it = vect.begin(); it != vect.end(); it++)
         batch.Write(make_pair(DB_TXINDEX, it->first), it->second);
     return WriteBatch(batch);
@@ -246,7 +236,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
 
     int nDiscarded = 0;
     int nFirstDiscarded = INT_MAX;
-    CLevelDBBatch batch;
+    CLevelDBBatch batch(GetObfuscateKey());
 
     // Load mapBlockIndex
     while (pcursor->Valid()) {
@@ -339,7 +329,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
 
 /////////////////////////////////////////////////////// // lux
 bool CBlockTreeDB::WriteHeightIndex(const CHeightTxIndexKey &heightIndex, const std::vector<uint256>& hash) {
-    CLevelDBBatch batch;
+    CLevelDBBatch batch(GetObfuscateKey());
     batch.Write(std::make_pair(DB_HEIGHTINDEX, heightIndex), hash);
     return WriteBatch(batch);
 }
@@ -410,7 +400,7 @@ int CBlockTreeDB::ReadHeightIndex(int low, int high, int minconf,
 bool CBlockTreeDB::EraseHeightIndex(const unsigned int &height) {
 
     boost::scoped_ptr<leveldb::Iterator> pcursor(NewIterator());
-    CLevelDBBatch batch;
+    CLevelDBBatch batch(GetObfuscateKey());
 
     CDataStream ssKeySet(SER_DISK, CLIENT_VERSION);
     ssKeySet << std::make_pair(DB_HEIGHTINDEX, CHeightTxIndexIteratorKey(height));
@@ -440,7 +430,7 @@ bool CBlockTreeDB::EraseHeightIndex(const unsigned int &height) {
 bool CBlockTreeDB::WipeHeightIndex() {
 
     boost::scoped_ptr<leveldb::Iterator> pcursor(NewIterator());
-    CLevelDBBatch batch;
+    CLevelDBBatch batch(GetObfuscateKey());
 
     pcursor->SeekToFirst();
 
