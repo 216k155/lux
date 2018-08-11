@@ -699,15 +699,20 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
             }
 
             pwallet->LoadTokenTx(wTokenTx);
-        }else if (strType == "contractdata")
-        {
+        } else if (strType == "contractdata") {
             std::string strAddress, strKey, strValue;
             ssKey >> strAddress;
             ssKey >> strKey;
             ssValue >> strValue;
-            if (!pwallet->LoadContractData(strAddress, strKey, strValue))
-            {
+            if (!pwallet->LoadContractData(strAddress, strKey, strValue)) {
                 strErr = "Error reading wallet database: LoadContractData failed";
+                return false;
+            }
+        } else if (strType == "hdchain") {
+            CHDChain chain;
+            ssValue >> chain;
+            if (!pwallet->SetHDChain(chain, true)) {
+                strErr = "Error reading wallet database: SetHDChain failed";
                 return false;
             }
         }
@@ -1118,4 +1123,10 @@ bool CWalletDB::EraseTokenTx(uint256 hash)
 unsigned int CWalletDB::GetUpdateCounter()
 {
     return nWalletDBUpdateCounter;
+}
+
+bool CWalletDB::WriteHDChain(const CHDChain& chain)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("hdchain"), chain);
 }

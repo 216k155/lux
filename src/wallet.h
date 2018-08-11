@@ -65,6 +65,8 @@ static const bool DEFAULT_SPEND_ZEROCONF_CHANGE = true;
 static const bool DEFAULT_ZERO_BALANCE_ADDRESS_TOKEN = true;
 
 static const bool DEFAULT_NOT_USE_CHANGE_ADDRESS = false;
+//! if set, all keys will be derived by using BIP32
+static const bool DEFAULT_USE_HD_WALLET = true;
 
 class CAccountingEntry;
 class CCoinControl;
@@ -307,6 +309,9 @@ public:
     bool SelectCoinsCollateral(std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet) const;
 
     void LoadKeyPool(int64_t nIndex, const CKeyPool &keypool);
+
+    /* the hd chain data model (external chain counters) */
+    CHDChain hdChain;
 
     /*
      * Main wallet lock.
@@ -777,6 +782,13 @@ public:
      * This function will automatically add the necessary scripts to the wallet.
      */
     CTxDestination AddAndGetDestinationForScript(const CScript& script, OutputType);
+
+    /* Set the hd chain model (chain child index counters) */
+    bool SetHDChain(const CHDChain& chain, bool memonly);
+
+    /* Set the current hd master key (will reset the chain child index counters) */
+    bool SetHDMasterKey(const CKey& key);
+
 };
 
 /** A key allocated from the key pool. */

@@ -430,6 +430,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += "  -txconfirmtarget=<n>     " + strprintf(_("If paytxfee is not set, include enough fee so transactions begin confirmation on average within n blocks (default: %u)"), 1) + "\n";
     strUsage += "  -maxtxfee=<amt>          " + strprintf(_("Maximum total fees to use in a single wallet transaction, setting too low may abort large transactions (default: %s)"), FormatMoney(maxTxFee)) + "\n";
     strUsage += "  -upgradewallet           " + _("Upgrade wallet to latest format") + " " + _("on startup") + "\n";
+    strUsage += "  -usehd                   " + _("Use hierarchical deterministic key generation (HD) after bip32. Only has effect during wallet creation/first start") + " " + strprintf(_("(default: %u)"), DEFAULT_USE_HD_WALLET) + "\n";
     strUsage += "  -wallet=<file>           " + _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), "wallet.dat") + "\n";
     strUsage += "  -walletbroadcast         " + _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), true) + "\n";
     strUsage += "  -walletnotify=<cmd>      " + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n";
@@ -1638,6 +1639,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             // Create new keyUser and set as default key
             RandAddSeedPerfmon();
 
+            if (GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET)) {
+            // generate a new master key
+            CKey key;
+            key.MakeNewKey(true);
+            if (!pwalletMain->SetHDMasterKey(key))
+                throw std::runtime_error("CWallet::GenerateNewKey(): Storing master key failed");
+        }
             CPubKey newDefaultKey;
             if (pwalletMain->GetKeyFromPool(newDefaultKey)) {
                 pwalletMain->SetDefaultKey(newDefaultKey);
