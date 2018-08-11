@@ -74,7 +74,7 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::BLOCKTXN,
 };
 
-static const char* ppszTypeName[] =
+const char* ppszTypeName[] =
         {
                 "ERROR",
                 "tx",

@@ -84,6 +84,72 @@ public:
     HTTPRequest *req;
 };
 
+class JSONRPCRequest
+{
+public:
+    UniValue id;
+    std::string strMethod;
+    UniValue params;
+    bool fHelp;
+    std::string URI;
+    std::string authUser;
+
+    bool isLongPolling;
+
+    /**
+     * If using batch JSON request, this object won't get the underlying HTTPRequest.
+     */
+    JSONRPCRequest() {
+        id = NullUniValue;
+        params = NullUniValue;
+        fHelp = false;
+        req = NULL;
+        isLongPolling = false;
+    };
+
+    JSONRPCRequest(HTTPRequest *req);
+
+    /**
+     * Start long-polling
+     */
+    void PollStart();
+
+    /**
+     * Ping long-poll connection with an empty character to make sure it's still alive.
+     */
+    void PollPing();
+
+    /**
+     * Returns whether the underlying long-poll connection is still alive.
+     */
+    bool PollAlive();
+
+    /**
+     * End a long poll request.
+     */
+    void PollCancel();
+
+    /**
+     * Return the JSON result of a long poll request
+     */
+    void PollReply(const UniValue& result);
+
+    void parse(const UniValue& valRequest);
+
+    // FIXME: make this private?
+    HTTPRequest *req;
+};
+
+/** Start RPC threads */
+void StartRPCThreads();
+/**
+ * Alternative to StartRPCThreads for the GUI, when no server is
+ * used. The RPC thread in this case is only used to handle timeouts.
+ * If real RPC threads have already been started this is a no-op.
+ */
+void StartDummyRPCThread();
+/** Stop RPC threads */
+void StopRPCThreads();
 /** Query whether RPC is running */
 bool IsRPCRunning();
 
