@@ -249,6 +249,65 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
     }
 }
 
+void entryToJSON(UniValue &info, const CTxMemPoolEntry &e)
+{
+    AssertLockHeld(mempool.cs);
+
+    info.push_back(Pair("size", (int)e.GetTxSize()));
+    info.push_back(Pair("fee", ValueFromAmount(e.GetFee())));
+    info.push_back(Pair("modifiedfee", ValueFromAmount(e.GetModifiedFee())));
+    info.push_back(Pair("time", e.GetTime()));
+    info.push_back(Pair("height", (int)e.GetHeight()));
+    info.push_back(Pair("startingpriority", e.GetPriority(e.GetHeight())));
+    info.push_back(Pair("currentpriority", e.GetPriority(chainActive.Height())));
+    info.push_back(Pair("descendantcount", e.GetCountWithDescendants()));
+    info.push_back(Pair("descendantsize", e.GetSizeWithDescendants()));
+    info.push_back(Pair("descendantfees", e.GetModFeesWithDescendants()));
+    const CTransaction& tx = e.GetTx();
+    set<string> setDepends;
+    BOOST_FOREACH(const CTxIn& txin, tx.vin)
+    {
+        if (mempool.exists(txin.prevout.hash))
+            setDepends.insert(txin.prevout.hash.ToString());
+    }
+
+    UniValue depends(UniValue::VARR);
+    BOOST_FOREACH(const string& dep, setDepends)
+    {
+        depends.push_back(dep);
+    }
+
+    info.push_back(Pair("depends", depends));
+}
+
+UniValue mempoolToJSON(bool fVerbose)
+{
+    if (fVerbose)
+    {
+        LOCK(mempool.cs);
+        UniValue o(UniValue::VOBJ);
+        for (const CTxMemPoolEntry& e : mempool.mapTx)
+        {
+            const uint256& hash = e.GetTx().GetHash();
+            UniValue info(UniValue::VOBJ);
+            entryToJSON(info, e);
+            o.push_back(Pair(hash.ToString(), info));
+        }
+        return o;
+    }
+    else
+    {
+        std::vector<uint256> vtxid;
+        mempool.queryHashes(vtxid);
+
+        UniValue a(UniValue::VARR);
+        for (const uint256& hash : vtxid)
+            a.push_back(hash.ToString());
+
+        return a;
+    }
+}
+
 UniValue getblockhashes(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2)
@@ -1187,6 +1246,18 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
     }
 
     return res;
+}
+
+UniValue mempoolInfoToJSON() {
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("size", (int64_t) mempool.size()));
+    ret.push_back(Pair("bytes", (int64_t) mempool.GetTotalTxSize()));
+    ret.push_back(Pair("usage", (int64_t) mempool.DynamicMemoryUsage()));
+    size_t maxmempool = GetBoolArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
+    ret.push_back(Pair("maxmempool", (int64_t) maxmempool));
+    ret.push_back(Pair("mempoolminfee", ValueFromAmount(mempool.GetMinFee(maxmempool).GetFeePerK())));
+
+    return ret;
 }
 
 UniValue getmempoolinfo(const UniValue& params, bool fHelp)
