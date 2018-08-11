@@ -52,6 +52,10 @@ private:
 
     unsigned int Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const;
 
+    // Private constructor for CRollingBloomFilter, no restrictions on size
+    CBloomFilter(unsigned int nElements, double nFPRate, unsigned int nTweak);
+    friend class CRollingBloomFilter;
+
 public:
     /**
      * Creates a new bloom filter which will provide the given fp rate when filled with the given number of elements
@@ -85,6 +89,7 @@ public:
     bool contains(const uint256& hash) const;
 
     void clear();
+    void reset(unsigned int nNewTweak);
 
     //! True if the size is <= MAX_BLOOM_FILTER_SIZE and the number of hash functions is <= MAX_HASH_FUNCS
     //! (catch a filter which was just deserialized which was too big)
@@ -96,5 +101,41 @@ public:
     //! Checks for empty and full filters to avoid wasting cpu
     void UpdateEmptyFull();
 };
+
+class CRollingBloomFilter
+{
+public:
+    // A random bloom filter calls GetRand() at creation time.
+    // Don't create global CRollingBloomFilter objects, as they may be
+    // constructed before the randomizer is properly initialized.
+    CRollingBloomFilter(unsigned int nElements, double nFPRate);
+
+    void insert(const std::vector<unsigned char>& vKey);
+    void insert(const uint256& hash);
+    bool contains(const std::vector<unsigned char>& vKey) const;
+    bool contains(const uint256& hash) const;
+
+    void reset();
+
+private:
+    int nEntriesPerGeneration;
+    int nEntriesThisGeneration;
+    int nGeneration;
+    std::vector<uint32_t> data;
+    unsigned int nTweak;
+    int nHashFuncs;
+
+    unsigned int Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const;
+
+    inline int get(uint32_t position) const {
+        return (data[(position >> 4) % data.size()] >> (2 * (position & 0xF))) & 0x3;
+    }
+
+    inline void put(uint32_t position, uint32_t val) {
+        uint32_t& cell = data[(position >> 4) % data.size()];
+        cell = (cell & ~(((uint32_t)3) << (2 * (position & 0xF)))) | (val << (2 * (position & 0xF)));
+    }
+};
+
 
 #endif // BITCOIN_BLOOM_H

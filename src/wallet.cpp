@@ -1261,7 +1261,7 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
         while (pindex && !fAbortRescan && !ShutdownRequested()) {
             dProgressShow = std::min(99, (int) (((dProgressCurrent - dProgressStart) * 100) / dProgressTotal));
             dProgressShow = std::max(1, dProgressShow);
-            
+
             if ((pindex->nHeight % 100 == 0) && (dProgressTotal > 0))
             {
                 if (dProgressShowPrev != dProgressShow)

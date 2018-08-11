@@ -232,6 +232,9 @@ uint32_t nBlockSequenceId = 1;
      * them, if processing happens afterwards. Protected by cs_main.
      */
 map<uint256, NodeId> mapBlockSource;
+std::unique_ptr<CRollingBloomFilter> recentRejects;
+
+uint256 hashRecentRejectsChainTip;
 
 /** Blocks that are in flight, and that are in the queue to be downloaded. Protected by cs_main. */
 struct QueuedBlock {
@@ -5081,15 +5084,35 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
 
 void UnloadBlockIndex()
 {
-    mapBlockIndex.clear();
+    LOCK(cs_main);
     setBlockIndexCandidates.clear();
     chainActive.SetTip(NULL);
     pindexBestInvalid = NULL;
     for (BlockMap::value_type& entry : mapBlockIndex) {
         delete entry.second;
     }
-    mapBlockIndex.clear();
     fHavePruned = false;
+    pindexBestHeader = NULL;
+    mempool.clear();
+    mapOrphanTransactions.clear();
+    mapOrphanTransactionsByPrev.clear();
+    nSyncStarted = 0;
+    mapBlocksUnlinked.clear();
+    vinfoBlockFile.clear();
+    nLastBlockFile = 0;
+    nBlockSequenceId = 1;
+    mapBlockSource.clear();
+    mapBlocksInFlight.clear();
+    nQueuedValidatedHeaders = 0;
+    nPreferredDownload = 0;
+    setDirtyBlockIndex.clear();
+    setDirtyFileInfo.clear();
+    mapNodeState.clear();
+    recentRejects.reset(NULL);
+    for (BlockMap::value_type& entry : mapBlockIndex) {
+        delete entry.second;
+    }
+    mapBlockIndex.clear();
 }
 
 bool LoadBlockIndex()
@@ -5145,7 +5168,8 @@ bool InitBlockIndex(const CChainParams& chainparams)
             return error("LoadBlockIndex() : failed to initialize block database: %s", e.what());
         }
     }
-
+    // Initialize global variables that cannot be constructed at startup.
+    recentRejects.reset(new CRollingBloomFilter(120000, 0.000001));
     return true;
 }
 
@@ -5504,12 +5528,17 @@ bool static AlreadyHave(const CInv& inv)
 {
     switch (inv.type) {
     case MSG_TX:
-    case MSG_WITNESS_TX:
-        {
-        bool txInMap = false;
-        txInMap = mempool.exists(inv.hash);
-        return txInMap || mapOrphanTransactions.count(inv.hash) ||
-               pcoinsTip->HaveCoins(inv.hash);
+    case MSG_WITNESS_TX: {
+            if (chainActive.Tip()->GetBlockHash() != hashRecentRejectsChainTip) {
+                // If the chain tip has changed previously rejected transactions
+                // might be now valid, e.g. due to a nLockTime'd tx becoming valid,
+                // or a double-spend. Reset the rejects filter and give those
+                // txs a second chance.
+                hashRecentRejectsChainTip = chainActive.Tip()->GetBlockHash();
+                recentRejects->reset();
+            }
+            return recentRejects->contains(inv.hash) || mempool.exists(inv.hash) ||
+                   mapOrphanTransactions.count(inv.hash) || pcoinsTip->HaveCoins(inv.hash);
         }
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:
@@ -6184,13 +6213,30 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
         } else if (fMissingInputs) {
-            AddOrphanTx(tx, pfrom->GetId());
+            // It may be the case that the orphans parents have all been rejected
+            bool fRejectedParents = false;
+            for (const CTxIn& txin : tx.vin) {
+                if (recentRejects->contains(txin.prevout.hash)) {
+                    fRejectedParents = true;
+                    break;
+                }
+            }
+            if (!fRejectedParents) {
+                for (const CTxIn& txin : tx.vin) {
+                    CInv inv(MSG_TX, txin.prevout.hash);
+                    pfrom->AddInventoryKnown(inv);
+                    if (!AlreadyHave(inv)) pfrom->AskFor(inv);
+                }
+                AddOrphanTx(tx, pfrom->GetId());
 
-            // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
-            unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
-            unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
-            if (nEvicted > 0)
-                LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+                // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
+                unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
+                unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
+                if (nEvicted > 0)
+                    LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+            } else {
+                LogPrint("mempool", "not keeping orphan with rejected parents %s\n",tx.GetHash().ToString());
+            }
         } else {
 
             if (pfrom->fWhitelisted && GetBoolArg("-whitelistalwaysrelay", DEFAULT_WHITELISTALWAYSRELAY)) {

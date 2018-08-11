@@ -696,13 +696,15 @@ bool AppInitServers(boost::thread_group& threadGroup)
 {
     RPCServer::OnStopped(&OnRPCStopped);
     RPCServer::OnPreCommand(&OnRPCPreCommand);
-    if (!StartHTTPServer())
+    if (!InitHTTPServer())
         return false;
     if (!StartRPC())
         return false;
     if (!StartHTTPRPC())
         return false;
     if (GetBoolArg("-rest", false) && !StartREST())
+        return false;
+    if (!StartHTTPServer())
         return false;
     return true;
 }
@@ -1656,6 +1658,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             pwalletMain->SetBestChain(chainActive.GetLocator());
         }
 
+        else if (mapArgs.count("-usehd")) {
+        bool useHD = GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET);
+        if (!pwalletMain->hdChain.masterKeyID.IsNull() && !useHD)
+            return InitError(strprintf(_("Error loading %s: You can't disable HD on a already existing HD wallet"), strWalletFile));
+        if (pwalletMain->hdChain.masterKeyID.IsNull() && useHD)
+            return InitError(strprintf(_("Error loading %s: You can't enable HD on a already existing non-HD wallet"), strWalletFile));
+    }
         LogPrintf("%s", strErrors.str());
         LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
 

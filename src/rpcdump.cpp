@@ -213,6 +213,9 @@ UniValue importaddress(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         fRescan = params[2].get_bool();
 
+    if (fRescan && fPruneMode)
+        throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
+
     {
         if (::IsMine(*pwalletMain, script) == ISMINE_SPENDABLE)
             throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
