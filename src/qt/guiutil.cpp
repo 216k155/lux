@@ -932,6 +932,9 @@ QString formatServicesStr(quint64 mask)
             case NODE_NETWORK:
                 strList.append(QObject::tr("NETWORK"));
                 break;
+            case NODE_GETUTXO:
+                strList.append("GETUTXO");
+                break;
             case NODE_WITNESS:
                 strList.append(QObject::tr("WITNESS"));
                 break;
