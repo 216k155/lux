@@ -156,7 +156,6 @@ BITCOIN_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/script_error.h \
-  serialize.h \
   spork.h \
   stake.h \
   streams.h \
@@ -724,9 +723,12 @@ CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a
 CLEANFILES += *.a *.la crypto/*.a cryptopp/*.a qt/*.a
 CLEANFILES += *.gcda *.gcno
 CLEANFILES += compat/*.gcda compat/*.gcno
+CLEANFILES += consensus/*.gcda consensus/*.gcno
 CLEANFILES += crypto/*.gcda crypto/*.gcno
+CLEANFILES += policy/*.gcda policy/*.gcno
 CLEANFILES += primitives/*.gcda primitives/*.gcno
 CLEANFILES += script/*.gcda script/*.gcno
+CLEANFILES += support/*.gcda support/*.gcno
 CLEANFILES += univalue/*.gcda univalue/*.gcno
 CLEANFILES += zmq/*.gcda zmq/*.gcno
 

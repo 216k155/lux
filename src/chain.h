@@ -39,7 +39,7 @@ struct CDiskBlockPos {
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(VARINT(nFile));
         READWRITE(VARINT(nPos));
@@ -259,7 +259,7 @@ public:
 
         if (block.IsProofOfStake()) {
             SetProofOfStake();
-            prevoutStake = block.vtx[1].vin[0].prevout;
+            prevoutStake = block.vtx[1]->vin[0].prevout;
             nStakeTime = block.nTime;
         } else {
             prevoutStake.SetNull();
@@ -441,10 +441,10 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int _nVersion)
+    inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        if (!(nType & SER_GETHASH))
-            READWRITE(VARINT(_nVersion));
+        if (!(s.GetType() & SER_GETHASH))
+            READWRITE(VARINT(s.GetVersion()));
 
         READWRITE(VARINT(nHeight));
         READWRITE(VARINT(nStatus));

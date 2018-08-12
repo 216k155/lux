@@ -432,7 +432,7 @@ static void MutateTxSign(CMutableTransaction& tx, const string& flagStr)
 
         txin.scriptSig.clear();
 
-        CTransaction txPrev;
+        CTransactionRef txPrev;
         uint256 prevBlockHash;
         //Find previous transaction with the same output as txNew input
         if (!GetTransaction(mergedTx.vin[i].prevout.hash, txPrev, Params().GetConsensus(), prevBlockHash)) {
@@ -440,7 +440,7 @@ static void MutateTxSign(CMutableTransaction& tx, const string& flagStr)
             //TODO: probably should raise exception here
             return;
         }
-        const CAmount& amount = txPrev.vout[txin.prevout.n].nValue;
+        const CAmount& amount = txPrev->vout[txin.prevout.n].nValue;
         SignatureData sigdata;
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
         if (!fHashSingle || (i < mergedTx.vout.size()))
@@ -448,7 +448,7 @@ static void MutateTxSign(CMutableTransaction& tx, const string& flagStr)
 
         // ... and merge in other signatures:
         BOOST_FOREACH (const CTransaction& txv, txVariants) {
-            sigdata = CombineSignatures(prevPubKey, MutableTransactionSignatureChecker(&mergedTx, i, amount), sigdata, DataFromTransaction(txv, i));
+            sigdata = CombineSignatures(prevPubKey, MutableTransactionSignatureChecker(&mergedTx, i, amount), sigdata, DataFromTransaction(CMutableTransaction(txv), i));
         }
 
         UpdateTransaction(mergedTx, i, sigdata);
@@ -580,7 +580,7 @@ static int CommandLineRawTx(int argc, char* argv[])
             argv++;
         }
 
-        CTransaction txDecodeTmp;
+        CMutableTransaction tx;
         int startArg;
 
         if (!fCreateBlank) {
@@ -593,14 +593,12 @@ static int CommandLineRawTx(int argc, char* argv[])
             if (strHexTx == "-") // "-" implies standard input
                 strHexTx = readStdin();
 
-            if (!DecodeHexTx(txDecodeTmp, strHexTx, true))
+            if (!DecodeHexTx(tx, strHexTx, true))
                 throw runtime_error("invalid transaction encoding");
 
             startArg = 2;
         } else
             startArg = 1;
-
-        CMutableTransaction tx(txDecodeTmp);
 
         for (int i = startArg; i < argc; i++) {
             string arg = argv[i];
