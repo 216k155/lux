@@ -84,16 +84,6 @@ public:
     HTTPRequest *req;
 };
 
-class AcceptedConnection
-{
-public:
-    virtual ~AcceptedConnection() {}
-
-    virtual std::iostream& stream() = 0;
-    virtual std::string peer_address_to_string() const = 0;
-    virtual void close() = 0;
-};
-
 class JSONRPCRequest
 {
 public:
@@ -163,10 +153,6 @@ void StopRPCThreads();
 /** Query whether RPC is running */
 bool IsRPCRunning();
 
-
-
-
-
 /** 
  * Set
  * the RPC warmup status.  When this is done, all RPC calls will error out
@@ -179,43 +165,15 @@ void SetRPCWarmupFinished();
 /* returns the current warmup state.  */
 bool RPCIsInWarmup(std::string* statusOut);
 
+void RPCTypeCheck(const UniValue& params,
+                  const std::list<UniValue::VType>& typesExpected,
+                  bool fAllowNull = false);
 /**
  * Type-check arguments; throws JSONRPCError if wrong type given. Does not check that
  * the right number of arguments are passed, just that any passed are the correct type.
  * Use like:  RPCTypeCheck(params, boost::assign::list_of(str_type)(int_type)(obj_type));
  */
-void RPCTypeCheck(const UniValue& params,
-    const std::list<UniValue::VType>& typesExpected,
-    bool fAllowNull = false);
-/**
- * Check for expected keys/value types in an Object.
- * Use like: RPCTypeCheck(object, boost::assign::map_list_of("name", str_type)("value", int_type));
- */
-void RPCTypeCheckObj(const UniValue& o,
-    const std::map<std::string, UniValue::VType>& typesExpected,
-    bool fAllowNull = false);
-
-/**
- * Run func nSeconds from now. Uses boost deadline timers.
- * Overrides previous timer <name> (if any).
- */
-void RPCRunLater(const std::string& name, boost::function<void(void)> func, int64_t nSeconds);
-
-//! Convert boost::asio address to CNetAddr
-extern CNetAddr BoostAsioToCNetAddr(boost::asio::ip::address address);
-
-typedef UniValue (*rpcfn_type)(const UniValue& params, bool fHelp);
-
-class CRPCCommand
-{
-public:
-    std::string category;
-    std::string name;
-    rpcfn_type actor;
-    bool okSafeMode;
-    bool threadSafe;
-    bool reqWallet;
-};
+void RPCTypeCheckObj(const UniValue& o, const std::map<std::string, UniValue::VType>& typesExpected, bool fAllowNull=false);
 
 /** Opaque base class for timers returned by NewTimerFunc.
  * This provides no methods at the moment, but makes sure that delete
@@ -253,6 +211,26 @@ void RPCUnregisterTimerInterface(RPCTimerInterface *iface);
 /**
  * LUX RPC command dispatcher.
  */
+
+void RPCRunLater(const std::string& name, boost::function<void(void)> func, int64_t nSeconds);
+
+typedef UniValue(*rpcfn_type)(const UniValue& params, bool fHelp);
+
+class CRPCCommand
+{
+public:
+    std::string category;
+    std::string name;
+    rpcfn_type actor;
+    bool okSafeMode;
+    bool threadSafe;
+    bool reqWallet;
+};
+
+/**
+ *  RPC command dispatcher.
+ */
+
 class CRPCTable
 {
 private:
@@ -260,7 +238,7 @@ private:
 
 public:
     CRPCTable();
-    const CRPCCommand* operator[](std::string name) const;
+    const CRPCCommand* operator[](const std::string& name) const;
     std::string help(std::string name) const;
 
     /**
@@ -290,8 +268,8 @@ extern uint256 ParseHashO(const UniValue& o, std::string strKey);
 extern std::vector<unsigned char> ParseHexV(const UniValue& v, std::string strName);
 extern std::vector<unsigned char> ParseHexO(const UniValue& o, std::string strKey);
 
-extern void InitRPCMining();
-extern void ShutdownRPCMining();
+extern int ParseInt(const UniValue& o, std::string strKey);
+extern bool ParseBool(const UniValue& o, std::string strKey);
 
 extern int64_t nWalletUnlockTime;
 extern CAmount AmountFromValue(const UniValue& value);
@@ -381,6 +359,7 @@ extern UniValue walletlock(const UniValue& params, bool fHelp);
 extern UniValue encryptwallet(const UniValue& params, bool fHelp);
 extern UniValue validateaddress(const UniValue& params, bool fHelp);
 extern UniValue getinfo(const UniValue& params, bool fHelp);
+extern UniValue getstateinfo(const UniValue& params, bool fHelp);
 extern UniValue getwalletinfo(const UniValue& params, bool fHelp);
 extern UniValue getblockchaininfo(const UniValue& params, bool fHelp);
 extern UniValue getnetworkinfo(const UniValue& params, bool fHelp);
@@ -439,11 +418,9 @@ extern UniValue gettransactionreceipt(const UniValue& params, bool fHelp);
 extern UniValue searchlogs(const UniValue& params, bool fHelp);
 extern UniValue pruneblockchain(const UniValue& params, bool fHelp);
 
-// in rest.cpp
-extern bool HTTPReq_REST(AcceptedConnection* conn,
-    std::string& strURI,
-    std::map<std::string, std::string>& mapHeaders,
-    bool fRun);
+bool StartRPC();
+void InterruptRPC();
+void StopRPC();
 std::string JSONRPCExecBatch(const UniValue& vReq);
 
 #endif // BITCOIN_RPCSERVER_H

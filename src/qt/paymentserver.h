@@ -62,7 +62,7 @@ class PaymentServer : public QObject
 public:
     // Parse URIs on command line
     // Returns false on error
-    static void ipcParseCommandLine(int argc, char* argv[]);
+    static void ipcParseCommandLine(int argc, char *argv[]);
 
     // Returns true if there were URIs on the command line
     // which were successfully sent to an already-running
@@ -83,23 +83,30 @@ public:
     static void LoadRootCAs(X509_STORE* store = NULL);
 
     // Return certificate store
-    static X509_STORE* getCertStore();
+    static X509_STORE* getCertStore() { return certStore; }
 
     // OptionsModel is used for getting proxy settings and display unit
-    void setOptionsModel(OptionsModel* optionsModel);
+    void setOptionsModel(OptionsModel *optionsModel);
 
     // This is now public, because we use it in paymentservertests.cpp
     static bool readPaymentRequestFromFile(const QString& filename, PaymentRequestPlus& request);
 
-signals:
+    // Verify that the payment request network matches the client network
+    static bool verifyNetwork(const payments::PaymentDetails& requestDetails);
+    // Verify if the payment request is expired
+    static bool verifyExpired(const payments::PaymentDetails& requestDetails);
+    // Verify the payment request amount is valid
+    static bool verifyAmount(const CAmount& requestAmount);
+
+Q_SIGNALS:
     // Fired when a valid payment request is received
     void receivedPaymentRequest(SendCoinsRecipient);
 
     // Fired when a valid PaymentACK is received
-    void receivedPaymentACK(const QString& paymentACKMsg);
+    void receivedPaymentACK(const QString &paymentACKMsg);
 
     // Fired when a message should be reported to the user
-    void message(const QString& title, const QString& message, unsigned int style);
+    void message(const QString &title, const QString &message, unsigned int style);
 
 public slots:
     // Signal this when the main window's UI is ready
@@ -124,7 +131,7 @@ protected:
     bool eventFilter(QObject* object, QEvent* event);
 
 private:
-    bool processPaymentRequest(PaymentRequestPlus& request, SendCoinsRecipient& recipient);
+    bool processPaymentRequest(const PaymentRequestPlus& request, SendCoinsRecipient& recipient);
     void fetchRequest(const QUrl& url);
 
     // Setup networking
@@ -132,6 +139,10 @@ private:
 
     bool saveURIs; // true during startup
     QLocalServer* uriServer;
+
+    static X509_STORE* certStore;       // Trusted root certificates
+    static void freeCertStore();
+
     QNetworkAccessManager* netManager;  // Used to fetch payment requests
     OptionsModel* optionsModel;
 };

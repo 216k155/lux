@@ -26,7 +26,7 @@ namespace Consensus {
             assert(coins);
 
             // If prev is coinbase, check that it's matured
-            if (coins->IsCoinBase() || coins->IsCoinStake()) {
+            if (coins->IsCoinGenerated()) {
                 const int maturity = IsTestNet() ? 10 : COINBASE_MATURITY; // todo: use COINBASE_MATURITY()
                 if (nSpendHeight - coins->nHeight < maturity && nSpendHeight - coins->nHeight > 0)
                     return state.Invalid(false,
@@ -227,7 +227,7 @@ bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp, bool 
             // lock on a mempool input, so we can use the return value of
             // CheckSequenceLocks to indicate the LockPoints validity
             int maxInputHeight = 0;
-            BOOST_FOREACH(int height, prevheights) {
+            for (int height : prevheights) {
                 // Can ignore mempool inputs since we'll fail if they had non-zero locks
                 if (height != tip->nHeight+1) {
                     maxInputHeight = std::max(maxInputHeight, height);

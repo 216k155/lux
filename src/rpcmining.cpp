@@ -592,7 +592,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     UniValue transactions(UniValue::VARR);
     map<uint256, int64_t> setTxIndex;
     int i = 0;
-    BOOST_FOREACH (CTransactionRef& ptx, pblock->vtx) {
+    for (CTransactionRef& ptx : pblock->vtx) {
         const CTransaction& tx = *ptx;
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
@@ -630,7 +630,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     UniValue coinbasetxn(UniValue::VARR);
     map<uint256, int64_t> setTxIndex1;
     int j = 0;
-    BOOST_FOREACH (CTransactionRef& ptx, pblock->vtx) {//Incase if multi coinbase
+    for (CTransactionRef& ptx : pblock->vtx) {//Incase if multi coinbase
         const CTransaction& tx = *ptx;
         if (tx.IsCoinBase()) {
             uint256 txHash = tx.GetHash();
@@ -643,7 +643,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             entry.push_back(Pair("hash", tx.GetWitnessHash().GetHex()));
 
             UniValue deps(UniValue::VARR);
-            BOOST_FOREACH (const CTxIn& in, tx.vin) {
+            for (const CTxIn& in : tx.vin) {
                 if (setTxIndex.count(in.prevout.hash))
                     deps.push_back(setTxIndex[in.prevout.hash]);
             }
@@ -837,7 +837,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
             if (pindexPrev != chainActive.Tip()) {
                 // Deallocate old blocks since they're obsolete now
                 mapNewBlock.clear();
-                BOOST_FOREACH(CBlockTemplate* pblocktemplate, vNewBlockTemplate)
+                for (CBlockTemplate* pblocktemplate : vNewBlockTemplate)
                     delete pblocktemplate;
                 vNewBlockTemplate.clear();
             }
