@@ -259,10 +259,10 @@ bool CECKey::TweakPublic(const unsigned char vchTweak[32])
     bool ret = true;
     BN_CTX* ctx = BN_CTX_new();
     BN_CTX_start(ctx);
-    BIGNUM* bnTweak = BN_CTX_get(ctx);
+   /* BIGNUM* bnTweak = BN_CTX_get(ctx);
     BIGNUM* bnOrder = BN_CTX_get(ctx);
     BIGNUM* bnOne = BN_CTX_get(ctx);
-    const EC_GROUP* group = EC_KEY_get0_group(pkey);
+    const EC_GROUP* group = EC_KEY_get0_group(pkey);*/
     EC_GROUP_get_order(group, bnOrder, ctx); // what a grossly inefficient way to get the (constant) group order...
     BN_bin2bn(vchTweak, 32, bnTweak);
     if (BN_cmp(bnTweak, bnOrder) >= 0)
