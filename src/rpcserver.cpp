@@ -415,7 +415,7 @@ const CRPCCommand *CRPCTable::operator[](const std::string &name) const
 {
     map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
     if (it == mapCommands.end())
-        return NULL;
+        return nullptr;
     return (*it).second;
 }
 
@@ -542,7 +542,7 @@ static UniValue JSONRPCExecOne(const UniValue& req)
 {
     UniValue rpc_result(UniValue::VOBJ);
 
-    JSONRequest jreq(NULL);
+    JSONRequest jreq(nullptr);
     try {
         jreq.parse(req);
 

@@ -80,7 +80,7 @@ enum KeystreamOperationFlags {
 	OUTPUT_ALIGNED=1,
 	//! \brief Input buffer is aligned
 	INPUT_ALIGNED=2,
-	//! \brief Input buffer is NULL
+	//! \brief Input buffer is nullptr
 	INPUT_NULL = 4
 };
 
@@ -88,9 +88,9 @@ enum KeystreamOperationFlags {
 //! \sa AdditiveCipherAbstractPolicy::GetBytesPerIteration(), AdditiveCipherAbstractPolicy::GetOptimalBlockSize()
 //!   and AdditiveCipherAbstractPolicy::GetAlignment()
 enum KeystreamOperation {
-	//! \brief Wirte the keystream to the output buffer, input is NULL
+	//! \brief Wirte the keystream to the output buffer, input is nullptr
 	WRITE_KEYSTREAM				= INPUT_NULL,
-	//! \brief Wirte the keystream to the aligned output buffer, input is NULL
+	//! \brief Wirte the keystream to the aligned output buffer, input is nullptr
 	WRITE_KEYSTREAM_ALIGNED		= INPUT_NULL | OUTPUT_ALIGNED,
 	//! \brief XOR the input buffer and keystream, write to the output buffer
 	XOR_KEYSTREAM				= 0,
@@ -133,7 +133,7 @@ struct CRYPTOPP_DLL CRYPTOPP_NO_VTABLE AdditiveCipherAbstractPolicy
 	//! \param iterationCount the number of iterations to generate the key stream
 	//! \sa CanOperateKeystream(), OperateKeystream(), WriteKeystream()
 	virtual void WriteKeystream(byte *keystream, size_t iterationCount)
-		{OperateKeystream(KeystreamOperation(INPUT_NULL | (KeystreamOperationFlags)IsAlignedOn(keystream, GetAlignment())), keystream, NULL, iterationCount);}
+		{OperateKeystream(KeystreamOperation(INPUT_NULL | (KeystreamOperationFlags)IsAlignedOn(keystream, GetAlignment())), keystream, nullptr, iterationCount);}
 
 	//! \brief Flag indicating
 	//! \returns true if the stream can be generated independent of the transformation input, false otherwise
@@ -423,7 +423,7 @@ struct CRYPTOPP_NO_VTABLE CFB_CipherConcretePolicy : public BASE
 	bool CanIterate() const {return true;}
 
 	//! \brief Perform one iteration in the forward direction
-	void TransformRegister() {this->Iterate(NULL, NULL, ENCRYPTION, 1);}
+	void TransformRegister() {this->Iterate(nullptr, nullptr, ENCRYPTION, 1);}
 
 	//! \brief
 	//! \tparam B enumeration indicating endianness
@@ -449,9 +449,9 @@ struct CRYPTOPP_NO_VTABLE CFB_CipherConcretePolicy : public BASE
 
 			if (m_dir == ENCRYPTION)
 			{
-				if (m_input == NULL)
+				if (m_input == nullptr)
 				{
-					CRYPTOPP_ASSERT(m_output == NULL);
+					CRYPTOPP_ASSERT(m_output == nullptr);
 				}
 				else
 				{

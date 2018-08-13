@@ -175,8 +175,8 @@ void FIPS140_SampleApplication()
 
 #ifdef CRYPTOPP_IMPORTS
 
-static PNew s_pNew = NULL;
-static PDelete s_pDelete = NULL;
+static PNew s_pNew = nullptr;
+static PDelete s_pDelete = nullptr;
 
 extern "C" __declspec(dllexport) void __cdecl SetNewAndDeleteFromCryptoPP(PNew pNew, PDelete pDelete, PSetNewHandler pSetNewHandler)
 {

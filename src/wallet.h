@@ -334,7 +334,7 @@ class CWallet : public CCryptoKeyStore, public CValidationInterface
     * all coins from coinControl are selected; Never select unconfirmed coins
     * if they are not ours
     */
-    bool SelectCoins(const std::string &account, const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl = NULL, AvailableCoinsType coin_type = ALL_COINS, bool useIX = true) const;
+    bool SelectCoins(const std::string &account, const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl = nullptr, AvailableCoinsType coin_type = ALL_COINS, bool useIX = true) const;
 
     /**
      * Used to keep track of spent outpoints, and
@@ -429,7 +429,7 @@ public:
         nWalletMaxVersion = FEATURE_BASE;
         fFileBacked = false;
         nMasterKeyMaxID = 0;
-        pwalletdbEncryption = NULL;
+        pwalletdbEncryption = nullptr;
         nOrderPosNext = 0;
         nNextResend = 0;
         nLastResend = 0;
@@ -489,8 +489,8 @@ public:
         return nWalletMaxVersion >= wf;
     }
 
-    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed = true, const CCoinControl* coinControl = NULL, bool fIncludeZeroValue = false, AvailableCoinsType nCoinType = ALL_COINS, bool fUseIX = false) const;
-    void AvailableCoinsMN(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = NULL, AvailableCoinsType coin_type=ALL_COINS, bool useIX = false) const;
+    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed = true, const CCoinControl* coinControl = nullptr, bool fIncludeZeroValue = false, AvailableCoinsType nCoinType = ALL_COINS, bool fUseIX = false) const;
+    void AvailableCoinsMN(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = nullptr, AvailableCoinsType coin_type=ALL_COINS, bool useIX = false) const;
     std::map<CTxDestination, std::vector<COutput> > AvailableCoinsByAddress(bool fConfirmed = true, CAmount maxCoinValue = 0);
     bool SelectCoinsMinConf(const std::string &account, const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
@@ -573,7 +573,7 @@ public:
      * Increment the next transaction order id
      * @return next transaction order id
      */
-    int64_t IncOrderPosNext(CWalletDB* pwalletdb = NULL);
+    int64_t IncOrderPosNext(CWalletDB* pwalletdb = nullptr);
     bool GetAccountDestination(CTxDestination &dest, std::string strAccount, bool bForceNew = false);
 
     typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
@@ -612,11 +612,11 @@ public:
                            CReserveKey& reservekey,
                            CAmount& nFeeRet,
                            std::string& strFailReason,
-                           const CCoinControl* coinControl = NULL,
+                           const CCoinControl* coinControl = nullptr,
                            AvailableCoinsType coin_type = ALL_COINS,
                            bool useIX = false,
                            CAmount nFeePay = 0, CAmount nGasFee=0);
-    bool CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl = NULL, AvailableCoinsType coin_type = ALL_COINS, bool useIX = false, CAmount nFeePay = 0);
+    bool CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl = nullptr, AvailableCoinsType coin_type = ALL_COINS, bool useIX = false, CAmount nFeePay = 0);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std::string strCommand = "tx");
     std::string PrepareDarksendDenominate(int minRounds, int maxRounds);
     bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);
@@ -758,7 +758,7 @@ public:
     bool SetDefaultKey(const CPubKey& vchPubKey);
 
     //! signify that a particular wallet feature is now used. this may change nWalletVersion and nWalletMaxVersion if those are lower
-    bool SetMinVersion(enum WalletFeature, CWalletDB* pwalletdbIn = NULL, bool fExplicit = false);
+    bool SetMinVersion(enum WalletFeature, CWalletDB* pwalletdbIn = nullptr, bool fExplicit = false);
 
     //! change which version we're allowed to upgrade to (note that this does not immediately imply upgrading to that format)
     bool SetMaxVersion(int nVersion);
@@ -951,7 +951,7 @@ public:
 
     CWalletTx()
     {
-        Init(NULL);
+        Init(nullptr);
     }
 
     CWalletTx(const CWallet* pwalletIn, const CTransactionRef arg) : CMerkleTx(std::move(arg))
@@ -1006,7 +1006,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
         if (ser_action.ForRead())
-            Init(NULL);
+            Init(nullptr);
         char fSpent = false;
 
         if (!ser_action.ForRead()) {
@@ -1356,7 +1356,7 @@ public:
         for (const CTxIn& txin : tx->vin) {
             // Transactions not sent by us: not trusted
             const CWalletTx* parent = pwallet->GetWalletTx(txin.prevout.hash);
-            if (parent == NULL)
+            if (parent == nullptr)
                 return false;
             const CTxOut& parentOut = parent->tx->vout[txin.prevout.n];
             const isminetype t = pwallet->IsMine(parentOut);

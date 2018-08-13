@@ -80,8 +80,8 @@ CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
-CNode* ConnectNode(CAddress addrConnect, const char* pszDest = NULL, bool darkSendMaster = false);
-bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false, bool fAddnode = false);
+CNode* ConnectNode(CAddress addrConnect, const char* pszDest = nullptr, bool darkSendMaster = false);
+bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false, bool fAddnode = false);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService& bindAddr, std::string& strError, bool fWhitelisted = false);
@@ -124,11 +124,11 @@ bool AddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 bool RemoveLocal(const CService& addr);
 bool SeenLocal(const CService& addr);
 bool IsLocal(const CService& addr);
-bool GetLocal(CService& addr, const CNetAddr* paddrPeer = NULL);
+bool GetLocal(CService& addr, const CNetAddr* paddrPeer = nullptr);
 bool IsReachable(enum Network net);
 bool IsReachable(const CNetAddr& addr);
 void SetReachable(enum Network net, bool fFlag = true);
-CAddress GetLocalAddress(const CNetAddr* paddrPeer = NULL);
+CAddress GetLocalAddress(const CNetAddr* paddrPeer = nullptr);
 
 
 extern bool fDiscover;

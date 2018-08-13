@@ -807,7 +807,7 @@ public:
 	void SymmetricEncrypt(RandomNumberGenerator &rng, const byte *key, const byte *plaintext, size_t plaintextLength, byte *ciphertext, const NameValuePairs &parameters) const
 	{
 		CRYPTOPP_UNUSED(rng);
-		const byte *cipherKey = NULL, *macKey = NULL;
+		const byte *cipherKey = nullptr, *macKey = nullptr;
 		if (DHAES_MODE)
 		{
 			macKey = key;

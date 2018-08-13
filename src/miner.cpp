@@ -238,7 +238,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithKey(CReserveKe
 {
     CPubKey pubkey;
     if (!reservekey.GetReservedKey(pubkey))
-        return NULL;
+        return nullptr;
 
     CScript scriptPubKey = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
     return CreateNewBlock(scriptPubKey, fMineWitnessTx, fProofOfStake, pTotalFees, txProofTime, nTimeLimit);
@@ -552,7 +552,7 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     uint64_t nBlockSize = this->nBlockSize;
     uint64_t nBlockSigOpsCost = this->nBlockSigOpsCost;
 
-    LuxTxConverter convert(iter->GetTx(), NULL, &pblock->vtx);
+    LuxTxConverter convert(iter->GetTx(), nullptr, &pblock->vtx);
 
     ExtractLuxTX resultConverter;
     if(!convert.extractionLuxTransactions(resultConverter)){
@@ -1082,7 +1082,7 @@ bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     // Process this block the same as if we had received it from another node
     const CChainParams& chainparams = Params();
     CValidationState state;
-    if (!ProcessNewBlock(state, chainparams, NULL, pblock)) {
+    if (!ProcessNewBlock(state, chainparams, nullptr, pblock)) {
         return error("LUXMiner : ProcessNewBlock, block not accepted");
     }
 

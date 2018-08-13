@@ -235,7 +235,7 @@ public:
 	//! \details size is an \a IN and \a OUT parameter and used as a hint. When the call is made,
 	//!    size is the requested size of the buffer. When the call returns,  size is the size of
 	//!   the array returned to the caller.
-	//! \details The base class implementation sets  size to 0 and returns  NULL.
+	//! \details The base class implementation sets  size to 0 and returns  nullptr.
 	//! \note Some objects, like ArraySink, cannot create a space because its fixed. In the case of
 	//! an ArraySink, the pointer to the array is returned and the  size is remaining size.
 	byte * CreatePutSpace(size_t &size)
@@ -262,7 +262,7 @@ public:
 //	void ChannelMessageSeriesEnd(const std::string &channel, int propagation=-1)
 //		{PropagateMessageSeriesEnd(propagation, channel);}
 	byte * ChannelCreatePutSpace(const std::string &channel, size_t &size)
-		{CRYPTOPP_UNUSED(channel); size = 0; return NULL;}
+		{CRYPTOPP_UNUSED(channel); size = 0; return nullptr;}
 	bool ChannelPutModifiable(const std::string &channel, byte *inString, size_t length)
 		{this->ChannelPut(channel, inString, length); return false;}
 

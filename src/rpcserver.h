@@ -47,7 +47,7 @@ public:
     JSONRequest() {
         id = NullUniValue;
         params = NullUniValue;
-        req = NULL;
+        req = nullptr;
         isLongPolling = false;
     };
 
@@ -103,7 +103,7 @@ public:
         id = NullUniValue;
         params = NullUniValue;
         fHelp = false;
-        req = NULL;
+        req = nullptr;
         isLongPolling = false;
     };
 
@@ -273,7 +273,7 @@ extern bool ParseBool(const UniValue& o, std::string strKey);
 
 extern int64_t nWalletUnlockTime;
 extern CAmount AmountFromValue(const UniValue& value);
-extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
+extern double GetDifficulty(const CBlockIndex* blockindex = nullptr);
 extern CBlockIndex* GetLastBlockOfType(const int nPoS);
 extern std::string HelpRequiringPassphrase();
 extern std::string HelpExampleCli(std::string methodname, std::string args);

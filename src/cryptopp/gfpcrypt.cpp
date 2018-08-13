@@ -220,7 +220,7 @@ Integer DL_GroupParameters_IntegerBased::DecodeElement(const byte *encoded, bool
 {
 	CRYPTOPP_UNUSED(checkForGroupMembership);
 	Integer g(encoded, GetModulus().ByteCount());
-	if (!ValidateElement(1, g, NULL))
+	if (!ValidateElement(1, g, nullptr))
 		throw DL_BadElement();
 	return g;
 }

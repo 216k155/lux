@@ -52,7 +52,7 @@ ThreadLocalStorage & AccessPowerUpSelfTestInProgress()
 bool PowerUpSelfTestInProgressOnThisThread()
 {
 #if CRYPTOPP_ENABLE_COMPLIANCE_WITH_FIPS_140_2
-	return AccessPowerUpSelfTestInProgress().GetValue() != NULL;
+	return AccessPowerUpSelfTestInProgress().GetValue() != nullptr;
 #else
 	CRYPTOPP_ASSERT(false);	// should not be called
 	return false;

@@ -124,7 +124,7 @@ typename A::pointer StandardReallocate(A& alloc, T *oldPtr, typename A::size_typ
 
 	if (preserve)
 	{
-		typename A::pointer newPointer = alloc.allocate(newSize, NULL);
+		typename A::pointer newPointer = alloc.allocate(newSize, nullptr);
 		const size_t copySize = STDMIN(oldSize, newSize) * sizeof(T);
 
 		if (oldPtr && newPointer) {memcpy_s(newPointer, copySize, oldPtr, copySize);}
@@ -134,7 +134,7 @@ typename A::pointer StandardReallocate(A& alloc, T *oldPtr, typename A::size_typ
 	else
 	{
 		alloc.deallocate(oldPtr, oldSize);
-		return alloc.allocate(newSize, NULL);
+		return alloc.allocate(newSize, nullptr);
 	}
 }
 
@@ -164,16 +164,16 @@ public:
 	//! \details AlignedAllocate() is used if T_Align16 is true.
 	//!   UnalignedAllocate() used if T_Align16 is false.
 	//! \details This is the C++ *Placement New* operator. ptr is not used, and the function
-	//!   CRYPTOPP_ASSERTs in Debug builds if ptr is non-NULL.
+	//!   CRYPTOPP_ASSERTs in Debug builds if ptr is non-nullptr.
 	//! \sa CallNewHandler() for the methods used to recover from a failed
 	//!   allocation attempt.
 	//! \note size is the count of elements, and not the number of bytes
-	pointer allocate(size_type size, const void *ptr = NULL)
+	pointer allocate(size_type size, const void *ptr = nullptr)
 	{
-		CRYPTOPP_UNUSED(ptr); CRYPTOPP_ASSERT(ptr == NULL);
+		CRYPTOPP_UNUSED(ptr); CRYPTOPP_ASSERT(ptr == nullptr);
 		this->CheckSize(size);
 		if (size == 0)
-			return NULL;
+			return nullptr;
 
 #if CRYPTOPP_BOOL_ALIGN16
 		// TODO: should this need the test 'size*sizeof(T) >= 16'?
@@ -252,12 +252,12 @@ CRYPTOPP_DLL_TEMPLATE_CLASS AllocatorWithCleanup<word, true>;	 // for Integer
 #endif
 
 //! \class NullAllocator
-//! \brief NULL allocator
+//! \brief nullptr allocator
 //! \tparam T class or type
 //! \details A NullAllocator is useful for fixed-size, stack based allocations
 //!   (i.e., static arrays used by FixedSizeAllocatorWithCleanup).
 //! \details A NullAllocator always returns 0 for max_size(), and always returns
-//!   NULL for allocation requests. Though the allocator does not allocate at
+//!   nullptr for allocation requests. Though the allocator does not allocate at
 //!   runtime, it does perform a secure wipe or zeroization during cleanup.
 template <class T>
 class NullAllocator : public AllocatorBase<T>
@@ -266,13 +266,13 @@ public:
 	//LCOV_EXCL_START
 	CRYPTOPP_INHERIT_ALLOCATOR_TYPES
 
-	// TODO: should this return NULL or throw bad_alloc? Non-Windows C++ standard
+	// TODO: should this return nullptr or throw bad_alloc? Non-Windows C++ standard
 	// libraries always throw. And late mode Windows throws. Early model Windows
-	// (circa VC++ 6.0) returned NULL.
-	pointer allocate(size_type n, const void* unused = NULL)
+	// (circa VC++ 6.0) returned nullptr.
+	pointer allocate(size_type n, const void* unused = nullptr)
 	{
 		CRYPTOPP_UNUSED(n); CRYPTOPP_UNUSED(unused);
-		CRYPTOPP_ASSERT(false); return NULL;
+		CRYPTOPP_ASSERT(false); return nullptr;
 	}
 
 	void deallocate(void *p, size_type n)
@@ -315,7 +315,7 @@ public:
 	//!   allocator is available. If size grows beyond S and a suitable
 	//!   allocator is available, then the statically allocated array is
 	//!   obsoleted. If a suitable allocator is \a not available, as with a
-	//!   NullAllocator, then the function returns NULL and a runtime error
+	//!   NullAllocator, then the function returns nullptr and a runtime error
 	//!   eventually occurs.
 	//! \sa reallocate(), SecBlockWithHint
 	pointer allocate(size_type size)
@@ -341,7 +341,7 @@ public:
 	//!   allocator is available. If size grows beyond S and a suitable
 	//!   allocator is available, then the statically allocated array is
 	//!   obsoleted. If a suitable allocator is \a not available, as with a
-	//!   NullAllocator, then the function returns NULL and a runtime error
+	//!   NullAllocator, then the function returns nullptr and a runtime error
 	//!   eventually occurs.
 	//! \sa reallocate(), SecBlockWithHint
 	pointer allocate(size_type size, const void *hint)
@@ -389,7 +389,7 @@ public:
 	//!   allocator is available. If size grows beyond S and a suitable
 	//!   allocator is available, then the statically allocated array is
 	//!   obsoleted. If a suitable allocator is \a not available, as with a
-	//!   NullAllocator, then the function returns NULL and a runtime error
+	//!   NullAllocator, then the function returns nullptr and a runtime error
 	//!   eventually occurs.
 	//! \note size is the count of elements, and not the number of bytes.
 	//! \sa reallocate(), SecBlockWithHint
@@ -403,7 +403,7 @@ public:
 			return oldPtr;
 		}
 
-		pointer newPointer = allocate(newSize, NULL);
+		pointer newPointer = allocate(newSize, nullptr);
 		if (preserve && newSize)
 		{
 			const size_t copySize = STDMIN(oldSize, newSize);
@@ -448,13 +448,13 @@ public:
 	//! \details The elements are not initialized.
 	//! \note size is the count of elements, and not the number of bytes
 	explicit SecBlock(size_type size=0)
-		: m_size(size), m_ptr(m_alloc.allocate(size, NULL)) { }
+		: m_size(size), m_ptr(m_alloc.allocate(size, nullptr)) { }
 
 	//! \brief Copy construct a SecBlock from another SecBlock
 	//! \param t the other SecBlock
 	//! \throws std::bad_alloc
 	SecBlock(const SecBlock<T, A> &t)
-		: m_size(t.m_size), m_ptr(m_alloc.allocate(t.m_size, NULL)) {
+		: m_size(t.m_size), m_ptr(m_alloc.allocate(t.m_size, nullptr)) {
 			CRYPTOPP_ASSERT((!t.m_ptr && !m_size) || (t.m_ptr && m_size));
 			if (t.m_ptr) {memcpy_s(m_ptr, m_size*sizeof(T), t.m_ptr, t.m_size*sizeof(T));}
 		}
@@ -463,12 +463,12 @@ public:
 	//! \param ptr a pointer to an array of T
 	//! \param len the number of elements in the memory block
 	//! \throws std::bad_alloc
-	//! \details If <tt>ptr!=NULL</tt> and <tt>len!=0</tt>, then the block is initialized from the pointer ptr.
-	//!    If <tt>ptr==NULL</tt> and <tt>len!=0</tt>, then the block is initialized to 0.
+	//! \details If <tt>ptr!=nullptr</tt> and <tt>len!=0</tt>, then the block is initialized from the pointer ptr.
+	//!    If <tt>ptr==nullptr</tt> and <tt>len!=0</tt>, then the block is initialized to 0.
 	//!    Otherwise, the block is empty and \a not initialized.
 	//! \note size is the count of elements, and not the number of bytes
 	SecBlock(const T *ptr, size_type len)
-		: m_size(len), m_ptr(m_alloc.allocate(len, NULL)) {
+		: m_size(len), m_ptr(m_alloc.allocate(len, nullptr)) {
 			CRYPTOPP_ASSERT((!m_ptr && !m_size) || (m_ptr && m_size));
 			if (ptr && m_ptr)
 				memcpy_s(m_ptr, m_size*sizeof(T), ptr, len*sizeof(T));

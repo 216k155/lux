@@ -4,7 +4,7 @@
 #include "hrtimer.h"
 #include "misc.h"
 
-#include <stddef.h>		// for NULL
+#include <stddef.h>		// for nullptr
 #include <time.h>
 
 #if defined(CRYPTOPP_WIN32_AVAILABLE)
@@ -97,7 +97,7 @@ TimerWord Timer::GetCurrentTimerValue()
 	return now.QuadPart;
 #elif defined(CRYPTOPP_UNIX_AVAILABLE)
 	timeval now;
-	gettimeofday(&now, NULL);
+	gettimeofday(&now, nullptr);
 	return (TimerWord)now.tv_sec * 1000000 + now.tv_usec;
 #else
 	// clock_t now;

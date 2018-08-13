@@ -194,8 +194,8 @@ public:
 	//!    Hash_DRBG<SHA256, 128/8, 440/8> drbg(entropy, 32, entropy+32, 16);
 	//!    drbg.GenerateBlock(result, result.size());
 	//! </pre>
-	Hash_DRBG(const byte* entropy, size_t entropyLength=STRENGTH, const byte* nonce=NULL,
-		size_t nonceLength=0, const byte* personalization=NULL, size_t personalizationLength=0)
+	Hash_DRBG(const byte* entropy, size_t entropyLength=STRENGTH, const byte* nonce=nullptr,
+		size_t nonceLength=0, const byte* personalization=nullptr, size_t personalizationLength=0)
 		: NIST_DRBG(), m_c(SEEDLENGTH), m_v(SEEDLENGTH)
 	{
 		DRBG_Instantiate(entropy, entropyLength, nonce, nonceLength, personalization, personalizationLength);
@@ -211,13 +211,13 @@ public:
 	unsigned int GetMaxRequestBeforeReseed() const {return MAXIMUM_REQUESTS_BEFORE_RESEED;}
 
 	void IncorporateEntropy(const byte *input, size_t length)
-		{return DRBG_Reseed(input, length, NULL, 0);}
+		{return DRBG_Reseed(input, length, nullptr, 0);}
 
 	void IncorporateEntropy(const byte *entropy, size_t entropyLength, const byte* additional, size_t additionaLength)
 		{return DRBG_Reseed(entropy, entropyLength, additional, additionaLength);}
 
 	void GenerateBlock(byte *output, size_t size)
-		{return Hash_Generate(NULL, 0, output, size);}
+		{return Hash_Generate(nullptr, 0, output, size);}
 
 	void GenerateBlock(const byte* additional, size_t additionaLength, byte *output, size_t size)
 		{return Hash_Generate(additional, additionaLength, output, size);}
@@ -272,8 +272,8 @@ protected:
 
 		const byte zero = 0;
 		SecByteBlock t1(SEEDLENGTH), t2(SEEDLENGTH);
-		Hash_df(entropy, entropyLength, nonce, nonceLength, personalization, personalizationLength, NULL, 0, t1, t1.size());
-		Hash_df(&zero, 1, t1, t1.size(), NULL, 0, NULL, 0, t2, t2.size());
+		Hash_df(entropy, entropyLength, nonce, nonceLength, personalization, personalizationLength, nullptr, 0, t1, t1.size());
+		Hash_df(&zero, 1, t1, t1.size(), nullptr, 0, nullptr, 0, t2, t2.size());
 
 		m_v.swap(t1); m_c.swap(t2);
 		m_reseed = 1;
@@ -299,7 +299,7 @@ protected:
 		const byte zero = 0, one = 1;
 		SecByteBlock t1(SEEDLENGTH), t2(SEEDLENGTH);
 		Hash_df(&one, 1, m_v, m_v.size(), entropy, entropyLength, additional, additionaLength, t1, t1.size());
-		Hash_df(&zero, 1, t1, t1.size(), NULL, 0, NULL, 0, t2, t2.size());
+		Hash_df(&zero, 1, t1, t1.size(), nullptr, 0, nullptr, 0, t2, t2.size());
 
 		m_v.swap(t1); m_c.swap(t2);
 		m_reseed = 1;

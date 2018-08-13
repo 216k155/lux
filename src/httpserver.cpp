@@ -308,7 +308,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
 static void http_reject_request_cb(struct evhttp_request* req, void*)
 {
     LogPrint("http", "Rejecting request while shutting down\n");
-    evhttp_send_error(req, HTTP_SERVUNAVAIL, NULL);
+    evhttp_send_error(req, HTTP_SERVUNAVAIL, nullptr);
 }
 /** Event dispatcher thread */
 static bool ThreadHTTP(struct event_base* base, struct evhttp* http)
@@ -350,7 +350,7 @@ static bool HTTPBindAddresses(struct evhttp* http)
     // Bind addresses
     for (std::vector<std::pair<std::string, uint16_t> >::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
         LogPrint("http", "Binding RPC on address %s port %i\n", i->first, i->second);
-        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i->first.empty() ? NULL : i->first.c_str(), i->second);
+        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i->first.empty() ? nullptr : i->first.c_str(), i->second);
         if (bind_handle) {
             boundSockets.push_back(bind_handle);
         } else {
@@ -428,7 +428,7 @@ bool InitHTTPServer()
     evhttp_set_timeout(http, GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT));
     evhttp_set_max_headers_size(http, MAX_HEADERS_SIZE);
     evhttp_set_max_body_size(http, MAX_SIZE);
-    evhttp_set_gencb(http, http_request_cb, NULL);
+    evhttp_set_gencb(http, http_request_cb, nullptr);
 
     if (!HTTPBindAddresses(http)) {
         LogPrintf("Unable to bind any endpoint for RPC server\n");
@@ -474,7 +474,7 @@ void InterruptHTTPServer()
         for (evhttp_bound_socket *socket : boundSockets) {
             evhttp_del_accept_socket(eventHTTP, socket);
         }
-        evhttp_set_gencb(eventHTTP, http_reject_request_cb, NULL);
+        evhttp_set_gencb(eventHTTP, http_reject_request_cb, nullptr);
     }
         // Force-exit after a predefined time
         if (eventBase) {
@@ -539,14 +539,14 @@ HTTPEvent::HTTPEvent(struct event_base* base, bool deleteWhenTriggered, struct e
 }
 HTTPEvent::~HTTPEvent()
 {
-    if (databuf != NULL) {
+    if (databuf != nullptr) {
         evbuffer_free(databuf);
     }
     event_free(ev);
 }
 void HTTPEvent::trigger(struct timeval* tv)
 {
-    if (tv == NULL)
+    if (tv == nullptr)
         event_active(ev, 0, 0); // immediately trigger event in main thread
     else
         evtimer_add(ev, tv); // trigger after timeval passed
@@ -651,7 +651,7 @@ std::string HTTPRequest::ReadBody()
      * abstraction to consume the evbuffer on the fly in the parsing algorithm.
      */
     const char* data = (const char*)evbuffer_pullup(buf, size);
-    if (!data) // returns NULL in case of empty buffer
+    if (!data) // returns nullptr in case of empty buffer
         return "";
     std::string rv(data, size);
     evbuffer_drain(buf, size);
@@ -672,7 +672,7 @@ void HTTPRequest::WriteHeader(const std::string& hdr, const std::string& value)
 void HTTPRequest::ChunkEnd() {
     assert(startedChunkTransfer && !replySent);
 
-    HTTPEvent* ev = new HTTPEvent(eventBase, true, NULL,
+    HTTPEvent* ev = new HTTPEvent(eventBase, true, nullptr,
                                   std::bind(evhttp_send_reply_end, req));
 
     ev->trigger(0);
@@ -693,9 +693,9 @@ void HTTPRequest::Chunk(const std::string& chunk) {
     int status = 200;
 
     if (!startedChunkTransfer) {
-        HTTPEvent* ev = new HTTPEvent(eventBase, true, NULL,
+        HTTPEvent* ev = new HTTPEvent(eventBase, true, nullptr,
                                       std::bind(evhttp_send_reply_start, req, status,
-                                                (const char*) NULL));
+                                                (const char*) nullptr));
         ev->trigger(0);
 
         startDetectClientClose();
@@ -725,7 +725,7 @@ void HTTPRequest::WriteReply(int nStatus, const std::string& strReply)
     assert(evb);
     evbuffer_add(evb, strReply.data(), strReply.size());
     auto req_copy = req;
-    HTTPEvent* ev = new HTTPEvent(eventBase, true, NULL, [req_copy, nStatus]{
+    HTTPEvent* ev = new HTTPEvent(eventBase, true, nullptr, [req_copy, nStatus]{
         evhttp_send_reply(req_copy, nStatus, nullptr, nullptr);
         // Re-enable reading from the socket. This is the second part of the libevent
         // workaround above.

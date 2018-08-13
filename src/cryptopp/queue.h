@@ -82,7 +82,7 @@ public:
 		//! \brief Construct a ByteQueue Walker
 		//! \param queue a ByteQueue
 		Walker(const ByteQueue &queue)
-			: m_queue(queue), m_node(NULL), m_position(0), m_offset(0), m_lazyString(NULL), m_lazyLength(0)
+			: m_queue(queue), m_node(nullptr), m_position(0), m_offset(0), m_lazyString(nullptr), m_lazyLength(0)
 				{Initialize();}
 
 		lword GetCurrentPosition() {return m_position;}

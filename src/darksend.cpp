@@ -417,7 +417,7 @@ int GetInputDarksendRounds(CTxIn in, int rounds) {
     padding.insert(0, ((rounds + 1) * 5) + 3, ' ');
 
     const CWalletTx* wtx = pwalletMain->GetWalletTx(in.prevout.hash);
-    if (wtx != NULL) {
+    if (wtx != nullptr) {
         // bounds check
         if (in.prevout.n >= wtx->tx->vout.size()) return -4;
 
@@ -544,7 +544,7 @@ void CDarkSendPool::Check() {
             if (fDebug) LogPrintf("Transaction 1: %s\n", mtxNew.ToString().c_str());
 
             const CTransaction& txNew = CTransaction(std::move(mtxNew));
-            SignFinalTransaction(txNew, NULL);
+            SignFinalTransaction(txNew, nullptr);
 
             // request signatures from clients
             RelayDarkSendFinalTransaction(sessionID, txNew);
@@ -1314,7 +1314,7 @@ bool CDarkSendPool::SignFinalTransaction(const CTransaction& finalTransactionNew
     }
 
     // push all of our signatures to the masternode
-    if (sigs.size() > 0 && node != NULL)
+    if (sigs.size() > 0 && node != nullptr)
         node->PushMessage("dss", sigs);
 
     return true;
@@ -1517,7 +1517,7 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready) {
                 }
 
                 // connect to masternode and submit the queue request
-                if (ConnectNode(CAddress(addr, NODE_NETWORK), NULL, true)) {
+                if (ConnectNode(CAddress(addr, NODE_NETWORK), nullptr, true)) {
                     submittedToMasternode = addr;
 
                     LOCK(cs_vNodes);
@@ -1577,7 +1577,7 @@ bool CDarkSendPool::DoAutomaticDenominating(bool fDryRun, bool ready) {
 
             lastTimeChanged = GetTimeMillis();
             LogPrintf("DoAutomaticDenominating -- attempt %d connection to masternode %s\n", i, vecMasternodes[i].addr.ToString().c_str());
-            if (ConnectNode(CAddress(vecMasternodes[i].addr, NODE_NETWORK), NULL, true)) {
+            if (ConnectNode(CAddress(vecMasternodes[i].addr, NODE_NETWORK), nullptr, true)) {
                 submittedToMasternode = vecMasternodes[i].addr;
 
                 LOCK(cs_vNodes);
@@ -1656,7 +1656,7 @@ bool CDarkSendPool::SendRandomPaymentToSelf() {
     // ****** Add fees ************ /
     vecSend.push_back(make_pair(scriptChange, nPayment));
 
-    CCoinControl* coinControl = NULL;
+    CCoinControl* coinControl = nullptr;
     //int32_t nChangePos;
     //bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_DENOMINATED);
     bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_DENOMINATED);
@@ -1690,7 +1690,7 @@ bool CDarkSendPool::MakeCollateralAmounts() {
     vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
     vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
 
-    CCoinControl* coinControl = NULL;
+    CCoinControl* coinControl = nullptr;
     //int32_t nChangePos;
     // try to use non-denominated and not mn-like funds
     //bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
@@ -1766,7 +1766,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
 
     // if we have anything left over, it will be automatically send back as change - there is no need to send it manually
 
-    CCoinControl* coinControl = NULL;
+    CCoinControl* coinControl = nullptr;
     //int32_t nChangePos;
     //bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
     bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
