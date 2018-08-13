@@ -5536,12 +5536,7 @@ bool static AlreadyHave(const CInv& inv)
                 // or a double-spend. Reset the rejects filter and give those
                 // txs a second chance.
                 hashRecentRejectsChainTip = chainActive.Tip()->GetBlockHash();
-                if (recentRejects.get()) {
-                    recentRejects->reset();
-                } else {
-                    recentRejects.reset(new CRollingBloomFilter(120000, 0.000001));
-                    recentRejects->reset();
-                }
+                recentRejects->reset();
             }
             return recentRejects->contains(inv.hash) || mempool.exists(inv.hash) ||
                    mapOrphanTransactions.count(inv.hash) || pcoinsTip->HaveCoins(inv.hash);
