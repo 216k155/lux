@@ -182,10 +182,11 @@ string CRPCTable::help(string strCommand) const
 #endif
 
         try {
-            UniValue params(UniValue::VARR);
+            JSONRPCRequest jreq;
+            jreq.fHelp = true;
             rpcfn_type pfn = pcmd->actor;
             if (setDone.insert(pfn).second)
-                (*pfn)(params, true);
+                (*pfn)(jreq);
         } catch (std::exception& e) {
             // Help text is returned in an exception
             string strHelp = string(e.what());
@@ -211,9 +212,9 @@ string CRPCTable::help(string strCommand) const
     return strRet;
 }
 
-UniValue help(const UniValue& params, bool fHelp)
+UniValue help(const JSONRPCRequest& jsonRequest)
 {
-    if (fHelp || params.size() > 1)
+    if (jsonRequest.fHelp || jsonRequest.params.size() > 1)
         throw runtime_error(
             "help ( \"command\" )\n"
             "\nList all commands, or get help for a specified command.\n"
@@ -223,17 +224,17 @@ UniValue help(const UniValue& params, bool fHelp)
             "\"text\"     (string) The help text\n");
 
     string strCommand;
-    if (params.size() > 0)
-        strCommand = params[0].get_str();
+    if (jsonRequest.params.size() > 0)
+        strCommand = jsonRequest.params[0].get_str();
 
     return tableRPC.help(strCommand);
 }
 
 
-UniValue stop(const UniValue& params, bool fHelp)
+UniValue stop(const JSONRPCRequest& jsonRequest)
 {
     // Accept the deprecated and ignored 'detach' boolean argument
-    if (fHelp || params.size() > 1)
+    if (jsonRequest.fHelp || jsonRequest.params.size() > 1)
         throw runtime_error(
             "stop\n"
             "\nStop LUX server.");
@@ -469,15 +470,15 @@ bool RPCIsInWarmup(std::string* outStatus)
     return fRPCInWarmup;
 }
 
-JSONRequest::JSONRequest(HTTPRequest *req): JSONRequest() {
+JSONRPCRequest::JSONRPCRequest(HTTPRequest *req): JSONRPCRequest() {
     req = req;
 }
 
-bool JSONRequest::PollAlive() {
+bool JSONRPCRequest::PollAlive() {
     return !req->isConnClosed();
 }
 
-void JSONRequest::PollStart() {
+void JSONRPCRequest::PollStart() {
     // send an empty space to the client to ensure that it's still alive.
     assert(!isLongPolling);
     req->WriteHeader("Content-Type", "application/json");
@@ -486,18 +487,18 @@ void JSONRequest::PollStart() {
     isLongPolling = true;
 }
 
-void JSONRequest::PollPing() {
+void JSONRPCRequest::PollPing() {
     assert(isLongPolling);
     // send an empty space to the client to ensure that it's still alive.
     req->Chunk(std::string(" "));
 }
 
-void JSONRequest::PollCancel() {
+void JSONRPCRequest::PollCancel() {
     assert(isLongPolling);
     req->ChunkEnd();
 }
 
-void JSONRequest::PollReply(const UniValue& result) {
+void JSONRPCRequest::PollReply(const UniValue& result) {
     assert(isLongPolling);
     UniValue reply(UniValue::VOBJ);
     reply.push_back(Pair("result", result));
@@ -508,7 +509,7 @@ void JSONRequest::PollReply(const UniValue& result) {
     req->ChunkEnd();
 }
 
-void JSONRequest::parse(const UniValue& valRequest)
+void JSONRPCRequest::parse(const UniValue& valRequest)
 {
     // Parse request
     if (!valRequest.isObject())
@@ -543,11 +544,11 @@ static UniValue JSONRPCExecOne(const UniValue& req)
 {
     UniValue rpc_result(UniValue::VOBJ);
 
-    JSONRequest jreq(NULL);
+    JSONRPCRequest jreq;
     try {
         jreq.parse(req);
 
-        UniValue result = tableRPC.execute(jreq.strMethod, jreq.params);
+        UniValue result = tableRPC.execute(jreq);
         rpc_result = JSONRPCReplyObj(result, NullUniValue, jreq.id);
     } catch (const UniValue& objError) {
         rpc_result = JSONRPCReplyObj(NullUniValue, objError, jreq.id);
@@ -568,17 +569,17 @@ std::string JSONRPCExecBatch(const UniValue& vReq)
     return ret.write() + "\n";
 }
 
-UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params) const
+UniValue CRPCTable::execute(const JSONRPCRequest &request) const
 {
     // Find method
-    const CRPCCommand* pcmd = tableRPC[strMethod];
+    const CRPCCommand *pcmd = tableRPC[request.strMethod];
     if (!pcmd)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found");
     g_rpcSignals.PreCommand(*pcmd);
 
     try {
         // Execute
-        return pcmd->actor(params, false);
+        return pcmd->actor(request);
 
     } catch (std::exception& e) {
         throw JSONRPCError(RPC_MISC_ERROR, e.what());

@@ -116,8 +116,7 @@ signals:
  * @param[out]   pstrFilteredOut  Command line, filtered to remove any sensitive data
  */
 
-bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &strCommand, const bool fExecute, std::string * const pstrFilteredOut)
-{
+bool RPCConsole::RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, const bool fExecute, std::string * const pstrFilteredOut) {
     std::vector< std::vector<std::string> > stack;
     stack.push_back(std::vector<std::string>());
 
@@ -183,7 +182,7 @@ bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &
                                 curarg += ch;
                                 break;
                             }
-                            if (curarg.size() && fExecute)
+                            if (curarg.size())
                             {
                                 // if we have a value query, query arrays with index and objects with a string key
                                 UniValue subelement;
@@ -266,7 +265,10 @@ bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &
                         std::string strPrint;
                         // Convert argument list to JSON objects in method-dependent way,
                         // and pass it along with the method name to the dispatcher.
-                        lastResult = tableRPC.execute(stack.back()[0], RPCConvertValues(stack.back()[0], std::vector<std::string>(stack.back().begin() + 1, stack.back().end())));
+                        JSONRPCRequest req;
+                        req.params = RPCConvertValues(stack.back()[0], std::vector<std::string>(stack.back().begin() + 1, stack.back().end()));
+                        req.strMethod = stack.back()[0];
+                        lastResult = tableRPC.execute(req);
 
                         state = STATE_COMMAND_EXECUTED;
                         curarg.clear();
@@ -770,30 +772,12 @@ void RPCConsole::setMasternodeCount(const QString& strMasternodes)
 void RPCConsole::on_lineEdit_returnPressed()
 {
     QString cmd = ui->lineEdit->text();
+    ui->lineEdit->clear();
 
     if(!cmd.isEmpty())
     {
-        std::string strFilteredCmd;
-        try {
-            std::string dummy;
-            if (!RPCParseCommandLine(dummy, cmd.toStdString(), false, &strFilteredCmd)) {
-                // Failed to parse command, so we cannot even filter it for the history
-                throw std::runtime_error("Invalid command line");
-            }
-        } catch (const std::exception& e) {
-            QMessageBox::critical(this, "Error", QString("Error: ") + QString::fromStdString(e.what()));
-            return;
-        }
-
-        ui->lineEdit->clear();
-
-        cmdBeforeBrowsing = QString();
-
         message(CMD_REQUEST, cmd);
         Q_EMIT cmdRequest(cmd);
-
-        cmd = QString::fromStdString(strFilteredCmd);
-
         // Remove command, if already in history
         history.removeOne(cmd);
         // Append command to history
@@ -803,7 +787,6 @@ void RPCConsole::on_lineEdit_returnPressed()
             history.removeFirst();
         // Set pointer to end of history
         historyPtr = history.size();
-
         // Scroll console view to end
         scrollToEnd();
     }

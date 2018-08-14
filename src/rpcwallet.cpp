@@ -336,9 +336,9 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////
 
-UniValue getnewaddress(const UniValue& params, bool fHelp)
+UniValue getnewaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 2)
+    if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
             "getnewaddress ( \"account\" )\n"
             "\nReturns a new LUX address for receiving payments.\n"
@@ -356,14 +356,14 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 
     // Parse the account first so we don't generate a key if there's an error
     string strAccount;
-    if (params.size() > 0)
-        strAccount = AccountFromValue(params[0]);
+    if (request.params.size() > 0)
+        strAccount = AccountFromValue(request.params[0]);
 
     OutputType output_type = g_address_type;
-    if (!params[1].isNull()) {
-        output_type = ParseOutputType(params[1].get_str(), g_address_type);
+    if (!request.params[1].isNull()) {
+        output_type = ParseOutputType(request.params[1].get_str(), g_address_type);
         if (output_type == OUTPUT_TYPE_NONE) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Unknown address type '%s'", params[1].get_str()));
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Unknown address type '%s'", request.params[1].get_str()));
         }
     }
 
@@ -392,9 +392,9 @@ CTxDestination GetAccountDestination(CWallet* const pwallet, std::string strAcco
     return dest;
 }
 
-UniValue getaccountaddress(const UniValue& params, bool fHelp)
+UniValue getaccountaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "getaccountaddress \"account\"\n"
             "\nReturns the current LUX address for receiving payments to this account.\n"
@@ -408,7 +408,7 @@ UniValue getaccountaddress(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // Parse the account first so we don't generate a key if there's an error
-    std::string strAccount = AccountFromValue(params[0]);
+    std::string strAccount = AccountFromValue(request.params[0]);
 
     UniValue ret(UniValue::VSTR);
 
@@ -418,9 +418,9 @@ UniValue getaccountaddress(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
+UniValue getrawchangeaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 1)
+    if (request.fHelp || request.params.size() > 1)
         throw runtime_error(
             "getrawchangeaddress ( \"address_type\" )\n"
             "\nReturns a new LUX address, for receiving change.\n"
@@ -438,10 +438,10 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
         pwalletMain->TopUpKeyPool();
 
     OutputType output_type = g_change_type != OUTPUT_TYPE_NONE ? g_change_type : g_address_type;
-    if (!params[0].isNull()) {
-        output_type = ParseOutputType(params[0].get_str(), output_type);
+    if (!request.params[0].isNull()) {
+        output_type = ParseOutputType(request.params[0].get_str(), output_type);
         if (output_type == OUTPUT_TYPE_NONE) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Unknown address type '%s'", params[0].get_str()));
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Unknown address type '%s'", request.params[0].get_str()));
         }
     }
 
@@ -459,9 +459,9 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
 }
 
 
-UniValue setaccount(const UniValue& params, bool fHelp)
+UniValue setaccount(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "setaccount \"luxaddress\" \"account\"\n"
             "\nSets the account associated with the given address.\n"
@@ -473,14 +473,14 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
 
 
     string strAccount;
-    if (params.size() > 1)
-        strAccount = AccountFromValue(params[1]);
+    if (request.params.size() > 1)
+        strAccount = AccountFromValue(request.params[1]);
 
     // Only add the account if the address is yours.
     if (IsMine(*pwalletMain, dest)) {
@@ -498,9 +498,9 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getaccount(const UniValue& params, bool fHelp)
+UniValue getaccount(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "getaccount \"luxaddress\"\n"
             "\nReturns the account associated with the given address.\n"
@@ -513,7 +513,7 @@ UniValue getaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
 
@@ -525,9 +525,9 @@ UniValue getaccount(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
+UniValue getaddressesbyaccount(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "getaddressesbyaccount \"account\"\n"
             "\nReturns the list of addresses for the given account.\n"
@@ -543,7 +543,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = AccountFromValue(request.params[0]);
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
@@ -588,9 +588,9 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 }
 
-UniValue sendtoaddress(const UniValue& params, bool fHelp)
+UniValue sendtoaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2 || params.size() > 4)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
         throw runtime_error(
             "sendtoaddress \"luxaddress\" amount ( \"comment\" \"comment-to\" )\n"
             "\nSend an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001\n" +
@@ -610,19 +610,19 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
 
     // Amount
-    CAmount nAmount = AmountFromValue(params[1]);
+    CAmount nAmount = AmountFromValue(request.params[1]);
 
     // Wallet comments
     CWalletTx wtx;
-    if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty())
-        wtx.mapValue["comment"] = params[2].get_str();
-    if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
-        wtx.mapValue["to"] = params[3].get_str();
+    if (request.params.size() > 2 && !request.params[2].isNull() && !request.params[2].get_str().empty())
+        wtx.mapValue["comment"] = request.params[2].get_str();
+    if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[3].get_str().empty())
+        wtx.mapValue["to"] = request.params[3].get_str();
 
     EnsureWalletIsUnlocked();
 
@@ -631,9 +631,9 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
-UniValue sendtoaddressix(const UniValue& params, bool fHelp)
+UniValue sendtoaddressix(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2 || params.size() > 4)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
         throw runtime_error(
             "sendtoaddressix \"luxaddress\" amount ( \"comment\" \"comment-to\" )\n"
             "\nSend an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001\n" +
@@ -651,19 +651,19 @@ UniValue sendtoaddressix(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("sendtoaddressix", "\"LgAskSorXfCYUweZcCTpGNtpcFotS2rqDF\" 0.1") + HelpExampleCli("sendtoaddressix", "\"LgAskSorXfCYUweZcCTpGNtpcFotS2rqDF\" 0.1 \"donation\" \"seans outpost\"") + HelpExampleRpc("sendtoaddressix", "\"LgAskSorXfCYUweZcCTpGNtpcFotS2rqDF\", 0.1, \"donation\", \"seans outpost\""));
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
 
     // Amount
-    CAmount nAmount = AmountFromValue(params[1]);
+    CAmount nAmount = AmountFromValue(request.params[1]);
 
     // Wallet comments
     CWalletTx wtx;
-    if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty())
-        wtx.mapValue["comment"] = params[2].get_str();
-    if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
-        wtx.mapValue["to"] = params[3].get_str();
+    if (request.params.size() > 2 && !request.params[2].isNull() && !request.params[2].get_str().empty())
+        wtx.mapValue["comment"] = request.params[2].get_str();
+    if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[3].get_str().empty())
+        wtx.mapValue["to"] = request.params[3].get_str();
 
     EnsureWalletIsUnlocked();
 
@@ -672,9 +672,9 @@ UniValue sendtoaddressix(const UniValue& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
-UniValue listaddressgroupings(const UniValue& params, bool fHelp)
+UniValue listaddressgroupings(const JSONRPCRequest& request)
 {
-    if (fHelp)
+    if (request.fHelp)
         throw runtime_error(
             "listaddressgroupings\n"
             "\nLists groups of addresses which have had their common ownership\n"
@@ -717,9 +717,9 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
     return jsonGroupings;
 }
 
-UniValue signmessage(const UniValue& params, bool fHelp)
+UniValue signmessage(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 2)
+    if (request.fHelp || request.params.size() != 2)
         throw runtime_error(
             "signmessage \"luxaddress\" \"message\"\n"
             "\nSign a message with the private key of an address" +
@@ -740,8 +740,8 @@ UniValue signmessage(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
-    string strAddress = params[0].get_str();
-    string strMessage = params[1].get_str();
+    string strAddress = request.params[0].get_str();
+    string strMessage = request.params[1].get_str();
 
     CTxDestination dest = DecodeDestination(strAddress);
     if (!IsValidDestination(dest))
@@ -766,9 +766,9 @@ UniValue signmessage(const UniValue& params, bool fHelp)
     return EncodeBase64(&vchSig[0], vchSig.size());
 }
 
-UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
+UniValue getreceivedbyaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "getreceivedbyaddress \"luxaddress\" ( minconf )\n"
             "\nReturns the total amount received by the given luxaddress in transactions with at least minconf confirmations.\n"
@@ -787,7 +787,7 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // lux address
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
     CScript scriptPubKey = GetScriptForDestination(dest);
@@ -796,8 +796,8 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
 
     // Minimum confirmations
     int nMinDepth = 1;
-    if (params.size() > 1)
-        nMinDepth = params[1].get_int();
+    if (request.params.size() > 1)
+        nMinDepth = request.params[1].get_int();
 
     // Tally
     CAmount nAmount = 0;
@@ -816,9 +816,9 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
+UniValue getreceivedbyaccount(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "getreceivedbyaccount \"account\" ( minconf )\n"
             "\nReturns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations.\n"
@@ -838,11 +838,11 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
 
     // Minimum confirmations
     int nMinDepth = 1;
-    if (params.size() > 1)
-        nMinDepth = params[1].get_int();
+    if (request.params.size() > 1)
+        nMinDepth = request.params[1].get_int();
 
     // Get the set of pub keys assigned to account
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = AccountFromValue(request.params[0]);
     set<CTxDestination> setAddress = pwalletMain->GetAccountAddresses(strAccount);
 
     // Tally
@@ -894,9 +894,9 @@ CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminef
 }
 
 
-UniValue getbalance(const UniValue& params, bool fHelp)
+UniValue getbalance(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 3)
+    if (request.fHelp || request.params.size() > 3)
         throw runtime_error(
             "getbalance ( \"account\" minconf includeWatchonly )\n"
             "\nIf account is not specified, returns the server's total available balance.\n"
@@ -919,18 +919,18 @@ UniValue getbalance(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if (params.size() == 0)
+    if (request.params.size() == 0)
         return ValueFromAmount(pwalletMain->GetBalance());
 
     int nMinDepth = 1;
-    if (params.size() > 1)
-        nMinDepth = params[1].get_int();
+    if (request.params.size() > 1)
+        nMinDepth = request.params[1].get_int();
     isminefilter filter = ISMINE_SPENDABLE;
-    if (params.size() > 2)
-        if (params[2].get_bool())
+    if (request.params.size() > 2)
+        if (request.params[2].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
 
-    if (params[0].get_str() == "*") {
+    if (request.params[0].get_str() == "*") {
         // Calculate total balance a different way from GetBalance()
         // (GetBalance() sums up all unspent TxOuts)
         // getbalance and "getbalance * 1 true" should return the same number
@@ -956,16 +956,16 @@ UniValue getbalance(const UniValue& params, bool fHelp)
         return ValueFromAmount(nBalance);
     }
 
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = AccountFromValue(request.params[0]);
 
     CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, filter);
 
     return ValueFromAmount(nBalance);
 }
 
-UniValue getunconfirmedbalance(const UniValue &params, bool fHelp)
+UniValue getunconfirmedbalance(const JSONRPCRequest &request)
 {
-    if (fHelp || params.size() > 0)
+    if (request.fHelp || request.params.size() > 0)
         throw runtime_error(
             "getunconfirmedbalance\n"
             "Returns the server's total unconfirmed balance\n");
@@ -976,9 +976,9 @@ UniValue getunconfirmedbalance(const UniValue &params, bool fHelp)
 }
 
 
-UniValue movecmd(const UniValue& params, bool fHelp)
+UniValue movecmd(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 3 || params.size() > 5)
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 5)
         throw runtime_error(
             "move \"fromaccount\" \"toaccount\" amount ( minconf \"comment\" )\n"
             "\nMove a specified amount from one account in your wallet to another.\n"
@@ -997,17 +997,17 @@ UniValue movecmd(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    string strFrom = AccountFromValue(params[0]);
-    string strTo = AccountFromValue(params[1]);
-    CAmount nAmount = AmountFromValue(params[2]);
+    string strFrom = AccountFromValue(request.params[0]);
+    string strTo = AccountFromValue(request.params[1]);
+    CAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
-    if (params.size() > 3)
+    if (request.params.size() > 3)
         // unused parameter, used to be nMinDepth, keep type-checking it though
-        (void)params[3].get_int();
+        (void)request.params[3].get_int();
     string strComment;
-    if (params.size() > 4)
-        strComment = params[4].get_str();
+    if (request.params.size() > 4)
+        strComment = request.params[4].get_str();
 
     CWalletDB walletdb(pwalletMain->strWalletFile);
     if (!walletdb.TxnBegin())
@@ -1042,9 +1042,9 @@ UniValue movecmd(const UniValue& params, bool fHelp)
 }
 
 
-UniValue sendfrom(const UniValue& params, bool fHelp)
+UniValue sendfrom(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 3 || params.size() > 6)
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
         throw runtime_error(
             "sendfrom \"fromaccount\" \"toluxaddress\" amount ( minconf \"comment\" \"comment-to\" )\n"
             "\nSent an amount from an account to a lux address.\n"
@@ -1070,23 +1070,23 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    string strAccount = AccountFromValue(params[0]);
-    CTxDestination dest = DecodeDestination(params[1].get_str());
+    string strAccount = AccountFromValue(request.params[0]);
+    CTxDestination dest = DecodeDestination(request.params[1].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
-    CAmount nAmount = AmountFromValue(params[2]);
+    CAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
     int nMinDepth = 1;
-    if (params.size() > 3)
-        nMinDepth = params[3].get_int();
+    if (request.params.size() > 3)
+        nMinDepth = request.params[3].get_int();
 
     CWalletTx wtx;
     wtx.strFromAccount = strAccount;
-    if (params.size() > 4 && !params[4].isNull() && !params[4].get_str().empty())
-        wtx.mapValue["comment"] = params[4].get_str();
-    if (params.size() > 5 && !params[5].isNull() && !params[5].get_str().empty())
-        wtx.mapValue["to"] = params[5].get_str();
+    if (request.params.size() > 4 && !request.params[4].isNull() && !request.params[4].get_str().empty())
+        wtx.mapValue["comment"] = request.params[4].get_str();
+    if (request.params.size() > 5 && !request.params[5].isNull() && !request.params[5].get_str().empty())
+        wtx.mapValue["to"] = request.params[5].get_str();
 
     EnsureWalletIsUnlocked();
 
@@ -1101,9 +1101,9 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
 }
 
 
-UniValue sendmany(const UniValue& params, bool fHelp)
+UniValue sendmany(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2 || params.size() > 4)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
         throw runtime_error(
             "sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" )\n"
             "\nSend multiple times. Amounts are double-precision floating point numbers." +
@@ -1128,16 +1128,16 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    string strAccount = AccountFromValue(params[0]);
-    UniValue sendTo = params[1].get_obj();
+    string strAccount = AccountFromValue(request.params[0]);
+    UniValue sendTo = request.params[1].get_obj();
     int nMinDepth = 1;
-    if (params.size() > 2)
-        nMinDepth = params[2].get_int();
+    if (request.params.size() > 2)
+        nMinDepth = request.params[2].get_int();
 
     CWalletTx wtx;
     wtx.strFromAccount = strAccount;
-    if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
-        wtx.mapValue["comment"] = params[3].get_str();
+    if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[3].get_str().empty())
+        wtx.mapValue["comment"] = request.params[3].get_str();
 
     set<CTxDestination> destinations;
     vector<pair<CScript, CAmount> > vecSend;
@@ -1186,9 +1186,9 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 // Defined in rpcmisc.cpp
 //extern CScript _createmultisig_redeemScript(const UniValue& params);
 
-UniValue addmultisigaddress(const UniValue& params, bool fHelp)
+UniValue addmultisigaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2 || params.size() > 3) {
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 3) {
         string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
             "Each key is a LUX address or hex-encoded public key.\n"
@@ -1219,13 +1219,13 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     string strAccount;
-    if (params.size() > 2)
-        strAccount = AccountFromValue(params[2]);
+    if (request.params.size() > 2)
+        strAccount = AccountFromValue(request.params[2]);
 
-    int required = params[0].get_int();
+    int required = request.params[0].get_int();
 
     // Get the public keys
-    const UniValue& keys_or_addrs = params[1].get_array();
+    const UniValue& keys_or_addrs = request.params[1].get_array();
     std::vector<CPubKey> pubkeys;
     for (unsigned int i = 0; i < keys_or_addrs.size(); ++i) {
         if (IsHex(keys_or_addrs[i].get_str()) && (keys_or_addrs[i].get_str().length() == 66 || keys_or_addrs[i].get_str().length() == 130)) {
@@ -1378,9 +1378,9 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     return ret;
 }
 
-UniValue listreceivedbyaddress(const UniValue& params, bool fHelp)
+UniValue listreceivedbyaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 3)
+    if (request.fHelp || request.params.size() > 3)
         throw runtime_error(
             "listreceivedbyaddress ( minconf includeempty includeWatchonly)\n"
             "\nList balances by receiving address.\n"
@@ -1407,12 +1407,12 @@ UniValue listreceivedbyaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    return ListReceived(params, false);
+    return ListReceived(request.params, false);
 }
 
-UniValue listreceivedbyaccount(const UniValue& params, bool fHelp)
+UniValue listreceivedbyaccount(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 3)
+    if (request.fHelp || request.params.size() > 3)
         throw runtime_error(
             "listreceivedbyaccount ( minconf includeempty includeWatchonly)\n"
             "\nList balances by account.\n"
@@ -1438,7 +1438,7 @@ UniValue listreceivedbyaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    return ListReceived(params, true);
+    return ListReceived(request.params, true);
 }
 
 static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
@@ -1543,9 +1543,9 @@ void AcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, Un
     }
 }
 
-UniValue listtransactions(const UniValue& params, bool fHelp)
+UniValue listtransactions(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 4)
+    if (request.fHelp || request.params.size() > 4)
         throw runtime_error(
             "listtransactions ( \"account\" count from includeWatchonly)\n"
             "\nReturns up to 'count' most recent transactions skipping the first 'from' transactions for account 'account'.\n"
@@ -1604,17 +1604,17 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     string strAccount = "*";
-    if (params.size() > 0)
-        strAccount = params[0].get_str();
+    if (request.params.size() > 0)
+        strAccount = request.params[0].get_str();
     int nCount = 10;
-    if (params.size() > 1)
-        nCount = params[1].get_int();
+    if (request.params.size() > 1)
+        nCount = request.params[1].get_int();
     int nFrom = 0;
-    if (params.size() > 2)
-        nFrom = params[2].get_int();
+    if (request.params.size() > 2)
+        nFrom = request.params[2].get_int();
     isminefilter filter = ISMINE_SPENDABLE;
-    if (params.size() > 3)
-        if (params[3].get_bool())
+    if (request.params.size() > 3)
+        if (request.params[3].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
 
     if (nCount < 0)
@@ -1661,9 +1661,9 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue listaccounts(const UniValue& params, bool fHelp)
+UniValue listaccounts(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 2)
+    if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
             "listaccounts ( minconf includeWatchonly)\n"
             "\nReturns Object that has account names as keys, account balances as values.\n"
@@ -1685,11 +1685,11 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     int nMinDepth = 1;
-    if (params.size() > 0)
-        nMinDepth = params[0].get_int();
+    if (request.params.size() > 0)
+        nMinDepth = request.params[0].get_int();
     isminefilter includeWatchonly = ISMINE_SPENDABLE;
-    if (params.size() > 1)
-        if (params[1].get_bool())
+    if (request.params.size() > 1)
+        if (request.params[1].get_bool())
             includeWatchonly = includeWatchonly | ISMINE_WATCH_ONLY;
 
     map<string, CAmount> mapAccountBalances, immatureBalances;
@@ -1741,9 +1741,9 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue listsinceblock(const UniValue& params, bool fHelp)
+UniValue listsinceblock(const JSONRPCRequest& request)
 {
-    if (fHelp)
+    if (request.fHelp)
         throw runtime_error(
             "listsinceblock ( \"blockhash\" target-confirmations includeWatchonly)\n"
             "\nGet all transactions in blocks since block [blockhash], or all transactions if omitted\n"
@@ -1784,22 +1784,22 @@ UniValue listsinceblock(const UniValue& params, bool fHelp)
     int target_confirms = 1;
     isminefilter filter = ISMINE_SPENDABLE;
 
-    if (params.size() > 0) {
+    if (request.params.size() > 0) {
         uint256 blockId = uint256();
 
-        blockId.SetHex(params[0].get_str());
+        blockId.SetHex(request.params[0].get_str());
         pindex = LookupBlockIndex(blockId);
     }
 
-    if (params.size() > 1) {
-        target_confirms = params[1].get_int();
+    if (request.params.size() > 1) {
+        target_confirms = request.params[1].get_int();
 
         if (target_confirms < 1)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter");
     }
 
-    if (params.size() > 2)
-        if (params[2].get_bool())
+    if (request.params.size() > 2)
+        if (request.params[2].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
 
     int depth = pindex ? (1 + chainActive.Height() - pindex->nHeight) : -1;
@@ -1823,9 +1823,9 @@ UniValue listsinceblock(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue gettransaction(const UniValue& params, bool fHelp)
+UniValue gettransaction(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "gettransaction \"txid\" ( includeWatchonly ) (waitconf)\n"
             "\nGet detailed information about in-wallet transaction <txid>\n"
@@ -1866,20 +1866,20 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     uint256 hash;
-    hash.SetHex(params[0].get_str());
+    hash.SetHex(request.params[0].get_str());
 
     isminefilter filter = ISMINE_SPENDABLE;
-    if (params.size() > 1)
-        if (params[1].get_bool())
+    if (request.params.size() > 1)
+        if (request.params[1].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
 
     UniValue entry(UniValue::VOBJ);
     int waitconf = 0;
-    if(params.size() > 2) {
-        waitconf = params[2].get_int();
+    if(request.params.size() > 2) {
+        waitconf = request.params[2].get_int();
     }
 
-    bool shouldWaitConf = params.size() > 2 && waitconf > 0;
+    bool shouldWaitConf = request.params.size() > 2 && waitconf > 0;
     {
         LOCK2(cs_main, pwalletMain->cs_wallet);
         if (!pwalletMain->mapWallet.count(hash))
@@ -1936,9 +1936,9 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
 }
 
 
-UniValue backupwallet(const UniValue& params, bool fHelp)
+UniValue backupwallet(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "backupwallet \"destination\"\n"
             "\nSafely copies wallet.dat to destination, which can be a directory or a path with filename.\n"
@@ -1949,7 +1949,7 @@ UniValue backupwallet(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    string strDest = params[0].get_str();
+    string strDest = request.params[0].get_str();
     if (!BackupWallet(*pwalletMain, strDest))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Wallet backup failed!");
 
@@ -1957,9 +1957,9 @@ UniValue backupwallet(const UniValue& params, bool fHelp)
 }
 
 
-UniValue keypoolrefill(const UniValue& params, bool fHelp)
+UniValue keypoolrefill(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 1)
+    if (request.fHelp || request.params.size() > 1)
         throw runtime_error(
             "keypoolrefill ( newsize )\n"
             "\nFills the keypool." +
@@ -1973,10 +1973,10 @@ UniValue keypoolrefill(const UniValue& params, bool fHelp)
 
     // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -keypool
     unsigned int kpSize = 0;
-    if (params.size() > 0) {
-        if (params[0].get_int() < 0)
+    if (request.params.size() > 0) {
+        if (request.params[0].get_int() < 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected valid size.");
-        kpSize = (unsigned int)params[0].get_int();
+        kpSize = (unsigned int)request.params[0].get_int();
     }
 
     EnsureWalletIsUnlocked();
@@ -1997,9 +1997,9 @@ static void LockWallet(CWallet* pWallet)
     pWallet->Lock();
 }
 
-UniValue walletpassphrase(const UniValue& params, bool fHelp)
+UniValue walletpassphrase(const JSONRPCRequest& request)
 {
-    if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
+    if (pwalletMain->IsCrypted() && (request.fHelp || request.params.size() < 2 || request.params.size() > 3))
         throw runtime_error(
             "walletpassphrase \"passphrase\" timeout ( anonymizeonly )\n"
             "\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
@@ -2020,21 +2020,21 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if (fHelp)
+    if (request.fHelp)
         return true;
     if (!pwalletMain->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
 
-    // Note that the walletpassphrase is stored in params[0] which is not mlock()ed
+    // Note that the walletpassphrase is stored in request.params[0] which is not mlock()ed
     SecureString strWalletPass;
     strWalletPass.reserve(100);
     // TODO: get rid of this .c_str() by implementing SecureString::operator=(std::string)
-    // Alternately, find a way to make params[0] mlock()'d to begin with.
-    strWalletPass = params[0].get_str().c_str();
+    // Alternately, find a way to make request.params[0] mlock()'d to begin with.
+    strWalletPass = request.params[0].get_str().c_str();
 
     bool anonymizeOnly = false;
-    if (params.size() == 3)
-        anonymizeOnly = params[2].get_bool();
+    if (request.params.size() == 3)
+        anonymizeOnly = request.params[2].get_bool();
 
     if (!pwalletMain->IsLocked() && pwalletMain->fWalletUnlockAnonymizeOnly && anonymizeOnly)
         throw JSONRPCError(RPC_WALLET_ALREADY_UNLOCKED, "Error: Wallet is already unlocked.");
@@ -2044,7 +2044,7 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
 
     pwalletMain->TopUpKeyPool();
 
-    int64_t nSleepTime = params[1].get_int64();
+    int64_t nSleepTime = request.params[1].get_int64();
     LOCK(cs_nWalletUnlockTime);
     nWalletUnlockTime = GetTime() + nSleepTime;
     if (nSleepTime > 0) {
@@ -2056,9 +2056,9 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
 }
 
 
-UniValue walletpassphrasechange(const UniValue& params, bool fHelp)
+UniValue walletpassphrasechange(const JSONRPCRequest& request)
 {
-    if (pwalletMain->IsCrypted() && (fHelp || params.size() != 2))
+    if (pwalletMain->IsCrypted() && (request.fHelp || request.params.size() != 2))
         throw runtime_error(
             "walletpassphrasechange \"oldpassphrase\" \"newpassphrase\"\n"
             "\nChanges the wallet passphrase from 'oldpassphrase' to 'newpassphrase'.\n"
@@ -2070,20 +2070,20 @@ UniValue walletpassphrasechange(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if (fHelp)
+    if (request.fHelp)
         return true;
     if (!pwalletMain->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
 
     // TODO: get rid of these .c_str() calls by implementing SecureString::operator=(std::string)
-    // Alternately, find a way to make params[0] mlock()'d to begin with.
+    // Alternately, find a way to make request.params[0] mlock()'d to begin with.
     SecureString strOldWalletPass;
     strOldWalletPass.reserve(100);
-    strOldWalletPass = params[0].get_str().c_str();
+    strOldWalletPass = request.params[0].get_str().c_str();
 
     SecureString strNewWalletPass;
     strNewWalletPass.reserve(100);
-    strNewWalletPass = params[1].get_str().c_str();
+    strNewWalletPass = request.params[1].get_str().c_str();
 
     if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
         throw runtime_error(
@@ -2097,9 +2097,9 @@ UniValue walletpassphrasechange(const UniValue& params, bool fHelp)
 }
 
 
-UniValue walletlock(const UniValue& params, bool fHelp)
+UniValue walletlock(const JSONRPCRequest& request)
 {
-    if (pwalletMain->IsCrypted() && (fHelp || params.size() != 0))
+    if (pwalletMain->IsCrypted() && (request.fHelp || request.params.size() != 0))
         throw runtime_error(
             "walletlock\n"
             "\nRemoves the wallet encryption key from memory, locking the wallet.\n"
@@ -2114,7 +2114,7 @@ UniValue walletlock(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if (fHelp)
+    if (request.fHelp)
         return true;
     if (!pwalletMain->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletlock was called.");
@@ -2129,9 +2129,9 @@ UniValue walletlock(const UniValue& params, bool fHelp)
 }
 
 
-UniValue encryptwallet(const UniValue& params, bool fHelp)
+UniValue encryptwallet(const JSONRPCRequest& request)
 {
-    if (!pwalletMain->IsCrypted() && (fHelp || params.size() != 1))
+    if (!pwalletMain->IsCrypted() && (request.fHelp || request.params.size() != 1))
         throw runtime_error(
             "encryptwallet \"passphrase\"\n"
             "\nEncrypts the wallet with 'passphrase'. This is for first time encryption.\n"
@@ -2152,16 +2152,16 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if (fHelp)
+    if (request.fHelp)
         return true;
     if (pwalletMain->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an encrypted wallet, but encryptwallet was called.");
 
     // TODO: get rid of this .c_str() by implementing SecureString::operator=(std::string)
-    // Alternately, find a way to make params[0] mlock()'d to begin with.
+    // Alternately, find a way to make request.params[0] mlock()'d to begin with.
     SecureString strWalletPass;
     strWalletPass.reserve(100);
-    strWalletPass = params[0].get_str().c_str();
+    strWalletPass = request.params[0].get_str().c_str();
 
     if (strWalletPass.length() < 1)
         throw runtime_error(
@@ -2178,9 +2178,9 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
     return "wallet encrypted; lux server stopping, restart to run with encrypted wallet. The keypool has been flushed, you need to make a new backup.";
 }
 
-UniValue lockunspent(const UniValue& params, bool fHelp)
+UniValue lockunspent(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "lockunspent unlock [{\"txid\":\"txid\",\"vout\":n},...]\n"
             "\nUpdates list of temporarily unspendable outputs.\n"
@@ -2213,20 +2213,20 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if (params.size() == 1)
-        RPCTypeCheck(params, boost::assign::list_of(UniValue::VBOOL));
+    if (request.params.size() == 1)
+        RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VBOOL));
     else
-        RPCTypeCheck(params, boost::assign::list_of(UniValue::VBOOL)(UniValue::VARR));
+        RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VBOOL)(UniValue::VARR));
 
-    bool fUnlock = params[0].get_bool();
+    bool fUnlock = request.params[0].get_bool();
 
-    if (params.size() == 1) {
+    if (request.params.size() == 1) {
         if (fUnlock)
             pwalletMain->UnlockAllCoins();
         return true;
     }
 
-    UniValue outputs = params[1].get_array();
+    UniValue outputs = request.params[1].get_array();
     for (unsigned int idx = 0; idx < outputs.size(); idx++) {
         const UniValue& output = outputs[idx];
         if (!output.isObject())
@@ -2254,9 +2254,9 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
     return true;
 }
 
-UniValue listlockunspent(const UniValue& params, bool fHelp)
+UniValue listlockunspent(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 0)
+    if (request.fHelp || request.params.size() > 0)
         throw runtime_error(
             "listlockunspent\n"
             "\nReturns list of temporarily unspendable outputs.\n"
@@ -2295,9 +2295,9 @@ UniValue listlockunspent(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue settxfee(const UniValue& params, bool fHelp)
+UniValue settxfee(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 1)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw runtime_error(
             "settxfee amount\n"
             "\nSet the transaction fee per kB.\n"
@@ -2311,15 +2311,15 @@ UniValue settxfee(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // Amount
-    CAmount nAmount = AmountFromValue(params[0]);
+    CAmount nAmount = AmountFromValue(request.params[0]);
 
     payTxFee = CFeeRate(nAmount, 1000);
     return true;
 }
 
-UniValue getwalletinfo(const UniValue& params, bool fHelp)
+UniValue getwalletinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getwalletinfo\n"
             "Returns an object containing various wallet state info.\n"
@@ -2357,9 +2357,9 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
 }
 
 // ppcoin: reserve balance from being staked for network protection
-UniValue reservebalance(const UniValue& params, bool fHelp)
+UniValue reservebalance(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 2)
+    if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
             "reservebalance [<reserve> [amount]]\n"
             "<reserve> is true or false to turn balance reserve on or off.\n"
@@ -2367,18 +2367,18 @@ UniValue reservebalance(const UniValue& params, bool fHelp)
             "Set reserve amount not participating in network protection.\n"
             "If no parameters provided current setting is printed.\n");
 
-    if (params.size() > 0) {
-        bool fReserve = params[0].get_bool();
+    if (request.params.size() > 0) {
+        bool fReserve = request.params[0].get_bool();
         if (fReserve) {
-            if (params.size() == 1)
+            if (request.params.size() == 1)
                 throw runtime_error("must provide amount to reserve balance.\n");
-            int64_t nAmount = AmountFromValue(params[1]);
+            int64_t nAmount = AmountFromValue(request.params[1]);
             nAmount = (nAmount / CENT) * CENT; // round to cent
             if (nAmount < 0)
                 throw runtime_error("amount cannot be negative.\n");
             stake->ReserveBalance(nAmount);
         } else {
-            if (params.size() > 1)
+            if (request.params.size() > 1)
                 throw runtime_error("cannot specify amount to turn off reserve.\n");
             stake->ReserveBalance(0);
         }
@@ -2393,11 +2393,11 @@ UniValue reservebalance(const UniValue& params, bool fHelp)
 // presstab HyperStake
 Value setstakesplitthreshold(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "setstakesplitthreshold <1 - 999,999>\n"
             "This will set the output size of your stakes to never be below this number\n");
-    uint64_t nStakeSplitThreshold = params[0].get_int();
+    uint64_t nStakeSplitThreshold = request.params[0].get_int();
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Unlock wallet to use this feature");
     if (nStakeSplitThreshold > 999999)
@@ -2424,7 +2424,7 @@ Value setstakesplitthreshold(const Array& params, bool fHelp)
 // presstab HyperStake
 Value getstakesplitthreshold(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getstakesplitthreshold\n"
             "Returns the set splitstakethreshold\n");
@@ -2434,23 +2434,23 @@ Value getstakesplitthreshold(const Array& params, bool fHelp)
     return result;
 }
 */
-UniValue autocombinerewards(const UniValue& params, bool fHelp)
+UniValue autocombinerewards(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1)
+    if (request.fHelp || request.params.size() < 1)
         throw runtime_error(
             "autocombinerewards <true/false> threshold\n"
             "Wallet will automatically monitor for any coins with value below the threshold amount, and combine them if they reside with the same LUX address\n"
             "When autocombinerewards runs it will create a transaction, and therefore will be subject to transaction fees.\n");
 
     CWalletDB walletdb(pwalletMain->strWalletFile);
-    bool fEnable = params[0].get_bool();
+    bool fEnable = request.params[0].get_bool();
     CAmount nThreshold = 0;
 
     if (fEnable) {
-        if (params.size() != 2)
+        if (request.params.size() != 2)
             throw runtime_error("Input Error: use format: autocombinerewards <true/false> threshold\n");
 
-        nThreshold = params[1].get_int();
+        nThreshold = request.params[1].get_int();
     }
 
     pwalletMain->fCombineDust = fEnable;
@@ -2527,13 +2527,13 @@ unsigned int sumMultiSend()
     return sum;
 }
 
-UniValue multisend(const UniValue& params, bool fHelp)
+UniValue multisend(const JSONRPCRequest& request)
 {
     CWalletDB walletdb(pwalletMain->strWalletFile);
     bool fFileBacked;
     //MultiSend Commands
-    if (params.size() == 1) {
-        string strCommand = params[0].get_str();
+    if (request.params.size() == 1) {
+        string strCommand = request.params[0].get_str();
         UniValue ret(UniValue::VOBJ);
         if (strCommand == "print") {
             return printMultiSend();
@@ -2609,8 +2609,8 @@ UniValue multisend(const UniValue& params, bool fHelp)
             }
         }
     }
-    if (params.size() == 2 && params[0].get_str() == "delete") {
-        int del = boost::lexical_cast<int>(params[1].get_str());
+    if (request.params.size() == 2 && request.params[0].get_str() == "delete") {
+        int del = boost::lexical_cast<int>(request.params[1].get_str());
         if (!walletdb.EraseMultiSend(pwalletMain->vMultiSend))
             throw JSONRPCError(RPC_DATABASE_ERROR, "failed to delete old MultiSend vector from database");
 
@@ -2620,8 +2620,8 @@ UniValue multisend(const UniValue& params, bool fHelp)
 
         return printMultiSend();
     }
-    if (params.size() == 2 && params[0].get_str() == "disable") {
-        std::string disAddress = params[1].get_str();
+    if (request.params.size() == 2 && request.params[0].get_str() == "disable") {
+        std::string disAddress = request.params[1].get_str();
         if (!IsValidDestination(DecodeDestination(disAddress)))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "address you want to disable is not valid");
         else {
@@ -2637,7 +2637,7 @@ UniValue multisend(const UniValue& params, bool fHelp)
     }
 
     //if no commands are used
-    if (fHelp || params.size() != 2)
+    if (request.fHelp || request.params.size() != 2)
         throw runtime_error(
             "multisend <command>\n"
             "****************************************************************\n"
@@ -2662,15 +2662,15 @@ UniValue multisend(const UniValue& params, bool fHelp)
             "****************************************************************\n");
 
     //if the user is entering a new MultiSend item
-    string strAddress = params[0].get_str();
+    string strAddress = request.params[0].get_str();
     CTxDestination dest = DecodeDestination(strAddress);
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
-    if (boost::lexical_cast<int>(params[1].get_str()) < 0)
+    if (boost::lexical_cast<int>(request.params[1].get_str()) < 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected valid percentage");
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-    unsigned int nPercent = boost::lexical_cast<unsigned int>(params[1].get_str());
+    unsigned int nPercent = boost::lexical_cast<unsigned int>(request.params[1].get_str());
 
     LOCK(pwalletMain->cs_wallet);
     {
@@ -2705,9 +2705,9 @@ UniValue multisend(const UniValue& params, bool fHelp)
 }
 
 ////////////////////////////////////////////////////////////////////// // lux
-UniValue callcontract(const UniValue& params, bool fHelp)
+UniValue callcontract(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2)
+    if (request.fHelp || request.params.size() < 2)
         throw runtime_error(
                 "callcontract \"address\" \"data\" ( address )\n"
                 "\nArgument:\n"
@@ -2723,8 +2723,8 @@ UniValue callcontract(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    std::string strAddr = params[0].get_str();
-    std::string data = params[1].get_str();
+    std::string strAddr = request.params[0].get_str();
+    std::string data = request.params[1].get_str();
 
     if(data.size() % 2 != 0 || !CheckHex(data))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
@@ -2737,20 +2737,20 @@ UniValue callcontract(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not exist");
 
     dev::Address senderAddress;
-    if(params.size() == 3){
-        CTxDestination luxSenderAddress = DecodeDestination(params[2].get_str());
+    if(request.params.size() == 3){
+        CTxDestination luxSenderAddress = DecodeDestination(request.params[2].get_str());
         if(IsValidDestination(luxSenderAddress)) {
             CKeyID *keyid = boost::get<CKeyID>(&luxSenderAddress);
 
             senderAddress = dev::Address(HexStr(valtype(keyid->begin(),keyid->end())));
         }else{
-            senderAddress = dev::Address(params[2].get_str());
+            senderAddress = dev::Address(request.params[2].get_str());
         }
 
     }
     uint64_t gasLimit=0;
-    if(params.size() == 4){
-        gasLimit = params[3].get_int();
+    if(request.params.size() == 4){
+        gasLimit = request.params[3].get_int();
     }
 
 
@@ -2768,9 +2768,9 @@ UniValue callcontract(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue createcontract(const UniValue& params, bool fHelp){
+UniValue createcontract(const JSONRPCRequest& request){
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -2779,7 +2779,7 @@ UniValue createcontract(const UniValue& params, bool fHelp){
     uint64_t minGasPrice = CAmount(luxDGP.getMinGasPrice(chainActive.Height()));
     CAmount nGasPrice = (minGasPrice>DEFAULT_GAS_PRICE)?minGasPrice:DEFAULT_GAS_PRICE;
 
-    if (fHelp || params.size() < 1 || params.size() > 6)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 6)
         throw runtime_error(
                 "createcontract \"bytecode\" (gaslimit gasprice \"senderaddress\" broadcast)"
                 "\nCreate a contract with bytcode.\n"
@@ -2809,15 +2809,15 @@ UniValue createcontract(const UniValue& params, bool fHelp){
         throw JSONRPCError(RPC_VERIFY_ERROR, "Smart contracts hardfork is not active yet. Activation block number - " + std::to_string(Params().FirstSCBlock()));
     }
 
-    string bytecode=params[0].get_str();
+    string bytecode=request.params[0].get_str();
 
     if(bytecode.size() % 2 != 0 || !CheckHex(bytecode))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
 
     uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_CREATE;
 
-    if (params.size() > 1) {
-        nGasLimit = params[1].get_int64();
+    if (request.params.size() > 1) {
+        nGasLimit = request.params[1].get_int64();
         if (nGasLimit > blockGasLimit)
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Maximum is: "+i64tostr(blockGasLimit)+")");
         if (nGasLimit < MINIMUM_GAS_LIMIT)
@@ -2826,8 +2826,8 @@ UniValue createcontract(const UniValue& params, bool fHelp){
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit");
     }
 
-    if (params.size() > 2){
-        UniValue uGasPrice = params[2];
+    if (request.params.size() > 2){
+        UniValue uGasPrice = request.params[2];
         if(!ParseMoney(uGasPrice.getValStr(), nGasPrice))
         {
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice");
@@ -2843,8 +2843,8 @@ UniValue createcontract(const UniValue& params, bool fHelp){
 
     bool fHasSender=false;
     CTxDestination senderAddress;
-    if (params.size() > 3){
-        senderAddress = DecodeDestination(params[3].get_str());
+    if (request.params.size() > 3){
+        senderAddress = DecodeDestination(request.params[3].get_str());
         if (!IsValidDestination(senderAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Lux address to send from");
         else
@@ -2852,13 +2852,13 @@ UniValue createcontract(const UniValue& params, bool fHelp){
     }
 
     bool fBroadcast=true;
-    if (params.size() > 4){
-        fBroadcast=params[4].get_bool();
+    if (request.params.size() > 4){
+        fBroadcast=request.params[4].get_bool();
     }
 
     bool fChangeToSender=true;
-    if (params.size() > 5){
-        fChangeToSender=params[5].get_bool();
+    if (request.params.size() > 5){
+        fChangeToSender=request.params[5].get_bool();
     }
 
     CCoinControl coinControl;
@@ -2974,9 +2974,9 @@ UniValue createcontract(const UniValue& params, bool fHelp){
     return result;
 }
 
-UniValue sendtocontract(const UniValue& params, bool fHelp){
+UniValue sendtocontract(const JSONRPCRequest& request){
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -2985,7 +2985,7 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     uint64_t minGasPrice = CAmount(luxDGP.getMinGasPrice(chainActive.Height()));
     CAmount nGasPrice = (minGasPrice>DEFAULT_GAS_PRICE)?minGasPrice:DEFAULT_GAS_PRICE;
 
-    if (fHelp || params.size() < 2 || params.size() > 8)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 8)
         throw runtime_error(
                 "sendtocontract \"contractaddress\" \"data\" (amount gaslimit gasprice senderaddress broadcast)"
                 "\nSend funds and data to a contract.\n"
@@ -3016,7 +3016,7 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
         throw JSONRPCError(RPC_VERIFY_ERROR, "Smart contracts hardfork is not active yet. Activation block number - " + std::to_string(Params().FirstSCBlock()));
     }
 
-    std::string contractaddress = params[0].get_str();
+    std::string contractaddress = request.params[0].get_str();
     if(contractaddress.size() != 40 || !CheckHex(contractaddress))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect contract address");
 
@@ -3024,21 +3024,21 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     if(!globalState->addressInUse(addrAccount))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "contract address does not exist");
 
-    string datahex = params[1].get_str();
+    string datahex = request.params[1].get_str();
     if(datahex.size() % 2 != 0 || !CheckHex(datahex))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
 
     CAmount nAmount = 0;
-    if (params.size() > 2) {
-        UniValue uAmount = params[2];
+    if (request.params.size() > 2) {
+        UniValue uAmount = request.params[2];
         if(!ParseMoney(uAmount.getValStr(), nAmount)) {
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for Amount");
         }
     }
 
     uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_SEND;
-    if (params.size() > 3){
-        nGasLimit = params[3].get_int64();
+    if (request.params.size() > 3){
+        nGasLimit = request.params[3].get_int64();
         if (nGasLimit > blockGasLimit)
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Maximum is: "+i64tostr(blockGasLimit)+")");
         if (nGasLimit < MINIMUM_GAS_LIMIT)
@@ -3047,8 +3047,8 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit");
     }
 
-    if (params.size() > 4){
-        UniValue uGasPrice = params[4];
+    if (request.params.size() > 4){
+        UniValue uGasPrice = request.params[4];
         if(!ParseMoney(uGasPrice.getValStr(), nGasPrice))
         {
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice");
@@ -3064,8 +3064,8 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
 
     bool fHasSender=false;
     CTxDestination senderAddress;
-    if (params.size() > 5){
-        senderAddress = DecodeDestination(params[5].get_str());
+    if (request.params.size() > 5){
+        senderAddress = DecodeDestination(request.params[5].get_str());
         if (!IsValidDestination(senderAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Lux address to send from");
         else
@@ -3073,13 +3073,13 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     }
 
     bool fBroadcast=true;
-    if (params.size() > 6){
-        fBroadcast=params[6].get_bool();
+    if (request.params.size() > 6){
+        fBroadcast=request.params[6].get_bool();
     }
 
     bool fChangeToSender=true;
-    if (params.size() > 7){
-        fChangeToSender=params[7].get_bool();
+    if (request.params.size() > 7){
+        fChangeToSender=request.params[7].get_bool();
     }
 
     CCoinControl coinControl;
