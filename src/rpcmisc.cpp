@@ -47,9 +47,9 @@ using namespace std;
  * Or alternatively, create a specific query method for the information.
  **/
 
-UniValue getinfo(const UniValue& params, bool fHelp)
+UniValue getinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getinfo\n"
             "Returns an object containing various state info.\n"
@@ -122,9 +122,9 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     return obj;
 }
 
-UniValue getstateinfo(const UniValue& params, bool fHelp)
+UniValue getstateinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
                 "getstateinfo\n"
                 "\nReturns an object containing state info.\n"
@@ -273,9 +273,9 @@ public:
 /*
     Used for updating/reading spork settings on the network
 */
-UniValue spork(const UniValue& params, bool fHelp)
+UniValue spork(const JSONRPCRequest& request)
 {
-    if (params.size() == 1 && params[0].get_str() == "show") {
+    if (request.params.size() == 1 && request.params[0].get_str() == "show") {
         UniValue ret(UniValue::VOBJ);
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
         while (it != mapSporksActive.end()) {
@@ -283,14 +283,14 @@ UniValue spork(const UniValue& params, bool fHelp)
             it++;
         }
         return ret;
-    } else if (params.size() == 2) {
-        int nSporkID = sporkManager.GetSporkIDByName(params[0].get_str());
+    } else if (request.params.size() == 2) {
+        int nSporkID = sporkManager.GetSporkIDByName(request.params[0].get_str());
         if (nSporkID == -1) {
             return "Invalid spork name";
         }
 
         // SPORK VALUE
-        int64_t nValue = params[1].get_int();
+        int64_t nValue = request.params[1].get_int();
 
         //broadcast new spork
         if (sporkManager.UpdateSpork(nSporkID, nValue)) {
@@ -308,9 +308,9 @@ UniValue spork(const UniValue& params, bool fHelp)
         HelpRequiringPassphrase());
 }
 
-UniValue validateaddress(const UniValue& params, bool fHelp)
+UniValue validateaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "validateaddress \"luxaddress\"\n"
             "\nReturn information about the given lux address.\n"
@@ -351,7 +351,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     bool isValid = IsValidDestination(dest);
 
     UniValue ret(UniValue::VOBJ);
@@ -394,8 +394,8 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
  */
 /*CScript _createmultisig_redeemScript(const UniValue& params)
 {
-    int nRequired = params[0].get_int();
-    const UniValue& keys = params[1].get_array();
+    int nRequired = request.params[0].get_int();
+    const UniValue& keys = request.params[1].get_array();
 
     // Gather public keys
     if (nRequired < 1)
@@ -449,9 +449,9 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
     return result;
 }*/
 
-UniValue createmultisig(const UniValue& params, bool fHelp)
+UniValue createmultisig(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 2 || params.size() > 2) {
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2) {
         string msg = "createmultisig nrequired [\"key\",...]\n"
             "\nCreates a multi-signature address with n signature of m keys required.\n"
             "It returns a json object with the address and redeemScript.\n"
@@ -477,10 +477,10 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
         throw runtime_error(msg);
     }
 
-    int required = params[0].get_int();
+    int required = request.params[0].get_int();
 
     // Get the public keys
-    const UniValue& keys = params[1].get_array();
+    const UniValue& keys = request.params[1].get_array();
     std::vector<CPubKey> pubkeys;
     for (unsigned int i = 0; i < keys.size(); ++i) {
         if (IsHex(keys[i].get_str()) && (keys[i].get_str().length() == 66 || keys[i].get_str().length() == 130)) {
@@ -503,9 +503,9 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue createwitnessaddress(const UniValue& params, bool fHelp)
+UniValue createwitnessaddress(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 1)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
     {
         string msg = "createwitnessaddress \"script\"\n"
             "\nCreates a witness address for a particular script.\n"
@@ -523,11 +523,11 @@ UniValue createwitnessaddress(const UniValue& params, bool fHelp)
         throw runtime_error(msg);
     }
 
-    if (!IsHex(params[0].get_str())) {
+    if (!IsHex(request.params[0].get_str())) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Script must be hex-encoded");
     }
 
-    std::vector<unsigned char> code = ParseHex(params[0].get_str());
+    std::vector<unsigned char> code = ParseHex(request.params[0].get_str());
     CScript script(code.begin(), code.end());
     CScript witscript = GetScriptForWitness(script);
     CScriptID witscriptid(witscript);
@@ -540,9 +540,9 @@ UniValue createwitnessaddress(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue verifymessage(const UniValue& params, bool fHelp)
+UniValue verifymessage(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 3)
+    if (request.fHelp || request.params.size() != 3)
         throw runtime_error(
             "verifymessage \"luxaddress\" \"signature\" \"message\"\n"
             "\nVerify a signed message\n"
@@ -560,9 +560,9 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
             "\nAs json rpc\n" + HelpExampleRpc("verifymessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"signature\", \"my message\""));
 
     LOCK(cs_main);
-    string strAddress   = params[0].get_str();
-    string strSign      = params[1].get_str();
-    string strMessage   = params[2].get_str();
+    string strAddress   = request.params[0].get_str();
+    string strSign      = request.params[1].get_str();
+    string strMessage   = request.params[2].get_str();
 
     CTxDestination destination = DecodeDestination(strAddress);
     if (!IsValidDestination(destination))
@@ -589,9 +589,9 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
     return (pubkey.GetID() == *keyID);
 }
 
-UniValue setmocktime(const UniValue& params, bool fHelp)
+UniValue setmocktime(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "setmocktime timestamp\n"
             "\nSet the local time to given timestamp (-regtest only)\n"
@@ -604,16 +604,16 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
-    SetMockTime(params[0].get_int64());
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VSTR));
+    SetMockTime(request.params[0].get_int64());
 
     return NullUniValue;
 }
 
 #ifdef ENABLE_WALLET
-UniValue getstakingstatus(const UniValue& params, bool fHelp)
+UniValue getstakingstatus(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getstakingstatus\n"
             "Returns an object containing various staking information.\n"

@@ -72,15 +72,24 @@ static bool RESTERR(HTTPRequest* req, enum HTTPStatusCode status, string message
     return false;
 }
 
-static enum RetFormat ParseDataFormat(vector<string>& params, const string strReq)
+static enum RetFormat ParseDataFormat(std::string& param, const std::string& strReq)
 {
-    boost::split(params, strReq, boost::is_any_of("."));
-    if (params.size() > 1) {
-        for (unsigned int i = 0; i < ARRAYLEN(rf_names); i++)
-            if (params[1] == rf_names[i].name)
-                return rf_names[i].rf;
+    const std::string::size_type pos = strReq.rfind('.');
+    if (pos == std::string::npos)
+    {
+        param = strReq;
+        return rf_names[0].rf;
     }
 
+    param = strReq.substr(0, pos);
+    const std::string suff(strReq, pos + 1);
+
+    for (unsigned int i = 0; i < ARRAYLEN(rf_names); i++)
+        if (suff == rf_names[i].name)
+            return rf_names[i].rf;
+
+    /* If no suffix is found, return original string.  */
+    param = strReq;
     return rf_names[0].rf;
 }
 
@@ -122,10 +131,10 @@ static bool rest_headers(HTTPRequest* req,
 {
     if (!CheckWarmup(req))
         return false;
-    vector<string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
+    std::string param;
+    const RetFormat rf = ParseDataFormat(param, strURIPart);
     vector<string> path;
-    boost::split(path, params[0], boost::is_any_of("/"));
+    boost::split(path, param, boost::is_any_of("/"));
 
     if (path.size() != 2)
         return RESTERR(req, HTTP_BAD_REQUEST, "No header count specified. Use /rest/headers/<count>/<hash>.<ext>.");
@@ -193,16 +202,16 @@ static bool rest_headers(HTTPRequest* req,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
+
 static bool rest_block(HTTPRequest* req,
                        const std::string& strURIPart,
                        bool showTxDetails)
 {
     if (!CheckWarmup(req))
         return false;
-    vector<string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
+    std::string hashStr;
+    const RetFormat rf = ParseDataFormat(hashStr, strURIPart);
 
-    string hashStr = params[0];
     uint256 hash;
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
@@ -265,17 +274,19 @@ static bool rest_block_notxdetails(HTTPRequest* req, const std::string& strURIPa
     return rest_block(req, strURIPart, false);
 }
 
+//UniValue getblockchaininfo(const JSONRPCRequest& request);
+
 static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
-    vector<string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
+    std::string param;
+    const RetFormat rf = ParseDataFormat(param, strURIPart);
 
     switch (rf) {
         case RF_JSON: {
-            UniValue rpcParams(UniValue::VARR);
-            UniValue chainInfoObject = getblockchaininfo(rpcParams, false);
+            JSONRPCRequest jsonRequest;
+            UniValue chainInfoObject = getblockchaininfo(jsonRequest);
             string strJSON = chainInfoObject.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
             req->WriteReply(HTTP_OK, strJSON);
@@ -294,8 +305,8 @@ static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
-    vector<string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
+    std::string param;
+    const RetFormat rf = ParseDataFormat(param, strURIPart);
 
     switch (rf) {
     case RF_JSON: {
@@ -315,11 +326,12 @@ static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPart) {
+static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPart)
+{
     if (!CheckWarmup(req))
         return false;
-    vector <string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
+    std::string param;
+    const RetFormat rf = ParseDataFormat(param, strURIPart);
 
     switch (rf) {
         case RF_JSON: {
@@ -343,10 +355,9 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
-    vector<string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
+    std::string hashStr;
+    const RetFormat rf = ParseDataFormat(hashStr, strURIPart);
 
-    string hashStr = params[0];
     uint256 hash;
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
@@ -354,7 +365,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
     const Consensus::Params consensusParams = Params().GetConsensus();
     CTransactionRef tx;
     uint256 hashBlock = uint256();
-    if (!GetTransaction(hash, tx, consensusParams, hashBlock, true))
+    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
@@ -401,30 +412,25 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
 static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
-    {
         return false;
-    }
+    std::string param;
+    const RetFormat rf = ParseDataFormat(param, strURIPart);
 
-    vector<string> params;
-    const RetFormat rf = ParseDataFormat(params, strURIPart);
-
-    std::vector<std::string> uriParts;
-    if (params.size() > 0 && params[0].length() > 1)
+    vector<string> uriParts;
+    if (param.length() > 1)
     {
-        std::string strUriParams = params[0].substr(1);
+        std::string strUriParams = param.substr(1);
         boost::split(uriParts, strUriParams, boost::is_any_of("/"));
     }
 
-    // throw exception in case of an empty request
+    // throw exception in case of a empty request
     std::string strRequestMutable = req->ReadBody();
     if (strRequestMutable.length() == 0 && uriParts.size() == 0)
-    {
-        return RESTERR(req, HTTP_BAD_REQUEST, "Error: empty request");
-    }
+        return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, "Error: empty request");
 
     bool fInputParsed = false;
     bool fCheckMemPool = false;
-    std::vector<COutPoint> vOutPoints;
+    vector<COutPoint> vOutPoints;
 
     // parse/deserialize input
     // input-format = output-format, rest/getutxos/bin requires binary input, gives binary output, ...
