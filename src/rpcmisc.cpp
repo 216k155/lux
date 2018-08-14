@@ -144,9 +144,9 @@ UniValue getstateinfo(const UniValue& params, bool fHelp)
     LuxDGP luxDGP(globalState.get());
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("maxblocksize", (long)luxDGP.getBlockSize(chainActive.Height())));
-    obj.push_back(Pair("blockgaslimit", (long)luxDGP.getMinGasPrice(chainActive.Height())));
-    obj.push_back(Pair("mingasprice", (long)luxDGP.getBlockGasLimit(chainActive.Height())));
+    obj.push_back(Pair("maxblocksize", (int64_t)luxDGP.getBlockSize(chainActive.Height())));
+    obj.push_back(Pair("blockgaslimit", (int64_t)luxDGP.getMinGasPrice(chainActive.Height())));
+    obj.push_back(Pair("mingasprice", (int64_t)luxDGP.getBlockGasLimit(chainActive.Height())));
 
     return obj;
 }
