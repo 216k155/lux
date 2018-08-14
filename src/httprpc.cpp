@@ -15,8 +15,10 @@
 #include "util.h"
 #include "utilstrencodings.h"
 #include "ui_interface.h"
-
+#include "crypto/hmac_sha256.h"
+#include <stdio.h>
 #include <boost/algorithm/string.hpp> // boost::trim
+#include <boost/foreach.hpp> //BOOST_FOREACH
 
 /** Simple one-shot callback timer to be used by the RPC mechanism to e.g.
  * re-lock the wellet.
@@ -83,7 +85,49 @@ static void JSONErrorReply(HTTPRequest* req, const UniValue& objError, const Uni
     }
 }
 
-static bool RPCAuthorized(const std::string& strAuth)
+static bool multiUserAuthorized(std::string strUserPass)
+{
+    if (strUserPass.find(":") == std::string::npos) {
+        return false;
+    }
+    std::string strUser = strUserPass.substr(0, strUserPass.find(":"));
+    std::string strPass = strUserPass.substr(strUserPass.find(":") + 1);
+
+    if (mapMultiArgs.count("-rpcauth") > 0) {
+        //Search for multi-user login/pass "rpcauth" from config
+        BOOST_FOREACH(std::string strRPCAuth, mapMultiArgs["-rpcauth"])
+        {
+            std::vector<std::string> vFields;
+            boost::split(vFields, strRPCAuth, boost::is_any_of(":$"));
+            if (vFields.size() != 3) {
+                //Incorrect formatting in config file
+                continue;
+            }
+
+            std::string strName = vFields[0];
+            if (!TimingResistantEqual(strName, strUser)) {
+                continue;
+            }
+
+            std::string strSalt = vFields[1];
+            std::string strHash = vFields[2];
+
+            unsigned int KEY_SIZE = 32;
+            unsigned char *out = new unsigned char[KEY_SIZE];
+
+            CHMAC_SHA256(reinterpret_cast<const unsigned char*>(strSalt.c_str()), strSalt.size()).Write(reinterpret_cast<const unsigned char*>(strPass.c_str()), strPass.size()).Finalize(out);
+            std::vector<unsigned char> hexvec(out, out+KEY_SIZE);
+            std::string strHashFromPass = HexStr(hexvec);
+
+            if (TimingResistantEqual(strHashFromPass, strHash)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool RPCAuthorized(const std::string& strAuth, std::string& strAuthUsernameOut)
 {
     if (strRPCUserColonPass.empty()) // Belt-and-suspenders measure if InitRPCAuthentication was not called
         return false;
@@ -92,7 +136,14 @@ static bool RPCAuthorized(const std::string& strAuth)
     std::string strUserPass64 = strAuth.substr(6);
     boost::trim(strUserPass64);
     std::string strUserPass = DecodeBase64(strUserPass64);
-    return TimingResistantEqual(strUserPass, strRPCUserColonPass);
+
+    if (strUserPass.find(":") != std::string::npos)
+        strAuthUsernameOut = strUserPass.substr(0, strUserPass.find(":"));
+
+    if (TimingResistantEqual(strUserPass, strRPCUserColonPass)) {
+        return true;
+    }
+    return multiUserAuthorized(strUserPass);
 }
 
 static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
@@ -109,7 +160,8 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         return false;
     }
 
-    if (!RPCAuthorized(authHeader.second)) {
+    JSONRPCRequest jreq;
+    if (!RPCAuthorized(authHeader.second, jreq.authUser)) {
         LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeer().ToString());
 
         /* Deter brute-forcing
@@ -121,7 +173,6 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         return false;
     }
 
-        JSONRPCRequest jreq;
     try {
         // Parse request
         UniValue valRequest;
@@ -177,6 +228,9 @@ static bool InitRPCAuthentication()
             return false;
         }
     } else {
+        LogPrintf("Config options rpcuser and rpcpassword will soon be deprecated."
+                  " Locally-run instances may remove rpcuser to use cookie-based auth,"
+                  " or may be replaced with rpcauth. Please see share/rpcuser for rpcauth auth generation.");
         strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
     }
     return true;

@@ -268,6 +268,7 @@ libbitcoin_wallet_a_SOURCES = \
 crypto_libbitcoin_crypto_a_CFLAGS = $(PIE_FLAGS)
 crypto_libbitcoin_crypto_a_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES) $(BITCOIN_INCLUDES) -DLUX_BUILD
 crypto_libbitcoin_crypto_a_SOURCES = \
+  crypto/aes.cpp \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
@@ -285,6 +286,7 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/fugue.c \
   crypto/lyra2/Lyra2.c \
   crypto/lyra2/Sponge.c  \
+  crypto/aes.h \
   crypto/common.h \
   crypto/sha256.h \
   crypto/sha512.h \
@@ -708,6 +710,15 @@ libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) $(BITCOIN_INCLUDES) -I$(build
 
 endif
 
+
+CTAES_DIST =  crypto/ctaes/bench.c
+CTAES_DIST += crypto/ctaes/ctaes.c
+CTAES_DIST += crypto/ctaes/ctaes.h
+CTAES_DIST += crypto/ctaes/README.md
+CTAES_DIST += crypto/ctaes/test.c
+
+CLEANFILES = $(EXTRA_LIBRARIES)
+
 CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a
 CLEANFILES += *.a *.la crypto/*.a cryptopp/*.a qt/*.a
 CLEANFILES += *.gcda *.gcno
@@ -723,7 +734,7 @@ CLEANFILES += zmq/*.gcda zmq/*.gcno
 
 DISTCLEANFILES = obj/build.h
 
-EXTRA_DIST = leveldb
+EXTRA_DIST = leveldb $(CTAES_DIST)
 
 # workaround for travis builds
 dist_pkgdata_DATA = multipliers.hpp univalue/univalue_utffilter.h

@@ -286,6 +286,7 @@ static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
     switch (rf) {
         case RF_JSON: {
             JSONRPCRequest jsonRequest;
+            jsonRequest.params = UniValue(UniValue::VARR);
             UniValue chainInfoObject = getblockchaininfo(jsonRequest);
             string strJSON = chainInfoObject.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
@@ -365,7 +366,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
     const Consensus::Params consensusParams = Params().GetConsensus();
     CTransactionRef tx;
     uint256 hashBlock = uint256();
-    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+    if (!GetTransaction(hash, tx, consensusParams, hashBlock, true))
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
