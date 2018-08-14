@@ -324,7 +324,7 @@ bool static Bind(const CService& addr, unsigned int flags)
 void OnRPCStopped()
 {
     cvBlockChange.notify_all();
-    LogPrint("rpc", "RPC stopped.\n");
+    LogPrint(BCLog::RPC, "RPC stopped.\n");
 }
 
 void OnRPCPreCommand(const CRPCCommand& cmd)
@@ -461,14 +461,9 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += "  -flushwallet           " + strprintf(_("Run a thread to flush wallet periodically (default: %u)"), 1) + "\n";
         strUsage += "  -stopafterblockimport  " + strprintf(_("Stop running after importing blocks from disk (default: %u)"), 0) + "\n";
     }
-    strUsage += "  -debug=<category>      " + strprintf(_("Output debugging information (default: %u, supplying <category> is optional)"), 0) + "\n";
-    strUsage += "                         " + _("If <category> is not supplied, output all debugging information.") + "\n";
-    strUsage += "                         " + _("<category> can be:\n");
-    strUsage += "                           addrman, alert, bench, coindb, db, lock, rand, rpc, selectcoins, mempool, net,\n";        // Don't translate these and qt below
-    strUsage += "                           lux (or specifically: darksend, instantx, masternode, mnpayments, mnbudget)"; // Don't translate these and qt below
-    if (mode == HMM_BITCOIN_QT)
-        strUsage += ", qt";
-    strUsage += ".\n";
+    strUsage += "  -debug=<category>      " + strprintf(_("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
+                                              _("If <category> is not supplied or if <category> = 1, output all debugging information.") + " " + _("<category> can be:") + " " + ListLogCategories() + ".";
+    strUsage += "\n";
 #ifdef ENABLE_CPUMINER
     strUsage += "  -gen                   " + strprintf(_("Generate coins (default: %u)"), 0) + "\n";
     strUsage += "  -genproclimit=<n>      " + strprintf(_("Set the number of threads for coin generation if enabled (-1 = all cores, default: %d)"), 1) + "\n";
@@ -872,11 +867,20 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
-    fDebug = !mapMultiArgs["-debug"].empty();
-    // Special-case: if -debug=0/-nodebug is set, turn off debugging messages
-    const vector<string>& categories = mapMultiArgs["-debug"];
-    if (GetBoolArg("-nodebug", false) || find(categories.begin(), categories.end(), string("0")) != categories.end())
-        fDebug = false;
+    if (mapMultiArgs.count("-debug") > 0) {
+        // Special-case: if -debug=0/-nodebug is set, turn off debugging messages
+        const std::vector<std::string>& categories = mapMultiArgs.at("-debug");
+
+        if (!(GetBoolArg("-nodebug", false) || find(categories.begin(), categories.end(), std::string("0")) != categories.end())) {
+            for (const auto& cat : categories) {
+                uint32_t flag;
+                if (!GetLogCategory(&flag, &cat)) {
+                    InitWarning(strprintf(_("Unsupported logging category %s.\n"), cat));
+                }
+                logCategories |= flag;
+            }
+        }
+    }
 
     // check for -mnsec
     fDebugMnSecurity = GetBoolArg("-mnsec", false);
@@ -1035,7 +1039,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());
 #endif
-    if (GetBoolArg("-shrinkdebugfile", !fDebug))
+    if (GetBoolArg("-shrinkdebugfile", logCategories != BCLog::NONE))
         ShrinkDebugFile();
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     LogPrintf("LUX version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);

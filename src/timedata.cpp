@@ -96,12 +96,13 @@ void AddTimeData(const CNetAddr& ip, int64_t nTime)
                 }
             }
         }
-        if (fDebug) {
+        if (LogAcceptCategory(BCLog::NET)) {
             for (int64_t n : vSorted) {
-                LogPrintf("%+d  ", n);
+                LogPrint(BCLog::NET, "%+d  ", n);
             }
-            LogPrintf("|  ");
-        LogPrintf("nTimeOffset = %+d  (%+d minutes)\n", nTimeOffset, nTimeOffset / 60);
+            LogPrint(BCLog::NET, "|  ");
+
+            LogPrint(BCLog::NET, "nTimeOffset = %+d  (%+d minutes)\n", nTimeOffset, nTimeOffset/60);
         }
     }
 }
