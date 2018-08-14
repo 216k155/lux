@@ -75,7 +75,7 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock)
     if (hashBlock != uint256(0))
         batch.Write(DB_BEST_BLOCK, hashBlock);
 
-    LogPrint("coindb", "Committing %u changed transactions (out of %u) to coin database...\n", (unsigned int)changed, (unsigned int)count);
+    LogPrint(BCLog::COINDB, "Committing %u changed transactions (out of %u) to coin database...\n", (unsigned int)changed, (unsigned int)count);
     return db.WriteBatch(batch);
 }
 
@@ -95,7 +95,7 @@ bool CBlockTreeDB::WriteBlockIndex(const CDiskBlockIndex& blockindex)
                 return Write(make_pair(DB_BLOCK_INDEX, hash), blockindexFixed);
             } else {
 #               if 0
-                LogPrint("debug", "%s: zero stake block %s", __func__, hash.GetHex());
+                LogPrint(BCLog::DEBUG, "%s: zero stake block %s", __func__, hash.GetHex());
 #               else
                 return error("%s: zero stake (block %s)", __func__, hash.GetHex());
 #               endif
@@ -103,7 +103,7 @@ bool CBlockTreeDB::WriteBlockIndex(const CDiskBlockIndex& blockindex)
         }
 #   if 0
     } else if (!CheckProofOfWork(hash, blockindex.nBits, Params().GetConsensus())) {
-        LogPrint("debug", "%s: bad work block %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex()); //return error("%s: invalid proof of work: %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex());
+        LogPrint(BCLog::DEBUG, "%s: bad work block %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex()); //return error("%s: invalid proof of work: %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex());
 #   endif
     }
     return Write(make_pair(DB_BLOCK_INDEX, hash), blockindex);
@@ -291,7 +291,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                     auto const &hash(pindexNew->GetBlockHash());
                     uint256 proof;
                     if (pindexNew->hashProofOfStake == 0) {
-                        LogPrint("debug", "skip invalid indexed orphan block %d %s with empty data\n", pindexNew->nHeight, hash.GetHex());
+                        LogPrint(BCLog::DEBUG, "skip invalid indexed orphan block %d %s with empty data\n", pindexNew->nHeight, hash.GetHex());
                         nDiscarded++;
                         nFirstDiscarded = diskindex.nHeight < nFirstDiscarded ? diskindex.nHeight : nFirstDiscarded;
                         batch.Erase(make_pair(DB_BLOCK_INDEX, hash));
