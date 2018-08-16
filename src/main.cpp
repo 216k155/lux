@@ -5863,6 +5863,15 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         return false;
     }
 
+    if (!(nLocalServices & NODE_BLOOM) &&
+        (strCommand == "filterload" ||
+         strCommand == "filteradd" ||
+         strCommand == "filterclear")) {
+        if (pfrom->nVersion >= NO_BLOOM_VERSION) {
+            Misbehaving(pfrom->GetId(), 100);
+            return false;
+        }
+    }
     if (strCommand == "version") {
         // Each connection can only send one version message
         if (pfrom->nVersion != 0) {
@@ -6594,16 +6603,6 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         }
     }
 
-
-    else if (!(nLocalServices & NODE_BLOOM) &&
-             (strCommand == "filterload" ||
-              strCommand == "filteradd" ||
-              strCommand == "filterclear")) {
-        LogPrintf("bloom message=%s\n", strCommand);
-        Misbehaving(pfrom->GetId(), 100);
-    }
-
-
     else if (strCommand == "filterload") {
         CBloomFilter filter;
         vRecv >> filter;
@@ -6613,8 +6612,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             Misbehaving(pfrom->GetId(), 100);
         else {
             LOCK(pfrom->cs_filter);
-            delete pfrom->pfilter;
-            pfrom->pfilter = new CBloomFilter(filter);
+            pfrom->pfilter.reset(new CBloomFilter(filter));
             pfrom->pfilter->UpdateEmptyFull();
         }
         pfrom->fRelayTxes = true;
@@ -6641,8 +6639,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
     else if (strCommand == "filterclear") {
         LOCK(pfrom->cs_filter);
-        delete pfrom->pfilter;
-        pfrom->pfilter = new CBloomFilter();
+        pfrom->pfilter.reset(new CBloomFilter());
         pfrom->fRelayTxes = true;
     }
 
