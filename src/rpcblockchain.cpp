@@ -1024,7 +1024,7 @@ UniValue gettxout(const JSONRPCRequest& request)
             return NullUniValue;
         }
     } else {
-        if (!pcoinsTip->GetCoins(hash, coins)) {
+        if (!pcoinsTip->GetCoin(hash, coins)) {
             return NullUniValue;
         }
     }

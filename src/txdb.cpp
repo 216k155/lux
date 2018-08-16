@@ -37,12 +37,12 @@ CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(Get
 {
 }
 
-bool CCoinsViewDB::GetCoins(const uint256& txid, CCoins& coins) const
+bool CCoinsViewDB::GetCoin(const uint256& txid, CCoins& coins) const
 {
     return db.Read(std::make_pair(DB_COINS, txid), coins);
 }
 
-bool CCoinsViewDB::HaveCoins(const uint256& txid) const
+bool CCoinsViewDB::HaveCoin(const uint256& txid) const
 {
     return db.Exists(std::make_pair(DB_COINS, txid));
 }
@@ -62,7 +62,7 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock)
     size_t changed = 0;
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
-            if (it->second.coins.IsPruned())
+            if (it->second.coins.IsSpent())
                 batch.Erase(std::make_pair(DB_COINS, it->first));
             else
                 batch.Write(std::make_pair(DB_COINS, it->first), it->second.coins);

@@ -264,7 +264,7 @@ QString TransactionDesc::toHTML(CWallet* wallet, CWalletTx& wtx, TransactionReco
             COutPoint prevout = txin.prevout;
 
             CCoins prev;
-            if (pcoinsTip->GetCoins(prevout.hash, prev)) {
+            if (pcoinsTip->GetCoin(prevout.hash, prev)) {
                 if (prevout.n < prev.vout.size()) {
                     strHTML += "<li>";
                     const CTxOut& vout = prev.vout[prevout.n];

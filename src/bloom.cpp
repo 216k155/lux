@@ -18,7 +18,7 @@
 #define LN2 0.6931471805599453094172321214581765680755001343602552
 
 CBloomFilter::CBloomFilter(unsigned int nElements, double nFPRate, unsigned int nTweakIn, unsigned char nFlagsIn) :
- /**	
+ /**
  * The ideal size for a bloom filter with a given number of elements and false positive rate is:
  * - nElements * log(fp rate) / ln(2)^2
  * We ignore filter parameters which will create a bloom filter larger than the protocol limits

@@ -148,7 +148,7 @@ public:
     friend bool operator==(const CCoins& a, const CCoins& b)
     {
         // Empty CCoins objects are always equal.
-        if (a.IsPruned() && b.IsPruned())
+        if (a.IsSpent() && b.IsSpent())
             return true;
         return a.fCoinBase == b.fCoinBase &&
                a.fCoinStake == b.fCoinStake &&
@@ -254,8 +254,8 @@ public:
     }
 
     //! check whether the entire CCoins is spent
-    //! note that only !IsPruned() CCoins can be serialized
-    bool IsPruned() const
+    //! note that only !IsSpent() CCoins can be serialized
+    bool IsSpent() const
     {
         for (const CTxOut& out : vout)
             if (!out.IsNull())
@@ -315,11 +315,11 @@ class CCoinsView
 {
 public:
     //! Retrieve the CCoins (unspent transaction outputs) for a given txid
-    virtual bool GetCoins(const uint256& txid, CCoins& coins) const;
+    virtual bool GetCoin(const uint256& txid, CCoins& coins) const;
 
     //! Just check whether we have data for a given txid.
     //! This may (but cannot always) return true for fully spent transactions
-    virtual bool HaveCoins(const uint256& txid) const;
+    virtual bool HaveCoin(const uint256& txid) const;
 
     //! Retrieve the block hash whose state this CCoinsView currently represents
     virtual uint256 GetBestBlock() const;
@@ -344,8 +344,8 @@ protected:
 
 public:
     CCoinsViewBacked(CCoinsView* viewIn);
-    bool GetCoins(const uint256& txid, CCoins& coins) const;
-    bool HaveCoins(const uint256& txid) const;
+    bool GetCoin(const uint256& txid, CCoins& coins) const;
+    bool HaveCoin(const uint256& txid) const;
     uint256 GetBestBlock() const;
     void SetBackend(CCoinsView& viewIn);
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
@@ -392,15 +392,15 @@ public:
     ~CCoinsViewCache();
 
     // Standard CCoinsView methods
-    bool GetCoins(const uint256& txid, CCoins& coins) const;
-    bool HaveCoins(const uint256& txid) const;
+    bool GetCoin(const uint256& txid, CCoins& coins) const;
+    bool HaveCoin(const uint256& txid) const;
     uint256 GetBestBlock() const;
     void SetBestBlock(const uint256& hashBlock);
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
 
     /**
      * Return a pointer to CCoins in the cache, or nullptr if not found. This is
-     * more efficient than GetCoins. Modifications to other cache entries are
+     * more efficient than GetCoin. Modifications to other cache entries are
      * allowed while accessing the returned pointer.
      */
     const CCoins* AccessCoins(const uint256& txid) const;
@@ -443,8 +443,8 @@ public:
     friend class CCoinsModifier;
 
 private:
-    CCoinsMap::iterator FetchCoins(const uint256& txid);
-    CCoinsMap::const_iterator FetchCoins(const uint256& txid) const;
+    CCoinsMap::iterator FetchCoin(const uint256& txid);
+    CCoinsMap::const_iterator FetchCoin(const uint256& txid) const;
 };
 
 #endif // BITCOIN_COINS_H

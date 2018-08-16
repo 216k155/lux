@@ -547,7 +547,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
             bool hit = false;
 
             CCoins coins;
-            if (view.GetCoins(vOutPoints[i].hash, coins) && !mempool.isSpent(vOutPoints[i]))
+            if (view.GetCoin(vOutPoints[i].hash, coins) && !mempool.isSpent(vOutPoints[i]))
             {
                 hit = true;
 

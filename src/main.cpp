@@ -1070,14 +1070,14 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
             view.SetBackend(viewMemPool);
 
             // do we already have it?
-            if (view.HaveCoins(hash))
+            if (view.HaveCoin(hash))
                 return false;
 
             // do all inputs exist?
             // Note that this does not check for the presence of actual outputs (see the next check for that),
             // only helps filling in pfMissingInputs (to determine missing vs spent).
             for (const CTxIn txin : tx.vin) {
-                if (!view.HaveCoins(txin.prevout.hash)) {
+                if (!view.HaveCoin(txin.prevout.hash)) {
 #                   if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_AcceptToMemoryPool)
                     DEBUG_DUMP_AcceptToMemoryPool();
 #                   endif
@@ -1371,14 +1371,14 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
             view.SetBackend(viewMemPool);
 
             // do we already have it?
-            if (view.HaveCoins(hash))
+            if (view.HaveCoin(hash))
                 return false;
 
             // do all inputs exist?
             // Note that this does not check for the presence of actual outputs (see the next check for that),
             // only helps filling in pfMissingInputs (to determine missing vs spent).
             for (const CTxIn txin : tx.vin) {
-                if (!view.HaveCoins(txin.prevout.hash)) {
+                if (!view.HaveCoin(txin.prevout.hash)) {
                     if (pfMissingInputs)
                         *pfMissingInputs = true;
                     return false;
@@ -2207,13 +2207,13 @@ int ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const COutPoint&
     CCoinsModifier coins = view.ModifyCoins(out.hash);
     if (undo.nHeight != 0) {
         // undo data contains height: this is the last output of the prevout tx being spent
-        if (!coins->IsPruned()) fClean = false;
+        if (!coins->IsSpent()) fClean = false;
         coins->fCoinBase = undo.fCoinBase;
         coins->fCoinStake = undo.fCoinStake;
         coins->nHeight = undo.nHeight;
         coins->nVersion = undo.nVersion;
     } else {
-        if (coins->IsPruned()) fClean = false;
+        if (coins->IsSpent()) fClean = false;
     }
     if (coins->IsAvailable(out.n)) fClean = false;
     if (coins->vout.size() < out.n + 1)
@@ -2503,7 +2503,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (fEnforceBIP30) {
         for (const auto& tx : block.vtx) {
             const CCoins* coins = view.AccessCoins(tx->GetHash());
-            if (coins && !coins->IsPruned())
+            if (coins && !coins->IsSpent())
                 return state.DoS(100, error("%s: tried to overwrite transaction", __func__),
                     REJECT_INVALID, "bad-txns-BIP30");
         }
@@ -5626,7 +5626,7 @@ bool static AlreadyHave(const CInv& inv)
                 recentRejects->reset();
             }
             return recentRejects->contains(inv.hash) || mempool.exists(inv.hash) ||
-                   mapOrphanTransactions.count(inv.hash) || pcoinsTip->HaveCoins(inv.hash);
+                   mapOrphanTransactions.count(inv.hash) || pcoinsTip->HaveCoin(inv.hash);
         }
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:

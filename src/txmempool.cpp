@@ -679,7 +679,7 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
                     parentSigOpCost += it2->GetSigOpCost();
                 }
             } else {
-                assert(pcoins->HaveCoins(txin.prevout.hash));
+                assert(pcoins->HaveCoin(txin.prevout.hash));
             }
             // Check whether its inputs are marked in mapNextTx.
             auto it3 = mapNextTx.find(txin.prevout);
@@ -986,11 +986,11 @@ bool CCoinsViewMemPool::GetCoin(const COutPoint &outpoint, CCoins &coin) const {
             return false;
         }
     }
-    return (base->GetCoins(outpoint.hash, coin) /*&& !coin.IsSpent()*/);
+    return (base->GetCoin(outpoint.hash, coin) /*&& !coin.IsSpent()*/);
 }
 
 bool CCoinsViewMemPool::HaveCoin(const COutPoint &outpoint) const {
-    return mempool.exists(outpoint) || base->HaveCoins(outpoint.hash);
+    return mempool.exists(outpoint) || base->HaveCoin(outpoint.hash);
 }
 
 size_t CTxMemPool::DynamicMemoryUsage() const {
