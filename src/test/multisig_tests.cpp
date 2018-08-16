@@ -21,7 +21,7 @@
 using namespace std;
 using namespace boost::assign;
 
-typedef vector<unsigned char> valtype;
+typedef std::vector<unsigned char> valtype;
 
 BOOST_AUTO_TEST_SUITE(multisig_tests)
 

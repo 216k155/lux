@@ -39,12 +39,12 @@ CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(Get
 
 bool CCoinsViewDB::GetCoins(const uint256& txid, CCoins& coins) const
 {
-    return db.Read(make_pair(DB_COINS, txid), coins);
+    return db.Read(std::make_pair(DB_COINS, txid), coins);
 }
 
 bool CCoinsViewDB::HaveCoins(const uint256& txid) const
 {
-    return db.Exists(make_pair(DB_COINS, txid));
+    return db.Exists(std::make_pair(DB_COINS, txid));
 }
 
 uint256 CCoinsViewDB::GetBestBlock() const
@@ -63,9 +63,9 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock)
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
             if (it->second.coins.IsPruned())
-                batch.Erase(make_pair(DB_COINS, it->first));
+                batch.Erase(std::make_pair(DB_COINS, it->first));
             else
-                batch.Write(make_pair(DB_COINS, it->first), it->second.coins);
+                batch.Write(std::make_pair(DB_COINS, it->first), it->second.coins);
             changed++;
         }
         count++;
@@ -92,7 +92,7 @@ bool CBlockTreeDB::WriteBlockIndex(const CDiskBlockIndex& blockindex)
             if (stake->GetProof(hash, hashProofOfStake)) {
                 CDiskBlockIndex blockindexFixed(&blockindex);
                 blockindexFixed.hashProofOfStake = hashProofOfStake;
-                return Write(make_pair(DB_BLOCK_INDEX, hash), blockindexFixed);
+                return Write(std::make_pair(DB_BLOCK_INDEX, hash), blockindexFixed);
             } else {
 #               if 0
                 LogPrint(BCLog::DEBUG, "%s: zero stake block %s", __func__, hash.GetHex());
@@ -106,17 +106,17 @@ bool CBlockTreeDB::WriteBlockIndex(const CDiskBlockIndex& blockindex)
         LogPrint(BCLog::DEBUG, "%s: bad work block %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex()); //return error("%s: invalid proof of work: %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex());
 #   endif
     }
-    return Write(make_pair(DB_BLOCK_INDEX, hash), blockindex);
+    return Write(std::make_pair(DB_BLOCK_INDEX, hash), blockindex);
 }
 
 bool CBlockTreeDB::WriteBlockFileInfo(int nFile, const CBlockFileInfo& info)
 {
-    return Write(make_pair(DB_BLOCK_FILES, nFile), info);
+    return Write(std::make_pair(DB_BLOCK_FILES, nFile), info);
 }
 
 bool CBlockTreeDB::ReadBlockFileInfo(int nFile, CBlockFileInfo& info)
 {
-    return Read(make_pair(DB_BLOCK_FILES, nFile), info);
+    return Read(std::make_pair(DB_BLOCK_FILES, nFile), info);
 }
 
 bool CBlockTreeDB::WriteLastBlockFile(int nFile)
@@ -199,14 +199,14 @@ bool CCoinsViewDB::GetStats(CCoinsStats& stats) const
 
 bool CBlockTreeDB::ReadTxIndex(const uint256& txid, CDiskTxPos& pos)
 {
-    return Read(make_pair(DB_TXINDEX, txid), pos);
+    return Read(std::make_pair(DB_TXINDEX, txid), pos);
 }
 
 bool CBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> >& vect)
 {
     CLevelDBBatch batch(GetObfuscateKey());
     for (std::vector<std::pair<uint256, CDiskTxPos> >::const_iterator it = vect.begin(); it != vect.end(); it++)
-        batch.Write(make_pair(DB_TXINDEX, it->first), it->second);
+        batch.Write(std::make_pair(DB_TXINDEX, it->first), it->second);
     return WriteBatch(batch);
 }
 
@@ -229,7 +229,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
     boost::scoped_ptr<leveldb::Iterator> pcursor(NewIterator());
 
     CDataStream ssKeySet(SER_DISK, CLIENT_VERSION);
-    ssKeySet << make_pair(DB_BLOCK_INDEX, uint256(0));
+    ssKeySet << std::make_pair(DB_BLOCK_INDEX, uint256(0));
     pcursor->Seek(ssKeySet.str());
 
     CBlockIndex* pindexPrev = nullptr;
@@ -294,7 +294,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                         LogPrint(BCLog::DEBUG, "skip invalid indexed orphan block %d %s with empty data\n", pindexNew->nHeight, hash.GetHex());
                         nDiscarded++;
                         nFirstDiscarded = diskindex.nHeight < nFirstDiscarded ? diskindex.nHeight : nFirstDiscarded;
-                        batch.Erase(make_pair(DB_BLOCK_INDEX, hash));
+                        batch.Erase(std::make_pair(DB_BLOCK_INDEX, hash));
                         pcursor->Next();
                         continue;
                     } else if (stake->GetProof(hash, proof)) {

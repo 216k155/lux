@@ -244,11 +244,8 @@ public:
         Cleanup();
     }
 
-    //! mark an outpoint spent, and construct undo information
-    bool Spend(const COutPoint& out, CTxInUndo& undo);
-
     //! mark a vout spent
-    bool Spend(int nPos);
+    bool Spend(uint32_t nPos);
 
     //! check whether a particular output is still available
     bool IsAvailable(unsigned int nPos) const

@@ -18,7 +18,7 @@
 
 using namespace std;
 
-typedef vector<unsigned char> valtype;
+typedef std::vector<unsigned char> valtype;
 
 namespace {
 
@@ -1124,7 +1124,7 @@ public:
         // Serialize the script
         if (nInput != nIn)
             // Blank out other inputs' signatures
-            ::Serialize(s, CScript());
+            ::Serialize(s, CScriptBase());
         else
             SerializeScriptCode(s);
         // Serialize the nSequence
