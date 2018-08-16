@@ -175,8 +175,8 @@ CAddress GetLocalAddress(const CNetAddr* paddrPeer)
     if (GetLocal(addr, paddrPeer)) {
         ret = CAddress(addr, NODE_NONE);
     }
-    ret.nServices = nLocalServices;
-    ret.nTime = GetAdjustedTime();
+    ret.SetServices(nLocalServices);
+    ret.SetTime(GetAdjustedTime());
     return ret;
 }
 
@@ -452,7 +452,7 @@ CNode* ConnectNode(CAddress addrConnect, const char* pszDest, bool darkSendMaste
     /// debug print
     LogPrint(BCLog::NET, "trying connection %s lastseen=%.1fhrs\n",
         pszDest ? pszDest : addrConnect.ToString(),
-        pszDest ? 0.0 : (double)(GetAdjustedTime() - addrConnect.nTime) / 3600.0);
+        pszDest ? 0.0 : (double)(GetAdjustedTime() - addrConnect.GetTime()) / 3600.0);
 
     // Connect
     SOCKET hSocket;
@@ -476,7 +476,7 @@ CNode* ConnectNode(CAddress addrConnect, const char* pszDest, bool darkSendMaste
             vNodes.push_back(pnode);
         }
 
-        pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
+        pnode->nServicesExpected = ServiceFlags(addrConnect.GetServices() & nRelevantServices);
         pnode->nTimeConnected = GetTime();
         if (darkSendMaster) pnode->fDarkSendMaster = true;
 
@@ -1327,7 +1327,7 @@ void ThreadDNSAddressSeed()
                 for (CNetAddr& ip : vIPs) {
                     int nOneDay = 24 * 3600;
                     CAddress addr = CAddress(CService(ip, Params().GetDefaultPort()), requiredServiceBits);
-                    addr.nTime = GetTime() - 3 * nOneDay - GetRand(4 * nOneDay); // use a random age between 3 and 7 days old
+                    addr.SetTime(GetTime() - 3 * nOneDay - GetRand(4 * nOneDay)); // use a random age between 3 and 7 days old
                     vAdd.push_back(addr);
                     found++;
                 }
@@ -1459,7 +1459,7 @@ void ThreadOpenConnections() {
                 continue;
 
             // only connect to full nodes
-            if ((addr.nServices & REQUIRED_SERVICES) != REQUIRED_SERVICES)
+            if ((addr.GetServices() & REQUIRED_SERVICES) != REQUIRED_SERVICES)
                 continue;
 
             // only consider very recently tried nodes after 30 failed attempts
@@ -1467,7 +1467,7 @@ void ThreadOpenConnections() {
                 continue;
 
             // only consider nodes missing relevant services after 40 failed attemps
-            if ((addr.nServices & nRelevantServices) != nRelevantServices && (nTries < 40))
+            if ((addr.GetServices() & nRelevantServices) != nRelevantServices && (nTries < 40))
                 continue;
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already

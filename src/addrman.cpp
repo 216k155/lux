@@ -36,10 +36,10 @@ bool CAddrInfo::IsTerrible(int64_t nNow) const
     if (nLastTry && nLastTry >= nNow - 60) // never remove things tried in the last minute
         return false;
 
-    if (nTime > nNow + 10 * 60) // came in a flying DeLorean
+    if (this->GetTime() > nNow + 10 * 60) // came in a flying DeLorean
         return true;
 
-    if (nTime == 0 || nNow - nTime > ADDRMAN_HORIZON_DAYS * 24 * 60 * 60) // not seen in recent history
+    if (this->GetTime() == 0 || nNow - this->GetTime() > ADDRMAN_HORIZON_DAYS * 24 * 60 * 60) // not seen in recent history
         return true;
 
     if (nLastSuccess == 0 && nAttempts >= ADDRMAN_RETRIES) // tried N times and never a success
@@ -249,16 +249,16 @@ bool CAddrMan::Add_(const CAddress& addr, const CNetAddr& source, int64_t nTimeP
 
     if (pinfo) {
         // periodically update nTime
-        bool fCurrentlyOnline = (GetAdjustedTime() - addr.nTime < 24 * 60 * 60);
+        bool fCurrentlyOnline = (GetAdjustedTime() - addr.GetTime() < 24 * 60 * 60);
         int64_t nUpdateInterval = (fCurrentlyOnline ? 60 * 60 : 24 * 60 * 60);
-        if (addr.nTime && (!pinfo->nTime || pinfo->nTime < addr.nTime - nUpdateInterval - nTimePenalty))
-            pinfo->nTime = max((int64_t)0, addr.nTime - nTimePenalty);
+        if (addr.GetTime() && (!pinfo->GetTime() || pinfo->GetTime() < addr.GetTime() - nUpdateInterval - nTimePenalty))
+            pinfo->SetTime(max((int64_t)0, addr.GetTime() - nTimePenalty));
 
         // add services
-        pinfo->nServices = ServiceFlags(pinfo->nServices | addr.nServices);
+        pinfo->SetServices(ServiceFlags(pinfo->GetServices() | addr.GetServices()));
 
         // do not update if no new information is present
-        if (!addr.nTime || (pinfo->nTime && addr.nTime <= pinfo->nTime))
+        if (!addr.GetTime() || (pinfo->GetTime() && addr.GetTime() <= pinfo->GetTime()))
             return false;
 
         // do not update if the entry was already in the "tried" table
@@ -277,7 +277,7 @@ bool CAddrMan::Add_(const CAddress& addr, const CNetAddr& source, int64_t nTimeP
             return false;
     } else {
         pinfo = Create(addr, source, &nId);
-        pinfo->nTime = max((int64_t)0, (int64_t)pinfo->nTime - nTimePenalty);
+        pinfo->SetTime(max((int64_t)0, (int64_t)pinfo->GetTime() - nTimePenalty));
         nNew++;
         fNew = true;
     }
@@ -479,6 +479,6 @@ void CAddrMan::Connected_(const CService& addr, int64_t nTime)
 
     // update info
     int64_t nUpdateInterval = 20 * 60;
-    if (nTime - info.nTime > nUpdateInterval)
-        info.nTime = nTime;
+    if (nTime - info.GetTime() > nUpdateInterval)
+        info.SetTime(nTime);
 }
