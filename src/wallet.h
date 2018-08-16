@@ -347,7 +347,7 @@ class CWallet : public CCryptoKeyStore, public CValidationInterface
     void AddToSpends(const uint256& wtxid);
 
     void SyncMetaData(std::pair<TxSpends::iterator, TxSpends::iterator>);
-
+    int64_t nTimeFirstKey;
 public:
     bool MintableCoins();
     bool SelectCoinsDark(int64_t nValueMin, int64_t nValueMax, std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet, int nDarksendRoundsMin, int nDarksendRoundsMax) const;
@@ -474,8 +474,6 @@ public:
 
     std::set<COutPoint> setLockedCoins;
 
-    int64_t nTimeFirstKey;
-
     std::map<uint256, CTokenInfo> mapToken;
 
     std::map<uint256, CTokenTx> mapTokenTx;
@@ -533,7 +531,7 @@ public:
         nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion);
         return true;
     }
-
+    void UpdateTimeFirstKey(int64_t nCreateTime);
     //! Adds an encrypted key to the store, and saves it to disk.
     bool AddCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret) override;
     //! Adds an encrypted key to the store, without saving it to disk (used by LoadWallet)
@@ -840,7 +838,7 @@ public:
 
     /* Set the current hd master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CKey& key);
-
+    const CHDChain& GetHDChain() { return hdChain; }
 };
 
 /** A key allocated from the key pool. */

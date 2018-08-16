@@ -26,6 +26,7 @@
 #include <boost/thread.hpp>
 #include <boost/signals2/signal.hpp>
 #include <boost/algorithm/string/case_conv.hpp> // for to_upper()
+#include <memory> // for unique_ptr
 
 #include <univalue/univalue.h>
 

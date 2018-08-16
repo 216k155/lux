@@ -18,7 +18,7 @@
 #include "main.h"
 #include "net.h"
 #include "txdb.h" // for -dbcache -nLogFile defaults
-
+#include "intro.h"
 #ifdef ENABLE_WALLET
 #include "masternodeconfig.h"
 #include "wallet.h"
@@ -176,10 +176,13 @@ void OptionsModel::Reset()
 {
     QSettings settings;
 
-    // Remove all entries from our QSettings object
+    // Save the strDataDir setting
+    QString dataDir = Intro::getDefaultDataDirectory();
+    dataDir = settings.value("strDataDir", dataDir).toString();
     settings.clear();
     resetSettings = true; // Needed in lux.cpp during shotdown to also remove the window positions
-
+    // Set strDataDir
+    settings.setValue("strDataDir", dataDir);
     // default setting for OptionsModel::StartAtStartup - disabled
     if (GUIUtil::GetStartOnSystemStartup())
         GUIUtil::SetStartOnSystemStartup(false);
