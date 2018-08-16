@@ -18,6 +18,7 @@
 #include "hash.h"
 #include "init.h"
 #include "stake.h"
+#include "serialize.h"
 #include "masternode.h"
 #include "merkleblock.h"
 #include "net.h"
@@ -52,6 +53,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/algorithm/string/join.hpp>
 
 #if defined(DEBUG_DUMP_STAKING_INFO)
 #  include "DEBUG_DUMP_STAKING_INFO.hpp"
@@ -1688,7 +1690,7 @@ bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos)
         return error("WriteBlockToDisk : OpenBlockFile failed");
 
     // Write index header
-    unsigned int nSize = GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
+    unsigned int nSize = GetSerializeSize(fileout, block);
     fileout << FLATDATA(Params().MessageStart()) << nSize;
 
     // Write block
@@ -2138,33 +2140,90 @@ bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsVi
     return true;
 }
 
-bool ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const COutPoint& out) {
+namespace {
+
+    bool UndoWriteToDisk(const CBlockUndo& blockundo, CDiskBlockPos& pos, const uint256& hashBlock) {
+        // Open history file to append
+        CAutoFile fileout(OpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
+        if (fileout.IsNull())
+            return error("%s : OpenUndoFile failed", __func__);
+
+        // Write index header
+        unsigned int nSize = GetSerializeSize(fileout, blockundo);
+        fileout << FLATDATA(Params().MessageStart()) << nSize;
+
+        // Write undo data
+        long fileOutPos = ftell(fileout.Get());
+        if (fileOutPos < 0)
+            return error("%s : ftell failed", __func__);
+        pos.nPos = (unsigned int)fileOutPos;
+        fileout << blockundo;
+
+        // calculate & write checksum
+        CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
+        hasher << hashBlock;
+        hasher << blockundo;
+        fileout << hasher.GetHash();
+
+        return true;
+    }
+
+    bool UndoReadFromDisk(CBlockUndo& blockundo, const CDiskBlockPos& pos, const uint256& hashBlock) {
+        // Open history file to read
+        CAutoFile filein(OpenUndoFile(pos, true), SER_DISK, CLIENT_VERSION);
+        if (filein.IsNull())
+            return error("%s : OpenBlockFile failed", __func__);
+
+        // Read block
+        uint256 hashChecksum;
+        try {
+            filein >> blockundo;
+            filein >> hashChecksum;
+        } catch (std::exception& e) {
+            return error("%s : Deserialize or I/O error - %s", __func__, e.what());
+        }
+
+        // Verify checksum
+        CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
+        hasher << hashBlock;
+        hasher << blockundo;
+        if (hashChecksum != hasher.GetHash())
+            return error("%s : Checksum mismatch", __func__);
+
+        return true;
+    }
+};
+
+enum DisconnectResult
+{
+    DISCONNECT_OK,      // All good.
+    DISCONNECT_UNCLEAN, // Rolled back, but UTXO set was inconsistent with block.
+    DISCONNECT_FAILED   // Something else went wrong.
+};
+
+int ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const COutPoint& out) {
     bool fClean = true;
 
     CCoinsModifier coins = view.ModifyCoins(out.hash);
     if (undo.nHeight != 0) {
         // undo data contains height: this is the last output of the prevout tx being spent
-        if (!coins->IsPruned())
-            fClean = fClean && error("%s: Avoid data that will overwrite the transaction", __func__);
-        coins->Clear();
+        if (!coins->IsPruned()) fClean = false;
         coins->fCoinBase = undo.fCoinBase;
         coins->fCoinStake = undo.fCoinStake;
         coins->nHeight = undo.nHeight;
         coins->nVersion = undo.nVersion;
     } else {
-        if (coins->IsPruned())
-            fClean = fClean && error("%s: undo data adding output to missing transaction", __func__);
+        if (coins->IsPruned()) fClean = false;
     }
-    if (coins->IsAvailable(out.n))
-        fClean = fClean && error("%s: undo data overwriting existing output", __func__);
+    if (coins->IsAvailable(out.n)) fClean = false;
     if (coins->vout.size() < out.n + 1)
         coins->vout.resize(out.n + 1);
     coins->vout[out.n] = undo.txout;
 
-    return fClean;
+    return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
 
-bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& view, bool* pfClean)
+static DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* pindex, CCoinsViewCache& view, bool* pfClean)
 {
     assert(pindex->GetBlockHash() == view.GetBestBlock());
 
@@ -2175,19 +2234,27 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
 
     CBlockUndo blockUndo;
     CDiskBlockPos pos = pindex->GetUndoPos();
-    if (pos.IsNull())
-        return error("DisconnectBlock() : no undo data available");
-    if (!blockUndo.ReadFromDisk(pos, pindex->pprev->GetBlockHash()))
-        return error("DisconnectBlock() : failure reading undo data");
+    if (pos.IsNull()) {
+        error("DisconnectBlock(): no undo data available");
+        return DISCONNECT_FAILED;
+    }
+    if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash())) {
+        error("DisconnectBlock(): failure reading undo data");
+        return DISCONNECT_FAILED;
+    }
 
-    if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
-        return error("DisconnectBlock() : block and undo data inconsistent");
+
+    if (blockUndo.vtxundo.size() + 1 != block.vtx.size()) {
+        error("DisconnectBlock(): block and undo data inconsistent");
+        return DISCONNECT_FAILED;
+    }
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
-        const CTransaction& tx = *(block.vtx[i]);
+        const CTransaction &tx = *(block.vtx[i]);
         uint256 hash = tx.GetHash();
-
+       // bool is_coinbase = tx.IsCoinBase();
+       // bool is_coinstake = tx.IsCoinStake();
         // Check that all outputs are available and match the outputs in the block itself
         // exactly. Note that transactions with only provably unspendable outputs won't
         // have outputs available even in the block itself, so we handle that case
@@ -2203,7 +2270,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
             if (outsBlock.nVersion < 0)
                 outs->nVersion = outsBlock.nVersion;
             if (*outs != outsBlock)
-                fClean = fClean && error("DisconnectBlock() : added transaction mismatch? database corrupted");
+                fClean = fClean && error("DisconnectBlock(): added transaction mismatch? database corrupted");
 
             // remove outputs
             outs->Clear();
@@ -2211,36 +2278,36 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
 
         // restore inputs
         if (i > 0) { // not coinbases
-            const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
-            if (txundo.vprevout.size() != tx.vin.size())
-                return error("DisconnectBlock() : transaction and undo data inconsistent - txundo.vprevout.siz=%d tx.vin.siz=%d", txundo.vprevout.size(), tx.vin.size());
+            CTxUndo& txundo = blockUndo.vtxundo[i - 1];
+            if (txundo.vprevout.size() != tx.vin.size()) {
+                error("DisconnectBlock(): transaction and undo data inconsistent");
+                return DISCONNECT_FAILED;
+            }
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
                 const COutPoint& out = tx.vin[j].prevout;
-                const CTxInUndo& undo = txundo.vprevout[j];
-                if (!ApplyTxInUndo(undo, view, out))
-                    fClean = false;
+                int res = ApplyTxInUndo(std::move(txundo.vprevout[j]), view, out);
+                if (res == DISCONNECT_FAILED)
+                    return DISCONNECT_FAILED;
+                fClean = fClean && res != DISCONNECT_UNCLEAN;
             }
         }
     }
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
-//#if 0
+
+//TODO: Check LogEvents !!!
       if (pindex->nHeight > Params().FirstSCBlock()) {
         globalState->setRoot(uintToh256(pindex->pprev->hashStateRoot)); // lux
         globalState->setRootUTXO(uintToh256(pindex->pprev->hashUTXORoot)); // lux
-
-        if (pfClean == nullptr && fLogEvents) {
+        if (fClean == 0 && fLogEvents) {
             pstorageresult->deleteResults(block.vtx);
             pblocktree->EraseHeightIndex(pindex->nHeight);
         }
    }
 //#endif
-    if (pfClean) {
-        *pfClean = fClean;
-        return true;
-    }
-    return fClean;
+
+    return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
 
 void static FlushBlockFile(bool fFinalize = false)
@@ -2819,7 +2886,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             CDiskBlockPos pos;
             if (!FindUndoPos(state, pindex->nFile, pos, ::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40))
                 return error("%s: FindUndoPos failed", __func__);
-            if (!blockundo.WriteToDisk(pos, pindex->pprev->GetBlockHash()))
+            if (!UndoWriteToDisk(blockundo, pos, pindex->pprev->GetBlockHash()))
                 return state.Error("Failed to write undo data");
 
             // update nUndoPos in block index
@@ -3059,7 +3126,7 @@ static bool DisconnectTip(CValidationState& state, const CChainParams& chainpara
     int64_t nStart = GetTimeMicros();
     {
         CCoinsViewCache view(pcoinsTip);
-        if (!DisconnectBlock(block, state, pindexDelete, view))
+        if (DisconnectBlock(block, pindexDelete, view, nullptr) != DISCONNECT_OK)
             return error("DisconnectTip() : DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         assert(view.Flush());
     }
@@ -5035,24 +5102,28 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
             return error("VerifyDB() : *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
-            CBlockUndo undo;
+            CBlockUndo blockUndo;
             CDiskBlockPos pos = pindex->GetUndoPos();
             if (!pos.IsNull()) {
-                if (!UndoReadFromDisk(pos, pindex->pprev->GetBlockHash()))
+                if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
                     return error("VerifyDB() : *** found bad undo data at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.GetCacheSize() + pcoinsTip->GetCacheSize()) <= nCoinCacheSize) {
-            bool fClean = true;
-            if (!DisconnectBlock(block, state, pindex, coins, &fClean))
-                return error("VerifyDB() : *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            bool fClean=true;
+            DisconnectResult res = DisconnectBlock(block, pindex, coins, &fClean);
+            if (res == DISCONNECT_FAILED) {
+                return error("VerifyDB() : *** irrecoverable inconsistency in block data at %d, hash=%s",
+                             pindex->nHeight, pindex->GetBlockHash().ToString());
+            }
             pindexState = pindex->pprev;
-            if (!fClean) {
+            if (res == DISCONNECT_UNCLEAN) {
                 nGoodTransactions = 0;
                 pindexFailure = pindex;
-            } else
+            } else {
                 nGoodTransactions += block.vtx.size();
+            }
         }
         if (ShutdownRequested())
             return true;

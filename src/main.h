@@ -563,8 +563,8 @@ public:
         READWRITE(vtxundo);
     }
 
-    bool WriteToDisk(CDiskBlockPos& pos, const uint256& hashBlock);
-    bool ReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock);
+   // bool WriteToDisk(CDiskBlockPos& pos, const uint256& hashBlock);
+   // bool ReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock);
 };
 
 

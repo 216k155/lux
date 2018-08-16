@@ -23,7 +23,7 @@ CBloomFilter::CBloomFilter(unsigned int nElements, double nFPRate, unsigned int 
  * - nElements * log(fp rate) / ln(2)^2
  * We ignore filter parameters which will create a bloom filter larger than the protocol limits
  */
-	vData(std::min((unsigned int)(-1 / LN2SQUARED * nElements * log(nFPRate)), MAX_BLOOM_FILTER_SIZE * 8) / 8),
+    vData(std::min((unsigned int)(-1 / LN2SQUARED * nElements * log(nFPRate)), MAX_BLOOM_FILTER_SIZE * 8) / 8),
  /**
  * The ideal number of hash functions is filter size * ln(2) / number of elements
  * Again, we ignore filter parameters which will create a bloom filter with more hash functions than the protocol limits
@@ -34,16 +34,6 @@ CBloomFilter::CBloomFilter(unsigned int nElements, double nFPRate, unsigned int 
   nHashFuncs(std::min((unsigned int)(vData.size() * 8 / nElements * LN2), MAX_HASH_FUNCS)),
   nTweak(nTweakIn),
   nFlags(nFlagsIn)
-{
-}
-
-CBloomFilter::CBloomFilter(unsigned int nElements, double nFPRate, unsigned int nTweakIn) :
-        vData((unsigned int)(-1  / LN2SQUARED * nElements * log(nFPRate)) / 8),
-        isFull(false),
-        isEmpty(true),
-        nHashFuncs((unsigned int)(vData.size() * 8 / nElements * LN2)),
-        nTweak(nTweakIn),
-        nFlags(BLOOM_UPDATE_NONE)
 {
 }
 
@@ -115,7 +105,7 @@ void CBloomFilter::clear()
     isEmpty = true;
 }
 
-void CBloomFilter::reset(unsigned int nNewTweak)
+void CBloomFilter::reset(const unsigned int nNewTweak)
 {
     clear();
     nTweak = nNewTweak;
@@ -202,7 +192,7 @@ void CBloomFilter::UpdateEmptyFull()
     isEmpty = empty;
 }
 
-CRollingBloomFilter::CRollingBloomFilter(unsigned int nElements, double fpRate)
+CRollingBloomFilter::CRollingBloomFilter(const unsigned int nElements, const double fpRate)
 {
     double logFpRate = log(fpRate);
     /* The optimal number of hash functions is log(fpRate) / log(0.5), but
@@ -230,6 +220,14 @@ static inline uint32_t RollingBloomHash(unsigned int nHashNum, uint32_t nTweak, 
     return MurmurHash3(nHashNum * 0xFBA4C795 + nTweak, vDataToHash);
 }
 
+
+// A replacement for x % n. This assumes that x and n are 32bit integers, and x is a uniformly random distributed 32bit value
+// which should be the case for a good hash.
+// See https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+static inline uint32_t FastMod(uint32_t x, size_t n) {
+    return ((uint64_t)x * (uint64_t)n) >> 32;
+}
+
 void CRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
 {
     if (nEntriesThisGeneration == nEntriesPerGeneration) {
@@ -238,8 +236,8 @@ void CRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
         if (nGeneration == 4) {
             nGeneration = 1;
         }
-        uint64_t nGenerationMask1 = -(uint64_t)(nGeneration & 1);
-        uint64_t nGenerationMask2 = -(uint64_t)(nGeneration >> 1);
+        uint64_t nGenerationMask1 = 0 - (uint64_t)(nGeneration & 1);
+        uint64_t nGenerationMask2 = 0 - (uint64_t)(nGeneration >> 1);
         /* Wipe old entries that used this generation number. */
         for (uint32_t p = 0; p < data.size(); p += 2) {
             uint64_t p1 = data[p], p2 = data[p + 1];
@@ -253,7 +251,8 @@ void CRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
     for (int n = 0; n < nHashFuncs; n++) {
         uint32_t h = RollingBloomHash(n, nTweak, vKey);
         int bit = h & 0x3F;
-        uint32_t pos = (h >> 6) % data.size();
+        /* FastMod works with the upper bits of h, so it is safe to ignore that the lower bits of h are already used for bit. */
+        uint32_t pos = FastMod(h, data.size());
         /* The lowest bit of pos is ignored, and set to zero for the first bit, and to one for the second. */
         data[pos & ~1] = (data[pos & ~1] & ~(((uint64_t)1) << bit)) | ((uint64_t)(nGeneration & 1)) << bit;
         data[pos | 1] = (data[pos | 1] & ~(((uint64_t)1) << bit)) | ((uint64_t)(nGeneration >> 1)) << bit;
@@ -271,7 +270,7 @@ bool CRollingBloomFilter::contains(const std::vector<unsigned char>& vKey) const
     for (int n = 0; n < nHashFuncs; n++) {
         uint32_t h = RollingBloomHash(n, nTweak, vKey);
         int bit = h & 0x3F;
-        uint32_t pos = (h >> 6) % data.size();
+        uint32_t pos = FastMod(h, data.size());
         /* If the relevant bit is not set in either data[pos & ~1] or data[pos | 1], the filter does not contain vKey */
         if (!(((data[pos & ~1] | data[pos | 1]) >> bit) & 1)) {
             return false;
