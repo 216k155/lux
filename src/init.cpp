@@ -1518,8 +1518,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 uiInterface.InitMessage(_("Verifying blocks..."));
 
                 if (fHavePruned && GetArg("-checkblocks", 288) > MIN_BLOCKS_TO_KEEP) {
-                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
-                              MIN_BLOCKS_TO_KEEP, GetArg("-checkblocks", 288));
+                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks",
+                              MIN_BLOCKS_TO_KEEP);
                 }
 
                 if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, GetArg("-checklevel", 3),
@@ -1633,7 +1633,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         if (fFirstRun) {
             // Create new keyUser and set as default key
-            RandAddSeedPerfmon();
 
             if (GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET)) {
             // generate a new master key
@@ -1841,8 +1840,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     threadGroup.create_thread(boost::bind(&ThreadCheckDarkSendPool));
 
     // ********************************************************* Step 11: start node
-
-    RandAddSeedPerfmon();
 
     StartNode(threadGroup, scheduler);
 
