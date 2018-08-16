@@ -478,7 +478,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            setInventoryKnown.insert(inv.hash);
+            setInventoryKnown.insert(inv.GetHash());
         }
     }
 
@@ -486,7 +486,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            if (!setInventoryKnown.contains(inv.hash))
+            if (!setInventoryKnown.contains(inv.GetHash()))
                 vInventoryToSend.push_back(inv);
         }
     }

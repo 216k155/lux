@@ -3214,7 +3214,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             }
             return error("ConnectTip() : ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
         }
-        mapBlockSource.erase(inv.hash);
+        mapBlockSource.erase(inv.GetHash());
         nTime3 = GetTimeMicros();
         nTimeConnectTotal += nTime3 - nTime2;
         LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
@@ -5614,7 +5614,7 @@ string GetWarnings(string strFor)
 
 bool static AlreadyHave(const CInv& inv)
 {
-    switch (inv.type) {
+    switch (inv.GetType()) {
     case MSG_TX:
     case MSG_WITNESS_TX: {
             if (chainActive.Tip()->GetBlockHash() != hashRecentRejectsChainTip) {
@@ -5625,21 +5625,21 @@ bool static AlreadyHave(const CInv& inv)
                 hashRecentRejectsChainTip = chainActive.Tip()->GetBlockHash();
                 recentRejects->reset();
             }
-            return recentRejects->contains(inv.hash) || mempool.exists(inv.hash) ||
-                   mapOrphanTransactions.count(inv.hash) || pcoinsTip->HaveCoin(inv.hash);
+            return recentRejects->contains(inv.GetHash()) || mempool.exists(inv.GetHash()) ||
+                   mapOrphanTransactions.count(inv.GetHash()) || pcoinsTip->HaveCoin(inv.GetHash());
         }
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:
-        return mapBlockIndex.count(inv.hash);
+        return mapBlockIndex.count(inv.GetHash());
     case MSG_TXLOCK_REQUEST:
-        return mapTxLockReq.count(inv.hash) ||
-               mapTxLockReqRejected.count(inv.hash);
+        return mapTxLockReq.count(inv.GetHash()) ||
+               mapTxLockReqRejected.count(inv.GetHash());
     case MSG_TXLOCK_VOTE:
-        return mapTxLockVote.count(inv.hash);
+        return mapTxLockVote.count(inv.GetHash());
     case MSG_SPORK:
-        return mapSporks.count(inv.hash);
+        return mapSporks.count(inv.GetHash());
     case MSG_MASTERNODE_WINNER:
-        return mapSeenMasternodeVotes.count(inv.hash);
+        return mapSeenMasternodeVotes.count(inv.GetHash());
     }
     // Don't know what it is, just say we already got one
     return true;
@@ -5664,9 +5664,11 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
             boost::this_thread::interruption_point();
             it++;
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_WITNESS_BLOCK) {
+            int nInvType = inv.GetType();
+            uint256 hashInv = inv.GetHash();
+            if (nInvType == MSG_BLOCK || nInvType == MSG_FILTERED_BLOCK || nInvType == MSG_WITNESS_BLOCK) {
                 bool send = false;
-                CBlockIndex* pindex = LookupBlockIndex(inv.hash);
+                CBlockIndex* pindex = LookupBlockIndex(hashInv);
                 if (pindex) {
                     if (chainActive.Contains(pindex)) {
                         send = true;
@@ -5686,11 +5688,9 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                     CBlock block;
                     if (!ReadBlockFromDisk(block, pindex, consensusParams))
                         assert(!"cannot load block from disk");
-                    if (inv.type == MSG_BLOCK)
+                    if (nInvType == MSG_BLOCK)
                         pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, block);
-                    else if (inv.type == MSG_WITNESS_BLOCK)
-                        pfrom->PushMessage(NetMsgType::BLOCK, block);
-                    else if (inv.type == MSG_WITNESS_BLOCK)
+                    else if (nInvType == MSG_WITNESS_BLOCK)
                         pfrom->PushMessage(NetMsgType::BLOCK, block);
                     else // MSG_FILTERED_BLOCK)
                     {
@@ -5713,7 +5713,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                     }
 
                     // Trigger them to send a getblocks request for the next batch of inventory
-                    if (inv.hash == pfrom->hashContinue) {
+                    if (hashInv == pfrom->hashContinue) {
                         // Bypass PushInventory, this must send even if redundant,
                         // and we want it right after the last block so they don't
                         // wait for other stuff first.
@@ -5723,63 +5723,63 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         pfrom->hashContinue.SetNull();
                     }
                 }
-            } else if (inv.type == MSG_TX || inv.type == MSG_WITNESS_TX) {
+            } else if (nInvType == MSG_TX || nInvType == MSG_WITNESS_TX) {
                 // Send stream from relay memory
                 bool pushed = false;
                 {
                     LOCK(cs_mapRelay);
                     map<CInv, CDataStream>::iterator mi = mapRelay.find(inv);
                     if (mi != mapRelay.end()) {
-                        pfrom->PushMessageWithFlag(inv.type == MSG_TX ? SERIALIZE_TRANSACTION_NO_WITNESS : 0, NetMsgType::TX, (*mi).second);
+                        pfrom->PushMessageWithFlag(nInvType == MSG_TX ? SERIALIZE_TRANSACTION_NO_WITNESS : 0, NetMsgType::TX, (*mi).second);
                         pushed = true;
                     }
                 }
 
-                if (!pushed && inv.type == MSG_TX) { //TODO: probably should check for MSG_TX_WITNESS too
+                if (!pushed && nInvType == MSG_TX) { //TODO: probably should check for MSG_TX_WITNESS too
                     CTransaction tx;
-                    CTransactionRef ptx = mempool.get(inv.hash);
+                    CTransactionRef ptx = mempool.get(hashInv);
                     if (ptx) {
                         tx = *ptx.get();
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000); //TODO: if we check for MSG_TX_WITNESS, should this value be changed?
+                        ss.reserve(1000);
                         ss << tx;
                         pfrom->PushMessage("tx", ss);
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_TXLOCK_VOTE) {
-                    if (mapTxLockVote.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_TXLOCK_VOTE) {
+                    if (mapTxLockVote.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << mapTxLockVote[inv.hash];
+                        ss << mapTxLockVote[hashInv];
                         pfrom->PushMessage("txlvote", ss); //TODO: push message with flags
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_TXLOCK_REQUEST) {
-                    if (mapTxLockReq.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_TXLOCK_REQUEST) {
+                    if (mapTxLockReq.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << mapTxLockReq[inv.hash];
+                        ss << mapTxLockReq[hashInv];
                         pfrom->PushMessage("ix", ss);
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_SPORK) {
-                    if (mapSporks.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_SPORK) {
+                    if (mapSporks.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << mapSporks[inv.hash];
+                        ss << mapSporks[hashInv];
                         pfrom->PushMessage("spork", ss);
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_MASTERNODE_WINNER) {
-                    if (mapSeenMasternodeVotes.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_MASTERNODE_WINNER) {
+                    if (mapSeenMasternodeVotes.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         int a = 0;
                         ss.reserve(1000);
-                        ss << mapSeenMasternodeVotes[inv.hash] << a;
+                        ss << mapSeenMasternodeVotes[hashInv] << a;
                         pfrom->PushMessage("mnw", ss);
                         pushed = true;
                     }
@@ -5791,9 +5791,9 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
             }
 
             // Track requests for our stuff.
-            GetMainSignals().Inventory(inv.hash);
+            GetMainSignals().Inventory(hashInv);
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_WITNESS_BLOCK)
+            if (nInvType == MSG_BLOCK || nInvType == MSG_FILTERED_BLOCK || nInvType == MSG_WITNESS_BLOCK)
                 break;
         }
     }
@@ -6108,21 +6108,23 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             bool fAlreadyHave = AlreadyHave(inv);
             LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
 
-            if (!fAlreadyHave && !fImporting && !fReindex && inv.type != MSG_BLOCK)
+            if (!fAlreadyHave && !fImporting && !fReindex && inv.GetType() != MSG_BLOCK)
                 pfrom->AskFor(inv);
 
+            uint256 hashInv = inv.GetHash();
+
             //TODO get fetch flags and check witness
-            if (inv.type == MSG_BLOCK) {
-                UpdateBlockAvailability(pfrom->GetId(), inv.hash);
-                if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash)) {
+            if (inv.GetType() == MSG_BLOCK) {
+                UpdateBlockAvailability(pfrom->GetId(), hashInv);
+                if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(hashInv)) {
                     // Add this to the list of blocks to request
                     vToFetch.push_back(inv);
-                    LogPrint(BCLog::NET, "getblocks (%d) %s to peer=%d\n", pindexBestHeader->nHeight, inv.hash.ToString(), pfrom->id);
+                    LogPrint(BCLog::NET, "getblocks (%d) %s to peer=%d\n", pindexBestHeader->nHeight, hashInv.ToString(), pfrom->id);
                 }
             }
 
             // Track requests for our stuff
-            GetMainSignals().Inventory(inv.hash);
+            GetMainSignals().Inventory(hashInv);
 
             if (pfrom->nSendSize > (SendBufferSize() * 2)) {
                 Misbehaving(pfrom->GetId(), 50);
@@ -6253,8 +6255,8 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, false, ignoreFees)) {
             mempool.check(pcoinsTip);
             RelayTransaction(tx);
-            vWorkQueue.push_back(inv.hash);
-            vEraseQueue.push_back(inv.hash);
+            vWorkQueue.push_back(inv.GetHash());
+            vEraseQueue.push_back(inv.GetHash());
 
             LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u)\n",
                 pfrom->id,
@@ -6353,7 +6355,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                 pfrom->id,
                 state.GetRejectReason());
             pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
-                state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.GetHash());
             if (nDoS > 0 && (!state.CorruptionPossible() || State(pfrom->id)->fHaveWitness))
                 Misbehaving(pfrom->GetId(), nDoS);
         }
@@ -6427,7 +6429,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         uint256 hashBlock = block.GetHash(usePhi2);
         CInv inv(MSG_BLOCK, hashBlock);
-        LogPrint(BCLog::NET, "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
+        LogPrint(BCLog::NET, "received block %s peer=%d\n", inv.GetHash().ToString(), pfrom->id);
 
         //sometimes we will be sent their most recent block and its not the one we want, in that case tell where we are
         if (!mapBlockIndex.count(block.hashPrevBlock)) {
@@ -6448,7 +6450,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             int nDoS;
             if (state.IsInvalid(nDoS)) {
                 pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
-                    state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                    state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.GetHash());
                 if (nDoS > 0) {
                     TRY_LOCK(cs_main, lockMain);
                     if (lockMain) Misbehaving(pfrom->GetId(), nDoS);
@@ -6941,16 +6943,17 @@ bool SendMessages(CNode* pto) {
             vInv.reserve(std::min<size_t>(1000, pto->vInventoryToSend.size()));
             vInvWait.reserve(pto->vInventoryToSend.size());
             for (const CInv &inv : pto->vInventoryToSend) {
-                if (pto->setInventoryKnown.contains(inv.hash))
+                uint256 hashInv = inv.GetHash();
+                if (pto->setInventoryKnown.contains(hashInv))
                     continue;
 
                 // trickle out tx inv to protect privacy
-                if (inv.type == MSG_TX && !fSendTrickle) {
+                if (inv.GetType() == MSG_TX && !fSendTrickle) {
                     // 1/4 of tx invs blast to all immediately
                     static uint256 hashSalt;
                     if (hashSalt == 0)
                         hashSalt = GetRandHash();
-                    uint256 hashRand = inv.hash ^hashSalt;
+                    uint256 hashRand = hashInv ^hashSalt;
                     hashRand = Hash(BEGIN(hashRand), END(hashRand));
                     bool fTrickleWait = ((hashRand & 3) != 0);
 
@@ -6961,8 +6964,8 @@ bool SendMessages(CNode* pto) {
                 }
 
                 // returns true if wasn't already contained in the set
-                if (!pto->setInventoryKnown.contains(inv.hash)) {
-                    pto->setInventoryKnown.insert(inv.hash);
+                if (!pto->setInventoryKnown.contains(hashInv)) {
+                    pto->setInventoryKnown.insert(hashInv);
                     vInv.push_back(inv);
                     if (vInv.size() >= 1000) {
                         pto->PushMessage("inv", vInv);

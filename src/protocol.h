@@ -221,8 +221,10 @@ public:
     std::string GetCommand() const;
     std::string ToString() const;
 
-    // TODO: make private (improves encapsulation)
-public:
+    int GetType()       const { return type; }
+    uint256 GetHash()   const { return hash; }
+
+private:
     int type;
     uint256 hash;
 };
