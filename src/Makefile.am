@@ -73,6 +73,7 @@ BITCOIN_CORE_H = \
   activemasternode.h \
   addrdb.h \
   addrman.h \
+  addressindex.h \
   alert.h \
   amount.h \
   base58.h \
@@ -145,6 +146,8 @@ BITCOIN_CORE_H = \
   script/sign.h \
   script/standard.h \
   script/script_error.h \
+  serialize.h \
+  spentindex.h \
   spork.h \
   stake.h \
   streams.h \
