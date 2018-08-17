@@ -4311,7 +4311,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     // 3 minute future drift for PoS
     auto const nBlockTimeLimit = GetAdjustedTime() + (block.IsProofOfStake() ? 180 : 7200);
 
-    LogPrint(BCLog::DEBUG, "%s: block=%s (%s %d %d)\n", __func__, block.GetHash().GetHex(), s,
+    LogPrint(BCLog::LDEBUG, "%s: block=%s (%s %d %d)\n", __func__, block.GetHash().GetHex(), s,
              block.GetBlockTime(), nBlockTimeLimit);
 
     // Check block time, reject far future blocks.
@@ -4375,7 +4375,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         }
     }
 
-    LogPrint(BCLog::DEBUG, "%s: checking transactions, block %s (%s)\n", __func__, block.GetHash().GetHex(), s);
+    LogPrint(BCLog::LDEBUG, "%s: checking transactions, block %s (%s)\n", __func__, block.GetHash().GetHex(), s);
 
     // -------------------------------------------
 
@@ -4389,7 +4389,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         }
 
         if (!CheckTransaction(*tx, state)) {
-            LogPrint(BCLog::DEBUG, "%s: invalid transaction %s", __func__, tx->ToString());
+            LogPrint(BCLog::LDEBUG, "%s: invalid transaction %s", __func__, tx->ToString());
             return error("%s: CheckTransaction failed (nTx=%d, reason: %s)", __func__, nTx, state.GetRejectReason());
 
             // OP_SPEND can only exist immediately after a contract tx in a block.
@@ -4407,7 +4407,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             continue;
 
         if (fCheckPOW && !CheckForMasternodePayment(*tx, block)) {
-            LogPrint(BCLog::DEBUG, "%s: invalid masternode payment in %s", __func__, tx->ToString());
+            LogPrint(BCLog::LDEBUG, "%s: invalid masternode payment in %s", __func__, tx->ToString());
             return error("%s: CheckForMasternodePayment failed (nTx=%d)", __func__, nTx);
         }
         ++nTx;
@@ -5511,9 +5511,7 @@ void UnloadBlockIndex()
     setBlockIndexCandidates.clear();
     chainActive.SetTip(nullptr);
     pindexBestInvalid = nullptr;
-    for (BlockMap::value_type& entry : mapBlockIndex) {
-        delete entry.second;
-    }
+
     fHavePruned = false;
     pindexBestHeader = nullptr;
     mempool.clear();

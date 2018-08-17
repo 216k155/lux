@@ -284,7 +284,7 @@ const CLogCategoryDesc LogCategories[] =
     {BCLog::ALERT, "alert"},
     {BCLog::HTTPPOLL, "http-poll"},
     {BCLog::DARKSEND, "darksend"},
-    {BCLog::DEBUG, "debug"},
+    {BCLog::LDEBUG, "debug"},
     {BCLog::LUX, "lux"},
     {BCLog::ALL, "1"},
     {BCLog::ALL, "all"},

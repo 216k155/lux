@@ -6,6 +6,7 @@
 #include "rpcclient.h"
 
 #include "base58.h"
+#include "core_io.h" // ValueFromAmount
 #include "netbase.h"
 #include "univalue/univalue.h"
 #include "util.h"
@@ -21,10 +22,11 @@ UniValue CallRPC(string args)
     boost::split(vArgs, args, boost::is_any_of(" \t"));
     string strMethod = vArgs[0];
     vArgs.erase(vArgs.begin());
-    UniValue params = RPCConvertValues(strMethod, vArgs);
+    JSONRPCRequest req;
+    req.params = RPCConvertValues(strMethod, vArgs);
     rpcfn_type method = tableRPC[strMethod]->actor;
     try {
-        UniValue result = (*method)(params, false);
+        UniValue result = (*method)(req);
         return result;
     }
     catch (const UniValue& objError) {

@@ -2006,6 +2006,13 @@ bool CWallet::SelectCoinsMinConf(const std::string &account, const CAmount& nTar
     return true;
 }
 
+// helper, using default account (for unit tests)
+bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, vector<COutput> vCoins, set<pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet) const
+{
+    std::string account="";
+    return this->SelectCoinsMinConf(account, nTargetValue, nConfMine, nConfTheirs, vCoins, setCoinsRet, nValueRet);
+}
+
 bool CWallet::SelectCoins(const std::string &account, const CAmount& nTargetValue, set<pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX) const
 {
     // Note: this function should never be used for "always free" tx types like dstx
