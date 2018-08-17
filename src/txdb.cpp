@@ -125,7 +125,7 @@ bool CBlockTreeDB::WriteBlockIndex(const CDiskBlockIndex& blockindex)
                 return Write(std::make_pair(DB_BLOCK_INDEX, hash), blockindexFixed);
             } else {
 #               if 0
-                LogPrint(BCLog::DEBUG, "%s: zero stake block %s", __func__, hash.GetHex());
+                LogPrint(BCLog::LDEBUG, "%s: zero stake block %s", __func__, hash.GetHex());
 #               else
                 return error("%s: zero stake (block %s)", __func__, hash.GetHex());
 #               endif
@@ -133,7 +133,7 @@ bool CBlockTreeDB::WriteBlockIndex(const CDiskBlockIndex& blockindex)
         }
 #   if 0
     } else if (!CheckProofOfWork(hash, blockindex.nBits, Params().GetConsensus())) {
-        LogPrint(BCLog::DEBUG, "%s: bad work block %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex()); //return error("%s: invalid proof of work: %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex());
+        LogPrint(BCLog::LDEBUG, "%s: bad work block %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex()); //return error("%s: invalid proof of work: %d %d %s", __func__, blockindex.nBits, blockindex.nHeight, hash.GetHex());
 #   endif
     }
     return Write(std::make_pair(DB_BLOCK_INDEX, hash), blockindex);
@@ -498,7 +498,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                     auto const &hash(pindexNew->GetBlockHash());
                     uint256 proof;
                     if (pindexNew->hashProofOfStake == 0) {
-                        LogPrint(BCLog::DEBUG, "skip invalid indexed orphan block %d %s with empty data\n", pindexNew->nHeight, hash.GetHex());
+                        LogPrint(BCLog::LDEBUG, "skip invalid indexed orphan block %d %s with empty data\n", pindexNew->nHeight, hash.GetHex());
                         nDiscarded++;
                         nFirstDiscarded = diskindex.nHeight < nFirstDiscarded ? diskindex.nHeight : nFirstDiscarded;
                         batch.Erase(std::make_pair(DB_BLOCK_INDEX, hash));

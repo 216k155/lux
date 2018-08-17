@@ -92,7 +92,7 @@ namespace BCLog {
         ALERT       = (1 << 21),
         HTTPPOLL    = (1 << 22),
         DARKSEND    = (1 << 23),
-        DEBUG       = (1 << 24),
+        LDEBUG      = (1 << 24),
         LUX         = (1 << 25),
         ALL         = ~(uint32_t)0,
     };
