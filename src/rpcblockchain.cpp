@@ -19,6 +19,10 @@
 #include <stdint.h>
 
 #include "univalue/univalue.h"
+#include <boost/thread/thread.hpp> // boost::thread::interrupt
+
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
@@ -279,6 +283,163 @@ UniValue getrawmempool(const JSONRPCRequest& request)
     }
 }
 
+UniValue getmempoolancestors(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
+        throw runtime_error(
+                "getmempoolancestors txid (verbose)\n"
+                "\nIf txid is in the mempool, returns all in-mempool ancestors.\n"
+                "\nArguments:\n"
+                "1. \"txid\"                 (string, required) The transaction id (must be in mempool)\n"
+                "2. verbose                  (boolean, optional, default=false) True for a json object, false for array of transaction ids\n"
+                "\nResult (for verbose=false):\n"
+                "[                       (json array of strings)\n"
+                "  \"transactionid\"           (string) The transaction id of an in-mempool ancestor transaction\n"
+                "  ,...\n"
+                "]\n"
+                "\nResult (for verbose=true):\n"
+                "{                           (json object)\n"
+                "  \"transactionid\" : {       (json object)\n"
+
+                "  }, ...\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getmempoolancestors", "\"mytxid\"")
+        );
+    }
+
+    bool fVerbose = false;
+    if (request.params.size() > 1)
+        fVerbose = request.params[1].get_bool();
+
+    uint256 hash = ParseHashV(request.params[0], "parameter 1");
+
+    LOCK(mempool.cs);
+
+    CTxMemPool::txiter it = mempool.mapTx.find(hash);
+    if (it == mempool.mapTx.end()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
+    }
+
+    CTxMemPool::setEntries setAncestors;
+    uint64_t noLimit = std::numeric_limits<uint64_t>::max();
+    std::string dummy;
+    mempool.CalculateMemPoolAncestors(*it, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
+
+    if (!fVerbose) {
+        UniValue o(UniValue::VARR);
+        for (CTxMemPool::txiter ancestorIt : setAncestors) {
+            o.push_back(ancestorIt->GetTx().GetHash().ToString());
+        }
+
+        return o;
+    } else {
+        UniValue o(UniValue::VOBJ);
+        for (CTxMemPool::txiter ancestorIt : setAncestors) {
+            const CTxMemPoolEntry &e = *ancestorIt;
+            const uint256& _hash = e.GetTx().GetHash();
+            UniValue info(UniValue::VOBJ);
+           // entryToJSON(info, e);
+            o.push_back(Pair(_hash.ToString(), info));
+        }
+        return o;
+    }
+}
+
+UniValue getmempooldescendants(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
+        throw runtime_error(
+                "getmempooldescendants txid (verbose)\n"
+                "\nIf txid is in the mempool, returns all in-mempool descendants.\n"
+                "\nArguments:\n"
+                "1. \"txid\"                 (string, required) The transaction id (must be in mempool)\n"
+                "2. verbose                  (boolean, optional, default=false) True for a json object, false for array of transaction ids\n"
+                "\nResult (for verbose=false):\n"
+                "[                       (json array of strings)\n"
+                "  \"transactionid\"           (string) The transaction id of an in-mempool descendant transaction\n"
+                "  ,...\n"
+                "]\n"
+                "\nResult (for verbose=true):\n"
+                "{                           (json object)\n"
+                "  \"transactionid\" : {       (json object)\n"
+                "  }, ...\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getmempooldescendants", "\"mytxid\"")
+        );
+    }
+
+    bool fVerbose = false;
+    if (request.params.size() > 1)
+        fVerbose = request.params[1].get_bool();
+
+    uint256 hash = ParseHashV(request.params[0], "parameter 1");
+
+    LOCK(mempool.cs);
+
+    CTxMemPool::txiter it = mempool.mapTx.find(hash);
+    if (it == mempool.mapTx.end()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
+    }
+
+    CTxMemPool::setEntries setDescendants;
+    mempool.CalculateDescendants(it, setDescendants);
+    // CTxMemPool::CalculateDescendants will include the given tx
+    setDescendants.erase(it);
+
+    if (!fVerbose) {
+        UniValue o(UniValue::VARR);
+        for (CTxMemPool::txiter descendantIt : setDescendants) {
+            o.push_back(descendantIt->GetTx().GetHash().ToString());
+        }
+
+        return o;
+    } else {
+        UniValue o(UniValue::VOBJ);
+       for (CTxMemPool::txiter descendantIt : setDescendants) {
+            const CTxMemPoolEntry &e = *descendantIt;
+            const uint256& _hash = e.GetTx().GetHash();
+            UniValue info(UniValue::VOBJ);
+           // entryToJSON(info, e);
+            o.push_back(Pair(_hash.ToString(), info));
+        }
+        return o;
+    }
+}
+
+UniValue getmempoolentry(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1) {
+        throw runtime_error(
+                "getmempoolentry txid\n"
+                "\nReturns mempool data for given transaction\n"
+                "\nArguments:\n"
+                "1. \"txid\"                   (string, required) The transaction id (must be in mempool)\n"
+                "\nResult:\n"
+                "{                           (json object)\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getmempoolentry", "\"mytxid\"")
+        );
+    }
+
+    uint256 hash = ParseHashV(request.params[0], "parameter 1");
+
+    LOCK(mempool.cs);
+
+    CTxMemPool::txiter it = mempool.mapTx.find(hash);
+    if (it == mempool.mapTx.end()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
+    }
+#if 0
+    const CTxMemPoolEntry &e = *it;
+#endif
+    UniValue info(UniValue::VOBJ);
+    //entryToJSON(info, e);
+    return info;
+}
+
 void entryToJSON(UniValue &info, const CTxMemPoolEntry &e)
 {
     AssertLockHeld(mempool.cs);
@@ -293,6 +454,9 @@ void entryToJSON(UniValue &info, const CTxMemPoolEntry &e)
     info.push_back(Pair("descendantcount", e.GetCountWithDescendants()));
     info.push_back(Pair("descendantsize", e.GetSizeWithDescendants()));
     info.push_back(Pair("descendantfees", e.GetModFeesWithDescendants()));
+    info.push_back(Pair("ancestorcount", e.GetCountWithAncestors()));
+    info.push_back(Pair("ancestorsize", e.GetSizeWithAncestors()));
+    info.push_back(Pair("ancestorfees", e.GetModFeesWithAncestors()));
     const CTransaction& tx = e.GetTx();
     set<string> setDepends;
     for (const CTxIn& txin : tx.vin) {
@@ -318,7 +482,7 @@ UniValue mempoolToJSON(bool fVerbose)
         {
             const uint256& hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
-            entryToJSON(info, e);
+           // entryToJSON(info, e);
             o.push_back(Pair(hash.ToString(), info));
         }
         return o;
@@ -1382,4 +1546,24 @@ UniValue reconsiderblock(const JSONRPCRequest& request)
     }
 
     return NullUniValue;
+}
+
+std::string EntryDescriptionString()
+{
+    return "    \"size\" : n,             (numeric) virtual transaction size as defined in BIP 141. This is different from actual serialized size for witness transactions as witness data is discounted.\n"
+           "    \"fee\" : n,              (numeric) transaction fee in " + CURRENCY_UNIT + "\n"
+                                                                                           "    \"modifiedfee\" : n,      (numeric) transaction fee with fee deltas used for mining priority\n"
+                                                                                           "    \"time\" : n,             (numeric) local time transaction entered pool in seconds since 1 Jan 1970 GMT\n"
+                                                                                           "    \"height\" : n,           (numeric) block height when transaction entered pool\n"
+                                                                                           "    \"startingpriority\" : n, (numeric) DEPRECATED. Priority when transaction entered pool\n"
+                                                                                           "    \"currentpriority\" : n,  (numeric) DEPRECATED. Transaction priority now\n"
+                                                                                           "    \"descendantcount\" : n,  (numeric) number of in-mempool descendant transactions (including this one)\n"
+                                                                                           "    \"descendantsize\" : n,   (numeric) virtual transaction size of in-mempool descendants (including this one)\n"
+                                                                                           "    \"descendantfees\" : n,   (numeric) modified fees (see above) of in-mempool descendants (including this one)\n"
+                                                                                           "    \"ancestorcount\" : n,    (numeric) number of in-mempool ancestor transactions (including this one)\n"
+                                                                                           "    \"ancestorsize\" : n,     (numeric) virtual transaction size of in-mempool ancestors (including this one)\n"
+                                                                                           "    \"ancestorfees\" : n,     (numeric) modified fees (see above) of in-mempool ancestors (including this one)\n"
+                                                                                           "    \"depends\" : [           (array) unconfirmed transactions used as inputs for this transaction\n"
+                                                                                           "        \"transactionid\",    (string) parent transaction id\n"
+                                                                                           "       ... ]\n";
 }

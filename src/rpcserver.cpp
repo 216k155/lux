@@ -346,6 +346,9 @@ static const CRPCCommand vRPCCommands[] =
         {"util", "estimatesmartfee", &estimatesmartfee, true, true, false},
         {"util", "estimatesmartpriority", &estimatesmartpriority, true, true, false},
         {"util", "getmemoryinfo", &getmemoryinfo, true, true, false},
+        {"util", "getmempoolancestors", &getmempoolancestors, true, true, false},
+        {"util", "getmempooldescendants", &getmempooldescendants, true, true, false},
+        {"util", "getmempoolentry", &getmempoolentry, true, true, false},
 
         /* Not shown in help */
         {"hidden", "invalidateblock", &invalidateblock, true, true, false},
