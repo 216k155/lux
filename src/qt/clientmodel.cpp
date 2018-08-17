@@ -20,7 +20,6 @@
 
 #include <stdint.h>
 
-#include <QDateTime>
 #include <QDebug>
 #include <QTimer>
 
@@ -30,6 +29,7 @@ ClientModel::ClientModel(OptionsModel* optionsModel, QObject* parent) : QObject(
                                                                         optionsModel(optionsModel),
                                                                         peerTableModel(0),
                                                                         cachedNumBlocks(0),
+                                                                        cachedBlockDate(QDateTime()),
                                                                         cachedMasternodeCountString(""),
                                                                         cachedReindexing(0), cachedImporting(0),
                                                                         numBlocksAtStartup(-1), pollTimer(0)
@@ -96,8 +96,8 @@ QDateTime ClientModel::getLastBlockDate() const
     LOCK(cs_main);
     if (chainActive.Tip())
         return QDateTime::fromTime_t(chainActive.Tip()->GetBlockTime());
-    else
-        return QDateTime::fromTime_t(Params().GenesisBlock().GetBlockTime()); // Genesis block's time of current network
+
+    return QDateTime::fromTime_t(Params().GenesisBlock().GetBlockTime()); // Genesis block's time of current network
 }
 
 double ClientModel::getVerificationProgress() const
@@ -118,14 +118,15 @@ void ClientModel::updateTimer()
     // Some quantities (such as number of blocks) change so fast that we don't want to be notified for each change.
     // Periodically check and update with a timer.
     int newNumBlocks = getNumBlocks();
-
+    QDateTime newBlockDate = getLastBlockDate();
     // check for changed number of blocks we have, number of blocks peers claim to have, reindexing state and importing state
-    if (cachedNumBlocks != newNumBlocks || cachedReindexing != fReindex || cachedImporting != fImporting) {
+    if (cachedNumBlocks != newNumBlocks ||    cachedBlockDate != newBlockDate || cachedReindexing != fReindex || cachedImporting != fImporting) {
         cachedNumBlocks = newNumBlocks;
+        cachedBlockDate = newBlockDate;
         cachedReindexing = fReindex;
         cachedImporting = fImporting;
 
-        emit numBlocksChanged(newNumBlocks);
+        emit numBlocksChanged(newNumBlocks, newBlockDate);
     }
 
     emit bytesChanged(getTotalBytesRecv(), getTotalBytesSent());

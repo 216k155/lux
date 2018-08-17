@@ -186,8 +186,8 @@ public slots:
     void setNumConnections(int count);
     /** Set network state shown in the UI */
     void setNetworkActive(bool networkActive);
-    /** Set number of blocks shown in the UI */
-    void setNumBlocks(int count);
+    /** Set number of blocks and last block date shown in the UI */
+    void setNumBlocks(int count, const QDateTime& blockDate);
     /** Get restart command-line parameters and request restart */
     void handleRestart(QStringList args);
 
