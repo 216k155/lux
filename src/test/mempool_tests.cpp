@@ -3,12 +3,16 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "main.h"
-#include "test_lux.cpp"
+//#include "test_lux.cpp"
 #include "txmempool.h"
 #include "util.h"
 
+#include "test/entry_helper.h"
+
 #include <boost/test/unit_test.hpp>
 #include <list>
+
+struct TestMemPoolEntryHelper;
 
 BOOST_AUTO_TEST_SUITE(mempool_tests)
 

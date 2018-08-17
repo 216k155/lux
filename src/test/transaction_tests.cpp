@@ -5,6 +5,7 @@
 #include "data/tx_invalid.json.h"
 #include "data/tx_valid.json.h"
 
+#include "sync.h"
 #include "checkqueue.h"
 #include "clientversion.h"
 #include "consensus/validation.h"
@@ -147,7 +148,8 @@ BOOST_AUTO_TEST_CASE(tx_valid)
 
             string transaction = test[1].get_str();
             CDataStream stream(ParseHex(transaction), SER_NETWORK, PROTOCOL_VERSION);
-            CTransaction tx;
+            //CTransaction tx;
+            CMutableTransaction tx;
             stream >> tx;
 
             CValidationState state;
@@ -169,9 +171,9 @@ BOOST_AUTO_TEST_CASE(tx_valid)
                 }
                 unsigned int verify_flags = ParseScriptFlags(test[2].get_str());
                 const CScriptWitness *witness = &tx.wit.vtxinwit[i].scriptWitness;
-                BOOST_CHECK_MESSAGE(VerifyScript(tx.vin[i].scriptSig, mapprevOutScriptPubKeys[tx.vin[i].prevout],
-                                                 witness, verify_flags, TransactionSignatureChecker(&tx, i, amount, txdata), &err),
-                                    strTest);
+                const CTransaction txConst(tx);
+                BOOST_CHECK_MESSAGE(VerifyScript(tx.vin[i].scriptSig, mapprevOutScriptPubKeys[tx.vin[i].prevout], witness,
+                    verify_flags, TransactionSignatureChecker(&txConst, i, amount, txdata), &err), strTest);
                 BOOST_CHECK_MESSAGE(err == SCRIPT_ERR_OK, ScriptErrorString(err));
             }
         }
@@ -235,7 +237,7 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
 
             string transaction = test[1].get_str();
             CDataStream stream(ParseHex(transaction), SER_NETWORK, PROTOCOL_VERSION);
-            CTransaction tx;
+            CMutableTransaction tx;
             stream >> tx;
 
             CValidationState state;
@@ -256,8 +258,9 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
                     amount = mapprevOutValues[tx.vin[i].prevout];
                 }
                 const CScriptWitness *witness = &tx.wit.vtxinwit[i].scriptWitness;
-                fValid = VerifyScript(tx.vin[i].scriptSig, mapprevOutScriptPubKeys[tx.vin[i].prevout],
-                                      witness, verify_flags, TransactionSignatureChecker(&tx, i, amount, txdata), &err);
+                const CTransaction txConst(tx);
+                fValid = VerifyScript(tx.vin[i].scriptSig, mapprevOutScriptPubKeys[tx.vin[i].prevout], witness,
+                            verify_flags, TransactionSignatureChecker(&txConst, i, amount, txdata), &err);
             }
             BOOST_CHECK_MESSAGE(!fValid, strTest);
             BOOST_CHECK_MESSAGE(err != SCRIPT_ERR_OK, ScriptErrorString(err));
@@ -357,7 +360,7 @@ void CreateCreditAndSpend(const CKeyStore& keystore, const CScript& outscript, C
     outputm.vout[0].scriptPubKey = outscript;
     CDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
     ssout << outputm;
-    CTransaction outBuf;
+    CMutableTransaction outBuf;
     ssout >> outBuf;
     output = MakeTransactionRef(outBuf);
     assert(output->vin.size() == 1);
@@ -460,7 +463,7 @@ BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
 
     CDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
     ssout << mtx;
-    CTransaction tx;
+    CMutableTransaction tx;
     ssout >> tx;
 
     // check all inputs concurrently, with the cache
@@ -472,20 +475,25 @@ BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
     for (int i=0; i<20; i++)
         threadGroup.create_thread(boost::bind(&CCheckQueue<CScriptCheck>::Thread, boost::ref(scriptcheckqueue)));
 
-    std::vector<Coin> coins;
+    std::vector<CCoins> coins;
     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
-        Coin coin;
+        CCoins coin;
         coin.nHeight = 1;
         coin.fCoinBase = false;
-        coin.out.nValue = 1000;
-        coin.out.scriptPubKey = scriptPubKey;
+        coin.vout.resize(1);
+        coin.vout[0].nValue = 1000;
+        coin.vout[0].scriptPubKey = scriptPubKey;
         coins.emplace_back(std::move(coin));
     }
 
+    CCoinsView coinsDummy;
+    CCoinsViewCache view(&coinsDummy);
+
     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
         std::vector<CScriptCheck> vChecks;
-        const CTxOut& output = coins[tx.vin[i].prevout.n].out;
-        CScriptCheck check(output.scriptPubKey, output.nValue, tx, i, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, false, &txdata);
+        CScriptCheck check(coins.at(i), tx, i, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, false, &txdata);
+        //const CTxOut& output = view.GetOutputFor(tx.vin[i]);
+        //CScriptCheck check(output.scriptPubKey, output.nValue, tx, i, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, false, &txdata);
         vChecks.push_back(CScriptCheck());
         check.swap(vChecks.back());
         control.Add(vChecks);
