@@ -5511,9 +5511,7 @@ void UnloadBlockIndex()
     setBlockIndexCandidates.clear();
     chainActive.SetTip(nullptr);
     pindexBestInvalid = nullptr;
-    for (BlockMap::value_type& entry : mapBlockIndex) {
-        delete entry.second;
-    }
+
     fHavePruned = false;
     pindexBestHeader = nullptr;
     mempool.clear();
