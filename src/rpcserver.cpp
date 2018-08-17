@@ -340,10 +340,12 @@ static const CRPCCommand vRPCCommands[] =
         {"util", "createwitnessaddress", &createwitnessaddress, true, true, false},
         {"util", "validateaddress", &validateaddress, true, false, false}, /* uses wallet if enabled */
         {"util", "verifymessage", &verifymessage, true, false, false},
+        {"util", "signmessagewithprivkey", &signmessagewithprivkey, true, false, false},
         {"util", "estimatefee", &estimatefee, true, true, false},
         {"util", "estimatepriority", &estimatepriority, true, true, false},
         {"util", "estimatesmartfee", &estimatesmartfee, true, true, false},
         {"util", "estimatesmartpriority", &estimatesmartpriority, true, true, false},
+        {"util", "getmemoryinfo", &getmemoryinfo, true, true, false},
 
         /* Not shown in help */
         {"hidden", "invalidateblock", &invalidateblock, true, true, false},

@@ -106,6 +106,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "createrawtransaction", 2, "locktime" },
     { "signrawtransaction", 1, "prevtxs" },
     { "signrawtransaction", 2, "privkeys" },
+    { "signmessagewithprivkey", 1, "privkey" },
+    { "signmessagewithprivkey", 1, "message" },
     { "sendrawtransaction", 1, "allowhighfees" },
     { "fundrawtransaction", 1, "options" },
     { "gettxout", 1, "n" },

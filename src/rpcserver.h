@@ -307,6 +307,7 @@ extern UniValue walletlock(const JSONRPCRequest& request);
 extern UniValue encryptwallet(const JSONRPCRequest& request);
 extern UniValue validateaddress(const JSONRPCRequest& request);
 extern UniValue getaddressmempool(const JSONRPCRequest& request);
+extern UniValue getmemoryinfo(const JSONRPCRequest& request);
 extern UniValue getaddressutxos(const JSONRPCRequest& request);
 extern UniValue getaddressdeltas(const JSONRPCRequest& request);
 extern UniValue getaddresstxids(const JSONRPCRequest& request);
@@ -334,6 +335,7 @@ extern UniValue decoderawtransaction(const JSONRPCRequest& request);
 extern UniValue decodescript(const JSONRPCRequest& request);
 extern UniValue signrawtransaction(const JSONRPCRequest& request);
 extern UniValue sendrawtransaction(const JSONRPCRequest& request);
+extern UniValue signmessagewithprivkey(const JSONRPCRequest& request);
 extern UniValue gethexaddress(const JSONRPCRequest& request);
 extern UniValue fromhexaddress(const JSONRPCRequest& request);
 

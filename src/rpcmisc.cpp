@@ -557,9 +557,9 @@ UniValue verifymessage(const JSONRPCRequest& request)
             "\nExamples:\n"
             "\nUnlock the wallet for 30 seconds\n" +
             HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") +
-            "\nCreate the signature\n" + HelpExampleCli("signmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"my message\"") +
-            "\nVerify the signature\n" + HelpExampleCli("verifymessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"signature\" \"my message\"") +
-            "\nAs json rpc\n" + HelpExampleRpc("verifymessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"signature\", \"my message\""));
+            "\nCreate the signature\n" + HelpExampleCli("signmessage", "\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\" \"my message\"") +
+            "\nVerify the signature\n" + HelpExampleCli("verifymessage", "\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\" \"signature\" \"my message\"") +
+            "\nAs json rpc\n" + HelpExampleRpc("verifymessage", "\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\", \"signature\", \"my message\""));
 
     LOCK(cs_main);
     string strAddress   = request.params[0].get_str();
@@ -591,6 +591,48 @@ UniValue verifymessage(const JSONRPCRequest& request)
     return (pubkey.GetID() == *keyID);
 }
 
+UniValue signmessagewithprivkey(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 2)
+        throw runtime_error(
+                "signmessagewithprivkey \"privkey\" \"message\"\n"
+                "\nSign a message with the private key of an address\n"
+                "\nArguments:\n"
+                "1. \"privkey\"         (string, required) The private key to sign the message with.\n"
+                "2. \"message\"         (string, required) The message to create a signature of.\n"
+                "\nResult:\n"
+                "\"signature\"          (string) The signature of the message encoded in base 64\n"
+                "\nExamples:\n"
+                "\nCreate the signature\n"
+                + HelpExampleCli("signmessagewithprivkey", "\"privkey\" \"my message\"") +
+                "\nVerify the signature\n"
+                + HelpExampleCli("verifymessage", "\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\" \"signature\" \"my message\"") +
+                "\nAs json rpc\n"
+                + HelpExampleRpc("signmessagewithprivkey", "\"privkey\", \"my message\"")
+        );
+
+    string strPrivkey = request.params[0].get_str();
+    string strMessage = request.params[1].get_str();
+
+    CBitcoinSecret vchSecret;
+    bool fGood = vchSecret.SetString(strPrivkey);
+    if (!fGood)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+    CKey key = vchSecret.GetKey();
+    if (!key.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << strMessageMagic;
+    ss << strMessage;
+
+    vector<unsigned char> vchSig;
+    if (!key.SignCompact(ss.GetHash(), vchSig))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed");
+
+    return EncodeBase64(&vchSig[0], vchSig.size());
+}
+
 UniValue setmocktime(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 1)
@@ -610,6 +652,44 @@ UniValue setmocktime(const JSONRPCRequest& request)
     SetMockTime(request.params[0].get_int64());
 
     return NullUniValue;
+}
+
+static UniValue RPCLockedMemoryInfo()
+{
+    LockedPool::Stats stats = LockedPoolManager::Instance().stats();
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("used", uint64_t(stats.used)));
+    obj.push_back(Pair("free", uint64_t(stats.free)));
+    obj.push_back(Pair("total", uint64_t(stats.total)));
+    obj.push_back(Pair("locked", uint64_t(stats.locked)));
+    obj.push_back(Pair("chunks_used", uint64_t(stats.chunks_used)));
+    obj.push_back(Pair("chunks_free", uint64_t(stats.chunks_free)));
+    return obj;
+}
+
+UniValue getmemoryinfo(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw runtime_error(
+                "getmemoryinfo\n"
+                "Returns an object containing information about memory usage.\n"
+                "\nResult:\n"
+                "{\n"
+                "  \"locked\": {               (json object) Information about locked memory manager\n"
+                "    \"used\": xxxxx,          (numeric) Number of bytes used\n"
+                "    \"free\": xxxxx,          (numeric) Number of bytes available in current arenas\n"
+                "    \"total\": xxxxxxx,       (numeric) Total number of bytes managed\n"
+                "    \"locked\": xxxxxx,       (numeric) Amount of bytes that succeeded locking. If this number is smaller than total, locking pages failed at some point and key data could be swapped to disk.\n"
+                "    \"chunks_used\": xxxxx,   (numeric) Number allocated chunks\n"
+                "    \"chunks_free\": xxxxx,   (numeric) Number unused chunks\n"
+                "  }\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getmemoryinfo", "")
+        );
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("locked", RPCLockedMemoryInfo()));
+    return obj;
 }
 
 bool getAddressFromIndex(const int &type, const uint160 &hash, std::string &address)

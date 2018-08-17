@@ -155,6 +155,7 @@ BITCOIN_CORE_H = \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
   support/pagelocker.h \
+  support/lockedpool.h \
   support/events.h \
   sync.h \
   threadsafety.h \
@@ -600,6 +601,7 @@ endif
 libbitcoin_util_a_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_a_SOURCES = \
   support/pagelocker.cpp \
+  support/lockedpool.cpp \
   compat/strnlen.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
