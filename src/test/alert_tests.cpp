@@ -167,6 +167,7 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
     std::vector<std::string> r = read_lines(temp);
     BOOST_CHECK_EQUAL(r.size(), 4u);
 
+    if (r.size() >= 4) {
 // Windows built-in echo semantics are different than posixy shells. Quotes and
 // whitespace are printed literally.
 
@@ -181,6 +182,8 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
     BOOST_CHECK_EQUAL(r[2], "'Alert 2, cancels 1' ");
     BOOST_CHECK_EQUAL(r[3], "'Evil Alert; /bin/ls; echo ' ");
 #endif
+    }
+
     boost::filesystem::remove(temp);
 
     SetMockTime(0);
