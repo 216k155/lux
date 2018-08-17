@@ -50,6 +50,7 @@
 #include <fstream>
 #include <stdint.h>
 #include <stdio.h>
+#include <memory>
 
 #ifndef WIN32
 #include <signal.h>
@@ -75,7 +76,7 @@ CWallet* pwalletMain = nullptr;
 bool fFeeEstimatesInitialized = false;
 std::atomic<bool> fRestartRequested(false); // true: restart false: shutdown
 unsigned int nMinerSleep;
-
+std::unique_ptr<CConnman> g_connman;
 #if ENABLE_ZMQ
 static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 #endif
@@ -201,7 +202,9 @@ void PrepareShutdown()
         bitdb.Flush(false);
 //    GenerateBitcoins(nullptr, 0);
 #endif
-    StopNode();
+    StopNode(*g_connman);
+    g_connman.reset();
+
     UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized) {
@@ -1237,6 +1240,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }  // (!fDisableWallet)
 #endif // ENABLE_WALLET
     // ********************************************************* Step 6: network initialization
+    assert(!g_connman);
+    g_connman = std::unique_ptr<CConnman>(new CConnman());
+    CConnman& connman = *g_connman;
 
     RegisterNodeSignals(GetNodeSignals());
 
@@ -1841,7 +1847,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 11: start node
 
-    StartNode(threadGroup, scheduler);
+    std::string strNodeError;
+    if(!StartNode(connman, threadGroup, scheduler, strNodeError))
+        return InitError(strNodeError);
 
     //// debug print
     LogPrintf("mapBlockIndex.size() = %u\n", mapBlockIndex.size());
