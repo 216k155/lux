@@ -507,7 +507,7 @@ bool WalletModel::restoreWallet(const QString &filename, const QString &param)
 {
     if(QFile::exists(filename))
     {
-        boost::filesystem::path pathWalletBak = GetDataDir() / strprintf("wallet.%d.bak", GetTime());
+        fs::path pathWalletBak = GetDataDir() / strprintf("wallet.%d.bak", GetTime());
         QString walletBak = QString::fromStdString(pathWalletBak.string());
         if(backupWallet(walletBak))
         {

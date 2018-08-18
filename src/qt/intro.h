@@ -10,7 +10,7 @@
 #include <QThread>
 
 class FreespaceChecker;
-
+static const bool DEFAULT_CHOOSE_DATADIR = false;
 namespace Ui
 {
 class Intro;

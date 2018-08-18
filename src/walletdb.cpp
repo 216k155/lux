@@ -26,6 +26,11 @@
 #include <boost/thread.hpp>
 #include <fstream>
 
+#if defined(FORCE_BOOST_EMULATED_SCOPED_ENUMS)
+#define BOOST_NO_SCOPED_ENUMS
+#define BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
+
 using namespace boost;
 using namespace std;
 static std::atomic<unsigned int> nWalletDBUpdateCounter;

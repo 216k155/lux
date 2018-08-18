@@ -10,7 +10,7 @@
 
 #include <string>
 #include <map>
-#include <boost/filesystem/path.hpp>
+#include "fs.h"
 
 class CSubNet;
 class CAddrMan;
@@ -81,7 +81,7 @@ typedef std::map<CSubNet, CBanEntry> banmap_t;
 class CAddrDB
 {
 private:
-    boost::filesystem::path pathAddr;
+    fs::path pathAddr;
 
 public:
     CAddrDB();
@@ -93,7 +93,7 @@ public:
 class CBanListDB
 {
 private:
-    boost::filesystem::path pathBanlist;
+    fs::path pathBanlist;
 public:
     CBanListDB();
     bool Write(const banmap_t& banSet);

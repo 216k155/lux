@@ -961,7 +961,7 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
 
     uint256 hash(uint256S(hashTemp));
 
-    boost::filesystem::path stateDir = GetDataDir() / "stateLux";
+    fs::path stateDir = GetDataDir() / "stateLux";
     StorageResults storageRes(stateDir.string());
 
     std::vector<TransactionReceiptInfo> transactionReceiptInfo = storageRes.getResult(uintToh256(hash));

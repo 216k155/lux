@@ -231,7 +231,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
         //UTXO splitter - address should be our own
         CTxDestination address = DecodeDestination(entry->getValue().address.toStdString());
-        if (!model->isMine(address) && ui->splitBlockCheckBox->checkState() == Qt::Checked) {
+        if (!model->IsSpendable(address) && ui->splitBlockCheckBox->checkState() == Qt::Checked) {
             CoinControlDialog::coinControl->fSplitBlock = false;
             ui->splitBlockCheckBox->setCheckState(Qt::Unchecked);
             QMessageBox::warning(this, tr("Send Coins"),

@@ -95,7 +95,7 @@ struct ReadAlerts
     }
     ~ReadAlerts() { }
 
-    static std::vector<std::string> read_lines(boost::filesystem::path filepath)
+    static std::vector<std::string> read_lines(fs::path filepath)
     {
         std::vector<std::string> result;
 
@@ -156,8 +156,8 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
 {
     SetMockTime(11);
 
-    boost::filesystem::path temp = GetTempPath() / "alertnotify.txt";
-    boost::filesystem::remove(temp);
+    fs::path temp = GetTempPath() / "alertnotify.txt";
+    fs::remove(temp);
 
     mapArgs["-alertnotify"] = std::string("echo %s >> ") + temp.string();
 
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
 #endif
     }
 
-    boost::filesystem::remove(temp);
+    fs::remove(temp);
 
     SetMockTime(0);
 }

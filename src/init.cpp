@@ -40,6 +40,7 @@
 #include "utilmoneystr.h"
 #include "validationinterface.h"
 #include "random.h"
+#include "fs.h"
 #ifdef ENABLE_WALLET
 #include "db.h"
 #include "wallet.h"
@@ -58,7 +59,6 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
 #include <openssl/crypto.h>
@@ -208,7 +208,7 @@ void PrepareShutdown()
     UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized) {
-        boost::filesystem::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
+        fs::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
         CAutoFile est_fileout(fopen(est_path.string().c_str(), "wb"), SER_DISK, CLIENT_VERSION);
         if (!est_fileout.IsNull())
             mempool.WriteFeeEstimates(est_fileout);
@@ -254,7 +254,7 @@ void PrepareShutdown()
 #endif
 
 #ifndef WIN32
-    boost::filesystem::remove(GetPidFile());
+    fs::remove(GetPidFile());
 #endif
     UnregisterAllValidationInterfaces();
 }
@@ -576,23 +576,23 @@ class Read;
 
 void DeleteAllBlockFiles()
 {
-    if (boost::filesystem::exists(GetBlockPosFilename(CDiskBlockPos(0, 0), "blk")))
+    if (fs::exists(GetBlockPosFilename(CDiskBlockPos(0, 0), "blk")))
         return;
 
     LogPrintf("Removing all blk?????.dat and rev?????.dat files for -reindex with -prune\n");
-    boost::filesystem::path blocksdir = GetDataDir() / "blocks";
-    for (boost::filesystem::directory_iterator it(blocksdir); it != boost::filesystem::directory_iterator(); it++) {
+    fs::path blocksdir = GetDataDir() / "blocks";
+    for (fs::directory_iterator it(blocksdir); it != fs::directory_iterator(); it++) {
         if (is_regular_file(*it)) {
             if ((it->path().filename().string().length() == 12) &&
                 (it->path().filename().string().substr(8,4) == ".dat") &&
                 ((it->path().filename().string().substr(0,3) == "blk") ||
                  (it->path().filename().string().substr(0,3) == "rev")))
-                boost::filesystem::remove(it->path());
+                fs::remove(it->path());
         }
     }
 }
 
-void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
+void ThreadImport(std::vector<fs::path> vImportFiles)
 {
     RenameThread("lux-loadblk");
     const CChainParams& chainparams = Params();
@@ -602,7 +602,7 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         int nFile = 0;
         while (true) {
             CDiskBlockPos pos(nFile, 0);
-            if (!boost::filesystem::exists(GetBlockPosFilename(pos, "blk")))
+            if (!fs::exists(GetBlockPosFilename(pos, "blk")))
                 break; // No block files left to reindex
             FILE* file = OpenBlockFile(pos, true);
             if (!file)
@@ -634,7 +634,7 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
     }
 
     // -loadblock=
-    for (boost::filesystem::path& path : vImportFiles) {
+    for (fs::path& path : vImportFiles) {
         FILE* file = fopen(path.string().c_str(), "rb");
         if (file) {
             CImportingNow imp;
@@ -656,7 +656,7 @@ static bool LockDataDirectory(bool probeOnly, bool try_lock = true)
     std::string strDataDir = GetDataDir().string();
 
     // Make sure only a single Bitcoin process is using the data directory.
-    boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
+    fs::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
     if (file) fclose(file);
 
@@ -1039,11 +1039,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     std::string strDataDir = GetDataDir().string();
 #ifdef ENABLE_WALLET
     // Wallet file must be a plain filename without a directory
-    if (strWalletFile != boost::filesystem::basename(strWalletFile) + boost::filesystem::extension(strWalletFile))
+    if (strWalletFile != fs::basename(strWalletFile) + fs::extension(strWalletFile))
         return InitError(strprintf(_("Wallet %s resides outside data directory %s"), strWalletFile, strDataDir));
 #endif
     // Make sure only a single LUX process is using the data directory.
-    boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
+    fs::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
     if (file) fclose(file);
     static boost::interprocess::file_lock lock(pathLockFile.string().c_str());
@@ -1128,12 +1128,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         if (!bitdb.Open(GetDataDir())) {
             // try moving the database env out of the way
-            boost::filesystem::path pathDatabase = GetDataDir() / "database";
-            boost::filesystem::path pathDatabaseBak = GetDataDir() / strprintf("database.%d.bak", GetTime());
+            fs::path pathDatabase = GetDataDir() / "database";
+            fs::path pathDatabaseBak = GetDataDir() / strprintf("database.%d.bak", GetTime());
             try {
-                boost::filesystem::rename(pathDatabase, pathDatabaseBak);
+                fs::rename(pathDatabase, pathDatabaseBak);
                 LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
-            } catch (boost::filesystem::filesystem_error& error) {
+            } catch (fs::filesystem_error& error) {
                 // failure is ok (well, not really, but it's not worse than what we started with)
             }
 
@@ -1190,33 +1190,33 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         if (nWalletBackups > 0 && filesystem::exists(backupDir)) {
             // Keep only the last 10 backups, including the new one of course
-            typedef std::multimap<std::time_t, boost::filesystem::path> folder_set_t;
+            typedef std::multimap<std::time_t, fs::path> folder_set_t;
             folder_set_t folder_set;
-            boost::filesystem::directory_iterator end_iter;
-            boost::filesystem::path backupFolder = backupDir.string();
+            fs::directory_iterator end_iter;
+            fs::path backupFolder = backupDir.string();
             backupFolder.make_preferred();
             // Build map of backup files for current(!) wallet sorted by last write time
-            boost::filesystem::path currentFile;
-            for (boost::filesystem::directory_iterator dir_iter(backupFolder); dir_iter != end_iter; ++dir_iter) {
+            fs::path currentFile;
+            for (fs::directory_iterator dir_iter(backupFolder); dir_iter != end_iter; ++dir_iter) {
                 // Only check regular files
-                if (boost::filesystem::is_regular_file(dir_iter->status())) {
+                if (fs::is_regular_file(dir_iter->status())) {
                     currentFile = dir_iter->path().filename();
                     // Only add the backups for the current wallet, e.g. wallet.dat.*
                     if (dir_iter->path().stem().string() == strWalletFile) {
-                        folder_set.insert(folder_set_t::value_type(boost::filesystem::last_write_time(dir_iter->path()), *dir_iter));
+                        folder_set.insert(folder_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
                     }
                 }
             }
             // Loop backward through backup files and keep the N newest ones (1 <= N <= 10)
             int counter = 0;
-            for (PAIRTYPE(const std::time_t, boost::filesystem::path) file : reverse_iterate(folder_set)) {
+            for (PAIRTYPE(const std::time_t, fs::path) file : reverse_iterate(folder_set)) {
                 counter++;
                 if (counter >= nWalletBackups) {
                     // More than nWalletBackups backups: delete oldest one(s)
                     try {
-                        boost::filesystem::remove(file.second);
+                        fs::remove(file.second);
                         LogPrintf("Old backup deleted: %s\n", file.second);
-                    } catch (boost::filesystem::filesystem_error& error) {
+                    } catch (fs::filesystem_error& error) {
                         LogPrintf("Failed to delete backup %s\n", error.what());
                     }
                 }
@@ -1228,17 +1228,17 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             backupPathStr += "/" + strWalletFile;
             std::string sourcePathStr = GetDataDir().string();
             sourcePathStr += "/" + strWalletFile;
-            boost::filesystem::path sourceFile = sourcePathStr;
-            boost::filesystem::path backupFile = backupPathStr + dateTimeStr;
+            fs::path sourceFile = sourcePathStr;
+            fs::path backupFile = backupPathStr + dateTimeStr;
             sourceFile.make_preferred();
             backupFile.make_preferred();
-            if(boost::filesystem::space(backupDir.string()).available > 1000000) {
-                if (boost::filesystem::exists(sourceFile)) {
+            if(fs::space(backupDir.string()).available > 1000000) {
+                if (fs::exists(sourceFile)) {
 #if BOOST_VERSION >= 158000
                     try {
-                        boost::filesystem::copy_file(sourceFile, backupFile);
+                        fs::copy_file(sourceFile, backupFile);
                         LogPrintf("Creating backup of %s -> %s\n", sourceFile, backupFile);
-                    } catch (boost::filesystem::filesystem_error& error) {
+                    } catch (fs::filesystem_error& error) {
                         LogPrintf("Failed to create backup %s\n", error.what());
                     }
 #else
@@ -1446,9 +1446,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
                 dev::eth::Ethash::init();
 
-                boost::filesystem::path luxStateDir = GetDataDir() / "stateLux";
+                fs::path luxStateDir = GetDataDir() / "stateLux";
 
-                bool fStatus = boost::filesystem::exists(luxStateDir);
+                bool fStatus = fs::exists(luxStateDir);
                 const std::string dirLux(luxStateDir.string());
                 const dev::h256 hashDB(dev::sha3(dev::rlp("")));
                 dev::eth::BaseState existsLuxState = fStatus ? dev::eth::BaseState::PreExisting : dev::eth::BaseState::Empty;
@@ -1497,7 +1497,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
 
                 fRecordLogOpcodes = GetBoolArg("-record-log-opcodes", true);
-                fIsVMlogFile = boost::filesystem::exists(GetDataDir() / "vmExecLogs.json");
+                fIsVMlogFile = fs::exists(GetDataDir() / "vmExecLogs.json");
                 ///////////////////////////////////////////////////////////
 
                 // Initialize the block index (no-op if non-empty database was already loaded)
@@ -1584,7 +1584,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
     LogPrintf(" block index %15dms\n", GetTimeMillis() - nStart);
 
-    boost::filesystem::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
+    fs::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
     CAutoFile est_filein(fopen(est_path.string().c_str(), "rb"), SER_DISK, CLIENT_VERSION);
     // Allowed to fail as this file IS missing on first startup.
     if (!est_filein.IsNull())
@@ -1763,7 +1763,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (!ActivateBestChain(state, chainparams))
         strErrors << "Failed to connect best block";
 
-    std::vector<boost::filesystem::path> vImportFiles;
+    std::vector<fs::path> vImportFiles;
     if (mapArgs.count("-loadblock")) {
         for (string strFile : mapMultiArgs["-loadblock"])
             vImportFiles.push_back(strFile);

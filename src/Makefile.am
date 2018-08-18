@@ -99,6 +99,7 @@ BITCOIN_CORE_H = \
   core_io.h \
   core_memusage.h \
   crypter.h \
+  fs.h \
   darksend.h \
   db.h \
   hash.h \
@@ -605,6 +606,7 @@ libbitcoin_util_a_SOURCES = \
   compat/strnlen.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
+  fs.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
   random.cpp \
