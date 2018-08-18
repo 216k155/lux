@@ -25,6 +25,11 @@ bool TransactionRecord::showTransaction(const CWalletTx& wtx)
     return true;
 }
 
+std::string toStringHash160(const CTxDestination& address) {
+    CKeyID keyid;
+    return HexStr(valtype(keyid.begin(),keyid.end()));
+}
+
 /*
  * Decompose CWallet transaction to model transaction records.
  */
@@ -67,7 +72,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
             sub.credit = nNet;
         }
         parts.append(sub);
-    } else if (nNet > 0 || wtx.IsCoinBase()) {
+    } else if (nNet > 0 || wtx.IsCoinGenerated()) {
         //
         // Credit
         //
@@ -76,24 +81,40 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
             if (mine) {
                 TransactionRecord sub(hash, nTime);
                 CTxDestination address;
-                sub.idx = parts.size(); // sequence number
-                sub.credit = txout.nValue;
+                // Combine into single output for coinstake
+                if(wtx.IsCoinStake()) {
+                    // vout index
+                    sub.idx = 1;
+                    sub.credit = nNet;
+                } else {
+                    // vout index
+                    sub.idx = 1;
+                    sub.credit = txout.nValue;
+                }
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
                 if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address)) {
                     // Received by LUX Address
-                    sub.type = TransactionRecord::RecvWithAddress;
-                    sub.address = EncodeDestination(address);
+                    if(wtx.tx->HasCreateOrCall()) {
+                        sub.type = TransactionRecord::ContractRecv;
+                        sub.address = toStringHash160(address);
+                    } else {
+                        sub.type = TransactionRecord::RecvWithAddress;
+                        sub.address = EncodeDestination(address);
+                    }
                 } else {
                     // Received by IP connection (deprecated features), or a multisignature or other non-simple transaction
                     sub.type = TransactionRecord::RecvFromOther;
                     sub.address = mapValue["from"];
                 }
-                if (wtx.IsCoinBase()) {
+                if (wtx.IsCoinGenerated()) {
                     // Generated
                     sub.type = TransactionRecord::Generated;
                 }
 
                 parts.append(sub);
+                // Single output for coinstake
+                if(wtx.IsCoinStake())
+                    break;
             }
         }
     } else {
@@ -182,6 +203,9 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                     continue;
                 }
 
+                if(wtx.tx->HasCreateOrCall())
+                    break;
+
                 CTxDestination address;
                 if (ExtractDestination(txout.scriptPubKey, address)) {
                     // Sent to LUX Address
@@ -204,6 +228,20 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                     nTxFee = 0;
                 }
                 sub.debit = -nValue;
+                parts.append(sub);
+            }
+
+            if(wtx.tx->HasCreateOrCall()){
+                TransactionRecord sub(hash, nTime);
+                sub.idx = 0;
+                sub.credit = nNet;
+                sub.type = TransactionRecord::ContractSend;
+
+                CTxDestination address;
+                // Use the same destination address as in the contract RPCs
+                if(ExtractDestination(pwalletMain->mapWallet[wtx.tx->vin[0].prevout.hash].tx->vout[wtx.tx->vin[0].prevout.n].scriptPubKey, address)) {
+                    sub.address = toStringHash160(address);
+                }
 
                 parts.append(sub);
             }
@@ -230,7 +268,7 @@ void TransactionRecord::updateStatus(const CWalletTx& wtx)
     // Sort order, unrecorded transactions sort to the top
     status.sortKey = strprintf("%010d-%01d-%010u-%03d",
         (pindex ? pindex->nHeight : std::numeric_limits<int>::max()),
-        (wtx.IsCoinBase() ? 1 : 0),
+        (wtx.IsCoinGenerated() ? 1 : 0),
         wtx.nTimeReceived,
         idx);
     status.countsForBalance = wtx.IsTrusted() && !(wtx.GetBlocksToMaturity() > 0);
