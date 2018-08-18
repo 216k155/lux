@@ -45,6 +45,10 @@ int64_t atoi64(const char* psz);
 int64_t atoi64(const std::string& str);
 int atoi(const std::string& str);
 
+constexpr bool IsDigit(char c) {
+    return c >= '0' && c <= '9';
+}
+
 /**
  * Convert string to signed 32-bit integer with strict parse error feedback.
  * @returns true if the entire string could be parsed as valid integer,
