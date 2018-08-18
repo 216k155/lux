@@ -288,6 +288,7 @@ void Shutdown()
 /**
  * Signal handlers are very limited in what they are allowed to do, so:
  */
+#ifndef WIN32
 void HandleSIGTERM(int)
 {
     fRequestShutdown = true;
@@ -297,6 +298,14 @@ void HandleSIGHUP(int)
 {
     fReopenDebugLog = true;
 }
+#else
+static BOOL WINAPI consoleCtrlHandler(DWORD dwCtrlType)
+{
+    fRequestShutdown = true;
+    Sleep(INFINITE);
+    return true;
+}
+#endif
 
 bool static InitError(const std::string& str)
 {
@@ -714,6 +723,7 @@ bool AppInitServers(boost::thread_group& threadGroup)
 bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 {
 // ********************************************************* Step 1: setup
+#ifdef WIN32
 #ifdef _MSC_VER
     // Turn off Microsoft heap dump noise
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
@@ -723,7 +733,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Disable confusing "helpful" text message on abort, Ctrl-C
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
-#ifdef WIN32
 // Enable Data Execution Prevention (DEP)
 // Minimum supported OS versions: WinXP SP3, WinVista >= SP1, Win Server 2008
 // A failure is non-critical and needs no further attention!
@@ -742,8 +751,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (ret != NO_ERROR || LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wVersion) != 2) {
         return InitError(strprintf("Error: Winsock library failed to start (WSAStartup returned error %d)", ret));
     }
-#endif
-#ifndef WIN32
+
+    SetConsoleCtrlHandler(consoleCtrlHandler, true);
+
+#else /* WIN32 */
 
     if (GetBoolArg("-sysperms", false)) {
 #ifdef ENABLE_WALLET
@@ -754,7 +765,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         umask(077);
     }
 
-
+    //TODO: registerSignalHandler
     // Clean shutdown on SIGTERM
     struct sigaction sa;
     sa.sa_handler = HandleSIGTERM;
@@ -770,10 +781,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     sa_hup.sa_flags = 0;
     sigaction(SIGHUP, &sa_hup, nullptr);
 
-#if defined(__SVR4) && defined(__sun)
-    // ignore SIGPIPE on Solaris
+    // Ignore SIGPIPE, otherwise it will bring the daemon down if the client closes unexpectedly
     signal(SIGPIPE, SIG_IGN);
-#endif
 #endif
 
     // ********************************************************* Step 2: parameter interactions
