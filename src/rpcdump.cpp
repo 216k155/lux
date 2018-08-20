@@ -403,15 +403,16 @@ UniValue dumpwallet(const JSONRPCRequest& request)
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
 
-    std::map<CKeyID, int64_t> mapKeyBirth;
-    std::set<CKeyID> setKeyPool;
+    std::map<CTxDestination, int64_t> mapKeyBirth;
+    const std::map<CKeyID, int64_t>& mapKeyPool = pwalletMain->GetAllReserveKeys();
     pwalletMain->GetKeyBirthTimes(mapKeyBirth);
-    pwalletMain->GetAllReserveKeys(setKeyPool);
 
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
-    for (std::map<CKeyID, int64_t>::const_iterator it = mapKeyBirth.begin(); it != mapKeyBirth.end(); it++) {
-        vKeyBirth.push_back(std::make_pair(it->second, it->first));
+    for (const auto& entry : mapKeyBirth) {
+        if (const CKeyID* keyID = boost::get<CKeyID>(&entry.first)) { // set and test
+            vKeyBirth.push_back(std::make_pair(entry.second, *keyID));
+        }
     }
     mapKeyBirth.clear();
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
@@ -452,13 +453,14 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                 file << strprintf("label=%s", EncodeDumpString(pwalletMain->mapAddressBook[keyid].name));
             } else if (keyid == masterKeyID) {
                 file << "hdmaster=1";
-            } else if (setKeyPool.count(keyid)) {
+            } else if (mapKeyPool.count(keyid)) {
                 file << "reserve=1";
             } else if (pwalletMain->mapKeyMetadata[keyid].hdKeypath == "m") {
                 file << "inactivehdmaster=1";
             } else {
                 file << "change=1";
             }
+            file << strprintf(" # addr=%s%s\n", strAddr, (pwalletMain->mapKeyMetadata[keyid].hdKeypath.size() > 0 ? " hdkeypath="+pwalletMain->mapKeyMetadata[keyid].hdKeypath : ""));
             file << strprintf(" # addr=%s%s\n", strAddr, (pwalletMain->mapKeyMetadata[keyid].hdKeypath.size() > 0 ? " hdkeypath="+pwalletMain->mapKeyMetadata[keyid].hdKeypath : ""));
         }
     }

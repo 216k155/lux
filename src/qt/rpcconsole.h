@@ -37,9 +37,9 @@ public:
     explicit RPCConsole(QWidget* parent);
     ~RPCConsole();
 
-    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, bool fExecute, std::string * const pstrFilteredOut = NULL);
-    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, std::string * const pstrFilteredOut = NULL) {
-        return RPCExecuteCommandLine(strResult, strCommand, true, pstrFilteredOut);
+    static bool RPCParseCommandLine(std::string &strResult, const std::string &strCommand, bool fExecute, std::string * const pstrFilteredOut = nullptr);
+    static bool RPCExecuteCommandLine(std::string &strResult, const std::string &strCommand, std::string * const pstrFilteredOut = nullptr) {
+        return RPCParseCommandLine(strResult, strCommand, true, pstrFilteredOut);
     }
 
     void setClientModel(ClientModel* model);

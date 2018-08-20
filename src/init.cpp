@@ -1665,10 +1665,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         if (GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET) && !pwalletMain->IsHDEnabled()) {
             // generate a new master key
-            CKey key;
-            key.MakeNewKey(true);
-            if (!pwalletMain->SetHDMasterKey(key))
-                throw std::runtime_error("CWallet::GenerateNewKey(): Storing master key failed");
+            pwalletMain->SetMinVersion(FEATURE_HD_SPLIT);
+
+            // generate a new master key
+            CPubKey masterPubKey = pwalletMain->GenerateNewHDMasterKey();
+            if (!pwalletMain->SetHDMasterKey(masterPubKey))
+                throw std::runtime_error(std::string(__func__) + ": Storing master key failed");
         }
             CPubKey newDefaultKey;
             if (pwalletMain->GetKeyFromPool(newDefaultKey)) {

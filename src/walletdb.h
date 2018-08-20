@@ -49,7 +49,9 @@ public:
     uint32_t nExternalChainCounter;
     CKeyID masterKeyID; //!< master key hash160
 
-    static const int CURRENT_VERSION = 1;
+    static const int VERSION_HD_BASE        = 1;
+    static const int VERSION_HD_CHAIN_SPLIT = 2;
+    static const int CURRENT_VERSION        = VERSION_HD_CHAIN_SPLIT;
     int nVersion;
 
     CHDChain() { SetNull(); }
