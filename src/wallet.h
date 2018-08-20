@@ -49,6 +49,9 @@ extern bool bZeroBalanceAddressToken;
 extern bool fSendFreeTransactions;
 extern bool fPayAtLeastCustomFee;
 extern bool fNotUseChangeAddress;
+//! -keypool size default
+static const unsigned int DEFAULT_KEYPOOL_SIZE = 1000;
+
 //! -paytxfee default
 static const CAmount DEFAULT_TRANSACTION_FEE = 1000;
 //! -paytxfee will warn if called with a higher fee than this amount (in satoshis) per KB
@@ -589,7 +592,10 @@ public:
     bool GetKeyFromPool(CPubKey &key, bool internal = false);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
-
+    /**
+      * Marks all keys in the keypool up to and including reserve_key as used.
+      */
+    void MarkReserveKeysAsUsed(int64_t keypool_id);
     std::set<std::set<CTxDestination> > GetAddressGroupings();
     std::map<CTxDestination, CAmount> GetAddressBalances();
 

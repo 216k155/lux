@@ -1632,6 +1632,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         RegisterValidationInterface(pwalletMain);
 
+        // Try to top up keypool. No-op if the wallet is locked.
+        pwalletMain->TopUpKeyPool();
+
         CBlockIndex* pindexRescan = chainActive.Tip();
         if (GetBoolArg("-rescan", false))
             pindexRescan = chainActive.Genesis();
