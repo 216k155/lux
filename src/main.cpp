@@ -968,6 +968,55 @@ bool CheckFinalTx(const CTransaction& tx, int flags)
     return IsFinalTx(tx, nBlockHeight, nBlockTime);
 }
 
+static void LimitMempoolSize(CTxMemPool& pool, size_t limit, unsigned long age) {
+    int expired = pool.Expire(GetTime() - age);
+    if (expired != 0) {
+        LogPrint(BCLog::MEMPOOL, "Expired %i transactions from the memory pool\n", expired);
+    }
+
+    std::vector<COutPoint> vNoSpendsRemaining;
+    pool.TrimToSize(limit, &vNoSpendsRemaining);
+    for (const COutPoint& removed : vNoSpendsRemaining)
+        pcoinsTip->Uncache(removed);
+}
+
+void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool fAddToMempool)
+{
+    AssertLockHeld(cs_main);
+    std::vector<uint256> vHashUpdate;
+    // disconnectpool's insertion_order index sorts the entries from
+    // oldest to newest, but the oldest entry will be the last tx from the
+    // latest mined block that was disconnected.
+    // Iterate disconnectpool in reverse, so that we add transactions
+    // back to the mempool starting with the earliest transaction that had
+    // been previously seen in a block.
+    auto it = disconnectpool.queuedTx.get<insertion_order>().rbegin();
+    while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
+        // ignore validation errors in resurrected transactions
+        CValidationState stateDummy;
+        if (!fAddToMempool || (*it)->IsCoinBase() || !AcceptToMemoryPool(mempool, stateDummy, *it, false, NULL, NULL, true)) {
+            // If the transaction doesn't make it in to the mempool, remove any
+            // transactions that depend on it (which would now be orphans).
+            mempool.removeRecursive(**it, MemPoolRemovalReason::REORG);
+        } else if (mempool.exists((*it)->GetHash())) {
+            vHashUpdate.push_back((*it)->GetHash());
+        }
+        ++it;
+    }
+    disconnectpool.queuedTx.clear();
+    // AcceptToMemoryPool/addUnchecked all assume that new mempool entries have
+    // no in-mempool children, which is generally not true when adding
+    // previously-confirmed transactions back to the mempool.
+    // UpdateTransactionsFromBlock finds descendants of any transactions in
+    // the disconnectpool that were added back and cleans up the mempool state.
+    mempool.UpdateTransactionsFromBlock(vHashUpdate);
+
+    // We also need to remove any now-immature transactions
+    mempool.removeForReorg(pcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+    // Re-limit mempool size, in case we added any transactions
+    LimitMempoolSize(mempool, GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
+}
+
 CAmount GetMinRelayFee(const CTransaction& tx, unsigned int nBytes, bool fAllowFree)
 {
     {
@@ -7826,3 +7875,4 @@ LuxTransaction LuxTxConverter::createEthTX(const EthTransactionParams& etp, uint
     return txEth;
 }
 ///////////////////////////////////////////////////////////////////////
+
