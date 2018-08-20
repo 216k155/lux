@@ -709,12 +709,18 @@ bool getAddressFromIndex(const int &type, const uint160 &hash, std::string &addr
 bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint160, int> > &addresses)
 {
     if (params[0].isStr()) {
-        //CBitcoinAddress address(params[0].get_str());
         CTxDestination address = DecodeDestination(params[0].get_str());
         uint160 hashBytes;
         int type = 0;
-        //if (!address.GetIndexKey(hashBytes, type)) {
-        if (!IsValidDestination(address)) {
+        const CKeyID* keyID = boost::get<CKeyID>(&address);
+        const CScriptID* scriptID = boost::get<CScriptID>(&address);
+        if (keyID && IsValidDestination(*keyID)) {
+            type = 1;
+            hashBytes = *keyID;
+        } else if (scriptID && IsValidDestination(*scriptID)) {
+            type = 2;
+            hashBytes = *scriptID;
+        } else {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
         }
         addresses.push_back(std::make_pair(hashBytes, type));
