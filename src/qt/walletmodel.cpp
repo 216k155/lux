@@ -871,3 +871,8 @@ bool WalletModel::isMineAddress(const std::string &Address)
     return true;
 }
 
+bool WalletModel::hdEnabled() const
+{
+    return wallet->IsHDEnabled();
+}
+

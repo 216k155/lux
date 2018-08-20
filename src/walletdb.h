@@ -155,7 +155,7 @@ public:
     bool WritePurpose(const std::string& strAddress, const std::string& purpose);
     bool ErasePurpose(const std::string& strAddress);
 
-    bool WriteTx(uint256 hash, const CWalletTx& wtx);
+    bool WriteTx(const CWalletTx& wtx);
     bool EraseTx(uint256 hash);
 
     bool WriteToken(const CTokenInfo& wtoken);
@@ -198,7 +198,8 @@ public:
     bool ErasePool(int64_t nPool);
 
     bool WriteMinVersion(int nVersion);
-
+    bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
+    bool WriteAccountingEntry_Backend(const CAccountingEntry& acentry);
     bool ReadAccount(const std::string& strAccount, CAccount& account);
     bool WriteAccount(const std::string& strAccount, const CAccount& account);
 
@@ -217,19 +218,21 @@ public:
     CAmount GetAccountCreditDebit(const std::string& strAccount);
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
 
-    DBErrors ReorderTransactions(CWallet* pwallet);
+    //DBErrors LoadWallet(bool& fFirstRunRet);
     DBErrors LoadWallet(CWallet* pwallet);
-    DBErrors FindWalletTx(CWallet* pwallet, std::vector<uint256>& vTxHash, std::vector<CWalletTx>& vWtx);
-    DBErrors ZapWalletTx(CWallet* pwallet, std::vector<CWalletTx>& vWtx);
+    DBErrors FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CWalletTx>& vWtx);
+    DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
+    DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
     static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
     static bool Recover(CDBEnv& dbenv, std::string filename);
-    static unsigned int GetUpdateCounter();
     bool WriteHDChain(const CHDChain& chain);
+
+    static void IncrementUpdateCounter();
+    static unsigned int GetUpdateCounter();
 private:
     CWalletDB(const CWalletDB&);
     void operator=(const CWalletDB&);
 
-    bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
 };
 
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);

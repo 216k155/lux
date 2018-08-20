@@ -1663,7 +1663,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         if (fFirstRun) {
             // Create new keyUser and set as default key
 
-            if (GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET)) {
+        if (GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET) && !pwalletMain->IsHDEnabled()) {
             // generate a new master key
             CKey key;
             key.MakeNewKey(true);
@@ -1682,10 +1682,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         else if (mapArgs.count("-usehd")) {
         bool useHD = GetBoolArg("-usehd", DEFAULT_USE_HD_WALLET);
-        if (!pwalletMain->hdChain.masterKeyID.IsNull() && !useHD)
+        if (!pwalletMain->IsHDEnabled() && !useHD) {
             return InitError(strprintf(_("Error loading %s: You can't disable HD on a already existing HD wallet"), strWalletFile));
-        if (pwalletMain->hdChain.masterKeyID.IsNull() && useHD)
+            }
+        if (pwalletMain->IsHDEnabled() && useHD) {
             return InitError(strprintf(_("Error loading %s: You can't enable HD on a already existing non-HD wallet"), strWalletFile));
+            }
     }
         LogPrintf("%s", strErrors.str());
         LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
@@ -1710,7 +1712,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             pwalletMain->ScanForWalletTransactions(pindexRescan, true);
             LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
             pwalletMain->SetBestChain(chainActive.GetLocator());
-            nWalletDBUpdated++;
+            CWalletDB::IncrementUpdateCounter();
 
             // Restore wallet transaction metadata after -zapwallettxes=1
             if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2") {

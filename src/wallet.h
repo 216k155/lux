@@ -84,7 +84,8 @@ enum WalletFeature {
 
     FEATURE_WALLETCRYPT = 40000, // wallet encryption
     FEATURE_COMPRPUBKEY = 60000, // compressed public keys
-
+    FEATURE_HD = 130000,
+    FEATURE_HD_SPLIT = 139900,
     FEATURE_LATEST = 61000
 };
 
@@ -517,7 +518,7 @@ public:
      * keystore implementation
      * Generate a new key
      */
-    CPubKey GenerateNewKey(bool internal = false);
+    CPubKey GenerateNewKey(CWalletDB& walletdb, bool internal = false);
     //! Adds a key to the store, and saves it to disk.
     bool AddKeyPubKey(const CKey& key, const CPubKey& pubkey);
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
@@ -585,6 +586,8 @@ public:
      */
     TxItems OrderedTxItems(std::list<CAccountingEntry>& acentries, std::string strAccount = "");
 
+    DBErrors ReorderTransactions();
+
     void MarkDirty();
     bool AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet = false, bool fFlushOnClose=true);
     void SyncTransaction(const CTransaction& tx, const CBlock* pblock);
@@ -639,9 +642,9 @@ public:
     bool NewKeyPool();
     size_t KeypoolCountExternalKeys();
     bool TopUpKeyPool(unsigned int kpSize = 0);
-    bool ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool internal);
+    void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool fRequestedInternal);
     void KeepKey(int64_t nIndex);
-    void ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey);
+    void ReturnKey(int64_t nIndex, bool fInternal);
     bool GetKeyFromPool(CPubKey &key, bool internal = false);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
@@ -730,6 +733,7 @@ public:
 
     DBErrors LoadWallet(bool& fFirstRunRet);
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
+    DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
 
     bool SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& purpose);
 
@@ -840,6 +844,8 @@ public:
     /* Set the current hd master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CKey& key);
     const CHDChain& GetHDChain() { return hdChain; }
+    /* Returns true if HD is enabled */
+    bool IsHDEnabled();
 };
 
 /** A key allocated from the key pool. */

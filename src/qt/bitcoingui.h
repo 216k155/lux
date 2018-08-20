@@ -95,7 +95,8 @@ private:
 
     UnitDisplayStatusBarControl* unitDisplayControl;
     QLabel* labelStakingIcon;
-    QLabel* labelEncryptionIcon;
+    QLabel* labelWalletEncryptionIcon;
+    QLabel* labelWalletHDStatusIcon;
     QPushButton* labelConnectionsIcon;
     QLabel* labelBlocksIcon;
     QLabel* progressBarLabel;
@@ -208,6 +209,8 @@ public slots:
        @see WalletModel::EncryptionStatus
     */
     void setEncryptionStatus(int status);
+
+    void setHDStatus(int hdEnabled);
 
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 

@@ -241,6 +241,7 @@ public:
     std::vector<CTokenInfo> getInvalidTokens();
 
     bool isMineAddress(const std::string &Address);
+    bool hdEnabled() const;
 
 private:
     CWallet* wallet;
