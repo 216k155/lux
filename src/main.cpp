@@ -5529,6 +5529,7 @@ void UnloadBlockIndex()
     setDirtyFileInfo.clear();
     mapNodeState.clear();
     recentRejects.reset(nullptr);
+
     for (BlockMap::value_type& entry : mapBlockIndex) {
         delete entry.second;
     }
@@ -5967,9 +5968,11 @@ bool static AlreadyHave(const CInv& inv)
                 // or a double-spend. Reset the rejects filter and give those
                 // txs a second chance.
                 hashRecentRejectsChainTip = chainActive.Tip()->GetBlockHash();
-                recentRejects->reset();
+
+                if (recentRejects)
+                    recentRejects->reset();
             }
-            return recentRejects->contains(inv.GetHash()) || mempool.exists(inv.GetHash()) ||
+            return (recentRejects && recentRejects->contains(inv.GetHash())) || mempool.exists(inv.GetHash()) ||
                    mapOrphanTransactions.count(inv.GetHash()) || pcoinsTip->HaveCoin(inv.GetHash());
         }
     case MSG_BLOCK:
@@ -6664,7 +6667,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             // It may be the case that the orphans parents have all been rejected
             bool fRejectedParents = false;
             for (const CTxIn& txin : tx.vin) {
-                if (recentRejects->contains(txin.prevout.hash)) {
+                if (recentRejects && recentRejects->contains(txin.prevout.hash)) {
                     fRejectedParents = true;
                     break;
                 }
