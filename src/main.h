@@ -156,7 +156,8 @@ static const bool DEFAULT_SPENTINDEX = false;
 static const int64_t STATIC_POS_REWARD = 1 * COIN; //Constant reward 8%
 
 static const bool DEFAULT_LOGEVENTS = false;
-
+/** Default for -mempoolexpiry, expiration time for mempool transactions in hours */
+static const unsigned int DEFAULT_MEMPOOL_EXPIRY = 336;
 ////////////////////////////////////////////////////// lux
 static const uint64_t DEFAULT_GAS_LIMIT_OP_CREATE=2500000;
 static const uint64_t DEFAULT_GAS_LIMIT_OP_SEND=250000;

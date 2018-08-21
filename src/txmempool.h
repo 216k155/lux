@@ -22,12 +22,14 @@
 #include "primitives/transaction.h"
 #include "sync.h"
 #include "random.h"
+#include "memusage.h"
+#include "core_memusage.h"
 
 //#undef foreach
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
-
+#include <boost/multi_index/sequenced_index.hpp>
 #include <boost/signals2/signal.hpp>
 
 class CAutoFile;
@@ -836,6 +838,82 @@ struct TxCoinAgePriorityCompare
         if (a.first == b.first)
             return CompareTxMemPoolEntryByScore()(*(b.second), *(a.second)); //Reverse order to make sort less than
         return a.first < b.first;
+    }
+};
+
+// multi_index tag names
+struct txid_index {};
+struct insertion_order {};
+
+struct DisconnectedBlockTransactions {
+    typedef boost::multi_index_container<
+    CTransactionRef,
+    boost::multi_index::indexed_by<
+            // sorted by txid
+            boost::multi_index::hashed_unique<
+            boost::multi_index::tag<txid_index>,
+    mempoolentry_txid,
+    SaltedTxidHasher
+    >,
+    // sorted by order in the blockchain
+    boost::multi_index::sequenced<
+    boost::multi_index::tag<insertion_order>
+    >
+    >
+    > indexed_disconnected_transactions;
+
+    // It's almost certainly a logic bug if we don't clear out queuedTx before
+    // destruction, as we add to it while disconnecting blocks, and then we
+    // need to re-process remaining transactions to ensure mempool consistency.
+    // For now, assert() that we've emptied out this object on destruction.
+    // This assert() can always be removed if the reorg-processing code were
+    // to be refactored such that this assumption is no longer true (for
+    // instance if there was some other way we cleaned up the mempool after a
+    // reorg, besides draining this object).
+    ~DisconnectedBlockTransactions() { assert(queuedTx.empty()); }
+
+    indexed_disconnected_transactions queuedTx;
+    uint64_t cachedInnerUsage = 0;
+
+    // Estimate the overhead of queuedTx to be 6 pointers + an allocation, as
+    // no exact formula for boost::multi_index_contained is implemented.
+    size_t DynamicMemoryUsage() const {
+        return memusage::MallocUsage(sizeof(CTransactionRef) + 6 * sizeof(void*)) * queuedTx.size() + cachedInnerUsage;
+    }
+
+    void addTransaction(const CTransactionRef& tx)
+    {
+        queuedTx.insert(tx);
+        cachedInnerUsage += RecursiveDynamicUsage(tx);
+    }
+
+    // Remove entries based on txid_index, and update memory usage.
+    void removeForBlock(const std::vector<CTransactionRef>& vtx)
+    {
+        // Short-circuit in the common case of a block being added to the tip
+        if (queuedTx.empty()) {
+            return;
+        }
+        for (auto const &tx : vtx) {
+            auto it = queuedTx.find(tx->GetHash());
+            if (it != queuedTx.end()) {
+                cachedInnerUsage -= RecursiveDynamicUsage(*it);
+                queuedTx.erase(it);
+            }
+        }
+    }
+
+    // Remove an entry by insertion_order index, and update memory usage.
+    void removeEntry(indexed_disconnected_transactions::index<insertion_order>::type::iterator entry)
+    {
+        cachedInnerUsage -= RecursiveDynamicUsage(*entry);
+        queuedTx.get<insertion_order>().erase(entry);
+    }
+
+    void clear()
+    {
+        cachedInnerUsage = 0;
+        queuedTx.clear();
     }
 };
 
