@@ -47,6 +47,7 @@ class CHDChain
 {
 public:
     uint32_t nExternalChainCounter;
+    uint32_t nInternalChainCounter;
     CKeyID masterKeyID; //!< master key hash160
 
     static const int VERSION_HD_BASE        = 1;
@@ -61,6 +62,8 @@ public:
     {
         READWRITE(this->nVersion);
         READWRITE(nExternalChainCounter);
+        if (this->nVersion >= VERSION_HD_CHAIN_SPLIT)
+            READWRITE(nInternalChainCounter);
         READWRITE(masterKeyID);
     }
 
@@ -68,6 +71,7 @@ public:
     {
         nVersion = CHDChain::CURRENT_VERSION;
         nExternalChainCounter = 0;
+        nInternalChainCounter = 0;
         masterKeyID.SetNull();
     }
 };
@@ -176,7 +180,7 @@ public:
 
     bool WriteCScript(const uint160& hash, const CScript& redeemScript);
 
-    bool WriteWatchOnly(const CScript& script);
+    bool WriteWatchOnly(const CScript &script, const CKeyMetadata &keymeta);
     bool EraseWatchOnly(const CScript& script);
 
     bool WriteBestBlock(const CBlockLocator& locator);

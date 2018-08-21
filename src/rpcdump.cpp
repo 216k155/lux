@@ -230,7 +230,7 @@ UniValue importaddress(const JSONRPCRequest& request)
 
         pwalletMain->MarkDirty();
 
-        if (!pwalletMain->AddWatchOnly(script))
+        if (!pwalletMain->HaveWatchOnly(script) && !pwalletMain->AddWatchOnly(script, 0))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding address to wallet");
 
         if (fRescan) {
@@ -410,7 +410,7 @@ UniValue dumpwallet(const JSONRPCRequest& request)
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
     for (const auto& entry : mapKeyBirth) {
-        if (const CKeyID* keyID = boost::get<CKeyID>(&entry.first)) { // set and test
+        if (const CKeyID *keyID = boost::get<CKeyID>(&entry.first)) { // set and test
             vKeyBirth.push_back(std::make_pair(entry.second, *keyID));
         }
     }
@@ -429,8 +429,7 @@ UniValue dumpwallet(const JSONRPCRequest& request)
     if (!masterKeyID.IsNull())
     {
         CKey key;
-        if (pwalletMain->GetKey(masterKeyID, key))
-        {
+        if (pwalletMain->GetKey(masterKeyID, key)) {
             CExtKey masterKey;
             masterKey.SetMaster(key.begin(), key.size());
 
@@ -441,9 +440,8 @@ UniValue dumpwallet(const JSONRPCRequest& request)
         }
     }
 
-
     for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
-        const CKeyID& keyid = it->second;
+        const CKeyID &keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
         std::string strAddr = EncodeDestination(keyid);
         CKey key;
@@ -461,14 +459,18 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                 file << "change=1";
             }
             file << strprintf(" # addr=%s%s\n", strAddr, (pwalletMain->mapKeyMetadata[keyid].hdKeypath.size() > 0 ? " hdkeypath="+pwalletMain->mapKeyMetadata[keyid].hdKeypath : ""));
-            file << strprintf(" # addr=%s%s\n", strAddr, (pwalletMain->mapKeyMetadata[keyid].hdKeypath.size() > 0 ? " hdkeypath="+pwalletMain->mapKeyMetadata[keyid].hdKeypath : ""));
         }
     }
     file << "\n";
     file << "# End of dump\n";
     file.close();
-    return NullUniValue;
+
+    UniValue reply(UniValue::VOBJ);
+    reply.push_back(Pair("filename", filepath.string()));
+
+    return reply;
 }
+
 
 UniValue bip38encrypt(const JSONRPCRequest& request)
 {

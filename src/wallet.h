@@ -87,7 +87,8 @@ enum WalletFeature {
     FEATURE_COMPRPUBKEY = 60000, // compressed public keys
     FEATURE_HD = 130000,
     FEATURE_HD_SPLIT = 139900,
-    FEATURE_LATEST = 61000
+    FEATURE_LATEST = FEATURE_COMPRPUBKEY // HD is optional, use FEATURE_COMPRPUBKEY as latest version
+
 };
 
 enum OutputType : int
@@ -199,27 +200,26 @@ public:
     std::vector<uint256> vMerkleBranch;
     int nIndex;
 
-    // memory only
-    mutable bool fMerkleVerified;
-
-
     CMerkleTx()
     {
         SetTx(MakeTransactionRef());
         Init();
     }
 
-    explicit CMerkleTx(CTransactionRef arg)
+    CMerkleTx(CTransactionRef arg)
     {
         SetTx(std::move(arg));
         Init();
     }
 
+    /** Helper conversion operator to allow passing CMerkleTx where CTransaction is expected.
+     *  TODO: adapt callers and remove this operator. */
+    operator const CTransaction&() const { return *tx; }
+
     void Init()
     {
-        hashBlock = 0;
+        hashBlock = uint256();
         nIndex = -1;
-        fMerkleVerified = false;
     }
 
     void SetTx(CTransactionRef arg)
@@ -230,8 +230,8 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        std::vector<uint256> vMerkleBranch; // For compatibility with older versions.
         READWRITE(tx);
         READWRITE(hashBlock);
         READWRITE(vMerkleBranch);
@@ -304,6 +304,9 @@ public:
     bool IsCoinStake() const { return tx->IsCoinStake(); }
 
     bool IsCoinGenerated() const { return tx->IsCoinGenerated(); }
+
+    // True if only scriptSigs are different
+   // bool IsEquivalentTo(const CWalletTx& tx) const;
 
     std::string ToString() const { return tx->ToString(); }
 
@@ -384,6 +387,9 @@ public:
      */
     mutable CCriticalSection cs_wallet;
 
+    /* HD derive new child key (on internal or external chain) */
+    void DeriveNewChildKey(CWalletDB &walletdb, CKeyMetadata& metadata, CKey& secret, bool internal = false);
+
     bool fFileBacked;
     bool fWalletUnlockAnonymizeOnly;
     std::string strWalletFile;
@@ -398,7 +404,7 @@ public:
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
     unsigned int nMasterKeyMaxID;
-
+    bool AddWatchOnly(const CScript& dest) override;
     //MultiSend
     std::vector<std::pair<std::string, int> > vMultiSend;
     bool fMultiSendStake;
@@ -537,11 +543,12 @@ public:
      */
     CPubKey GenerateNewKey(CWalletDB& walletdb, bool internal = false);
     //! Adds a key to the store, and saves it to disk.
-    bool AddKeyPubKey(const CKey& key, const CPubKey& pubkey);
+    bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey) override;
+    bool AddKeyPubKeyWithDB(CWalletDB &walletdb,const CKey& key, const CPubKey &pubkey);
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
     bool LoadKey(const CKey& key, const CPubKey& pubkey) { return CCryptoKeyStore::AddKeyPubKey(key, pubkey); }
     //! Load metadata (used by LoadWallet)
-    bool LoadKeyMetadata(const CPubKey& pubkey, const CKeyMetadata& metadata);
+    bool LoadKeyMetadata(const CTxDestination& pubKey, const CKeyMetadata &metadata);
 
     bool LoadMinVersion(int nVersion)
     {
@@ -552,7 +559,7 @@ public:
     }
     void UpdateTimeFirstKey(int64_t nCreateTime);
     //! Adds an encrypted key to the store, and saves it to disk.
-    bool AddCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret) override;
+    bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret) override;
     //! Adds an encrypted key to the store, without saving it to disk (used by LoadWallet)
     bool LoadCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret);
     bool AddCScript(const CScript& redeemScript) override;
@@ -568,8 +575,8 @@ public:
     bool GetDestData(const CTxDestination& dest, const std::string& key, std::string* value) const;
 
     //! Adds a watch-only address to the store, and saves it to disk.
-    bool AddWatchOnly(const CScript& dest);
-    bool RemoveWatchOnly(const CScript& dest);
+    bool AddWatchOnly(const CScript& dest, int64_t nCreateTime);
+    bool RemoveWatchOnly(const CScript &dest) override;
     //! Adds a watch-only address to the store, without saving it to disk (used by LoadWallet)
     bool LoadWatchOnly(const CScript& dest);
 
@@ -1039,6 +1046,9 @@ public:
     }
 
     const CWallet* GetWallet() const { return pwallet; }
+
+    // True if only scriptSigs are different
+    bool IsEquivalentTo(const CWalletTx& tx);
 
     void Init(const CWallet* pwalletIn)
     {
