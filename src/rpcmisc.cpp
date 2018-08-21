@@ -910,7 +910,7 @@ UniValue getaddressutxos(const JSONRPCRequest& request)
 
 UniValue getaddressdeltas(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() != 1 || !request.params[0].isObject())
+    if (request.fHelp || request.params.size() < 1)
         throw runtime_error(
             "getaddressdeltas\n"
             "\nReturns all changes for an address (requires addressindex to be enabled).\n"
@@ -920,9 +920,9 @@ UniValue getaddressdeltas(const JSONRPCRequest& request)
             "    [\n"
             "      \"address\"  (string) The base58check encoded address\n"
             "      ,...\n"
-            "    ]\n"
-            "  \"start\" (number) The start block height\n"
-            "  \"end\" (number) The end block height\n"
+            "    ],\n"
+            "  \"start\" (number) The start block height (optional)\n"
+            "  \"end\" (number) The end block height (optional)\n"
             "}\n"
             "\nResult:\n"
             "[\n"
@@ -937,24 +937,23 @@ UniValue getaddressdeltas(const JSONRPCRequest& request)
             "]\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddressdeltas", "\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\"")
-            + HelpExampleCli("getaddressdeltas", "'{\"addresses\": [\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\"]}'")
-            + HelpExampleRpc("getaddressdeltas", "{\"addresses\": [\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\"]}")
+            + HelpExampleCli("getaddressdeltas", "'{\"addresses\": [\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\"], \"start\": 0, \"end\": 35000}'")
+            + HelpExampleRpc("getaddressdeltas", "{\"addresses\": [\"LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg\"], \"start\": 0, \"end\": 35000}")
         );
 
-
-    UniValue startValue = find_value(request.params[0].get_obj(), "start");
-    UniValue endValue = find_value(request.params[0].get_obj(), "end");
-
-    int start = 0;
-    int end = 0;
-
-    if (startValue.isNum() && endValue.isNum()) {
-        start = startValue.get_int();
-        end = endValue.get_int();
-        if (end < start) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "End value is expected to be greater than start");
+    int start = 0, end = 0;
+    if (request.params[0].isObject()) {
+        UniValue startValue = find_value(request.params[0].get_obj(), "start");
+        UniValue endValue = find_value(request.params[0].get_obj(), "end");
+        if (startValue.isNum() && endValue.isNum()) {
+            start = startValue.get_int();
+            end = endValue.get_int();
         }
     }
+    if (start > 0 && end == 0)
+        end = chainActive.Height();
+    if (end < start)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "End value is expected to be greater than start");
 
     std::vector<std::pair<uint160, int> > addresses;
 
@@ -965,7 +964,7 @@ UniValue getaddressdeltas(const JSONRPCRequest& request)
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
 
     for (std::vector<std::pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
-        if (start > 0 && end > 0) {
+        if (start >= 0 && end > 0) {
             if (!GetAddressIndex((*it).first, (*it).second, addressIndex, start, end)) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
             }

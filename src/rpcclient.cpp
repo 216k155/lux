@@ -80,8 +80,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     ////////////////////////////////////////////////// // lux
     { "getaddresstxids", 0, "addresses"},
     { "getaddressmempool", 0, "addresses"},
-    { "getaddressdeltas", 0, "addresses"},
     { "getaddressbalance", 0, "addresses"},
+    { "getaddressdeltas", 0, "addresses"},
+    { "getaddressdeltas", 1, "start"},
+    { "getaddressdeltas", 2, "end"},
     { "getaddressutxos", 0, "addresses"},
     { "getblockhashes", 0, "high"},
     { "getblockhashes", 1, "low"},
@@ -226,7 +228,7 @@ UniValue RPCConvertValues(const std::string &strMethod, const std::vector<std::s
         // insert string value directly
         if (!rpcCvtTable.convert(strMethod, idx)) {
             params.push_back(strVal);
-        } else if (strMethod.substr(0, 10) == "getaddress") {
+        } else if (strMethod.substr(0, 10) == "getaddress" && idx == 0) {
             UniValue p;
             try {
                 p = ParseNonRFCJSONValue(strVal);
