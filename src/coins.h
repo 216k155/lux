@@ -19,61 +19,6 @@
 
 #include <boost/unordered_map.hpp>
 
-class Coin
-{
-public:
-    //! whether the containing transaction was a coinbase
-    bool fCoinBase;
-
-    //! unspent transaction output
-    CTxOut out;
-
-    //! at which height the containing transaction was included in the active block chain
-    uint32_t nHeight;
-
-    //! construct a Coin from a CTxOut and height/coinbase properties.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn) : fCoinBase(fCoinBaseIn), out(std::move(outIn)), nHeight(nHeightIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn) : fCoinBase(fCoinBaseIn), out(outIn), nHeight(nHeightIn) {}
-
-    void Clear() {
-        out.SetNull();
-        fCoinBase = false;
-        nHeight = 0;
-    }
-
-    //! empty constructor
-    Coin() : fCoinBase(false), nHeight(0) { }
-
-    bool IsCoinBase() const {
-        return fCoinBase;
-    }
-
-    template<typename Stream>
-    void Serialize(Stream &s) const {
-        assert(!IsSpent());
-        uint32_t code = nHeight * 2 + fCoinBase;
-        ::Serialize(s, VARINT(code));
-        ::Serialize(s, CTxOutCompressor(REF(out)));
-    }
-
-    template<typename Stream>
-    void Unserialize(Stream &s) {
-        uint32_t code = 0;
-        ::Unserialize(s, VARINT(code));
-        nHeight = code >> 1;
-        fCoinBase = code & 1;
-        ::Unserialize(s, REF(CTxOutCompressor(out)));
-    }
-
-    bool IsSpent() const {
-        return out.IsNull();
-    }
-
-    size_t DynamicMemoryUsage() const {
-        return memusage::DynamicUsage(out.scriptPubKey);
-    }
-};
-
 /** 
 
     ****Note - for LUX we added fCoinStake to the 2nd bit. Keep in mind when reading the following and adjust as needed.
@@ -158,6 +103,21 @@ public:
     CCoins(const CTransaction& tx, int nHeightIn)
     {
         FromTx(tx, nHeightIn);
+    }
+    
+    CCoins(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn)
+    {
+        vout.resize(1);
+        vout[0] = std::move(outIn);
+        fCoinBase = fCoinBaseIn; 
+        nHeight = nHeightIn;
+    }
+    CCoins(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn)
+    {
+       vout.resize(1);
+       vout[0] = outIn;
+       fCoinBase = fCoinBaseIn; 
+       nHeight = nHeightIn;
     }
 
     void Clear()
@@ -316,6 +276,13 @@ public:
             if (!out.IsNull())
                 return false;
         return true;
+    }
+
+    size_t DynamicMemoryUsage() const {
+        size_t size = 0;
+        for (const CTxOut& out : vout)
+            size += memusage::DynamicUsage(out.scriptPubKey);
+        return size;
     }
 };
 
@@ -483,7 +450,7 @@ public:
      * allowed while accessing the returned pointer.
      */
     const CCoins* AccessCoins(const uint256& txid) const;
-    const Coin AccessCoin(const COutPoint &output) const;
+    const CCoins AccessCoin(const COutPoint &output) const;
     /**
      * Return a modifiable reference to a CCoins. If no entry with the given
      * txid exists, a new one is created. Simultaneous modifications are not
@@ -491,14 +458,14 @@ public:
      */
     CCoinsModifier ModifyCoins(const uint256& txid);
 
-    void AddCoin(const COutPoint& outpoint, Coin&& coin, bool potential_overwrite);
+    void AddCoin(const COutPoint& outpoint, CCoins&& coin, bool potential_overwrite);
 
     /**
      * Spend a coin. Pass moveto in order to get the deleted data.
      * If no unspent output exists for the passed outpoint, this call
      * has no effect.
      */
-    void SpendCoin(const COutPoint &outpoint, Coin* moveto = nullptr);
+    void SpendCoin(const COutPoint &outpoint, CCoins* moveto = nullptr);
     /**
      * Push the modifications applied to this cache to its base.
      * Failure to call this method before destruction will cause the changes to be forgotten.
@@ -550,6 +517,6 @@ private:
 void AddCoins(CCoinsViewCache& cache, const CTransaction& tx, int nHeight);
 
 //! Utility function to find any unspent output with a given txid.
-const Coin AccessByTxid(const CCoinsViewCache& cache, const uint256& txid);
+const CCoins AccessByTxid(const CCoinsViewCache& cache, const uint256& txid);
 
 #endif // BITCOIN_COINS_H
