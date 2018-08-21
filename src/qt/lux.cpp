@@ -531,7 +531,7 @@ void BitcoinApplication::shutdownResult()
 void BitcoinApplication::handleRunawayException(const QString& message)
 {
     QMessageBox::critical(0, "Runaway exception", BitcoinGUI::tr("A fatal error occurred. LUX can no longer continue safely and will quit.") + QString("\n\n") + message);
-    ::exit(1);
+    ::exit(EXIT_FAILURE);
 }
 
 WId BitcoinApplication::getMainWinId() const
@@ -630,7 +630,7 @@ int main(int argc, char* argv[])
     if (mapArgs.count("-?") || mapArgs.count("-help") || mapArgs.count("-version")) {
         HelpMessageDialog help(nullptr, mapArgs.count("-version"));
         help.showOrPrint();
-        return 1;
+        return EXIT_SUCCESS;
     }
 
     // Show End User License agreement window
@@ -646,14 +646,14 @@ int main(int argc, char* argv[])
     if (!fs::is_directory(GetDataDir(false))) {
         QMessageBox::critical(0, QObject::tr("Luxcore"),
             QObject::tr("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
-        return 1;
+        return EXIT_FAILURE;
     }
     try {
         ReadConfigFile(mapArgs, mapMultiArgs);
     } catch (std::exception& e) {
         QMessageBox::critical(0, QObject::tr("Luxcore"),
             QObject::tr("Error: Cannot parse configuration file: %1. Only use key=value syntax.").arg(e.what()));
-        return 1;
+        return EXIT_FAILURE;
     }
 
     /// 7. Determine network (and switch to network specific options)
@@ -665,7 +665,7 @@ int main(int argc, char* argv[])
     // Check for -testnet or -regtest parameter (Params() calls are only valid after this clause)
     if (!SelectParamsFromCommandLine()) {
         QMessageBox::critical(0, QObject::tr("Luxcore"), QObject::tr("Error: Invalid combination of -regtest and -testnet."));
-        return 1;
+        return EXIT_FAILURE;
     }
 #ifdef ENABLE_WALLET
     // Parse URIs on command line -- this can affect Params()
@@ -686,7 +686,7 @@ int main(int argc, char* argv[])
         QMessageBox::critical(0, QObject::tr("Luxcore"),
             QObject::tr("Error reading masternode configuration file: %1").arg(strErr.c_str()));
 #if defined(REQUIRE_MASTERNODE_CONFIG)
-        return 1;
+        return EXIT_FAILURE;
 #endif
     }
 
@@ -697,7 +697,7 @@ int main(int argc, char* argv[])
     // - Do this after creating app and setting up translations, so errors are
     // translated properly.
     if (PaymentServer::ipcSendCommandLine())
-        exit(0);
+        exit(EXIT_SUCCESS);
 
     // Start up the payment server early, too, so impatient users that click on
     // lux: links repeatedly have their payment requests routed to this process:
