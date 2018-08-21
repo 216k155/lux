@@ -130,6 +130,12 @@ struct WitnessUnknown
  */
 typedef boost::variant<CNoDestination, CKeyID, CScriptID, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessUnknown> CTxDestination;
 
+struct DataVisitor : public boost::static_visitor<valtype>
+{
+    valtype operator()(const CNoDestination& noDest);
+    valtype operator()(const CKeyID& keyID);
+    valtype operator()(const CScriptID& scriptID);
+};
 /** Check whether a CTxDestination is a CNoDestination. */
 bool IsValidDestination(const CTxDestination& dest);
 
@@ -158,6 +164,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
  * P2PKH, P2SH, P2WPKH, and P2WSH scripts.
  */
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype* typeRet = nullptr);
+bool ExtractDestination(const COutPoint, const CScript&, CTxDestination&, txnouttype* = nullptr);
 
 /**
  * Parse a standard scriptPubKey with one or more destination addresses. For

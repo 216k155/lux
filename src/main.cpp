@@ -2450,16 +2450,11 @@ static DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* 
                 int undoHeight = txundo.vprevout[j].nHeight;
                 const CTxIn input = tx.vin[j];
 
-                if (fSpentIndex) {
+                if (fAddressIndex || fSpentIndex) {
                     // undo and delete the spent index
                     spentIndex.push_back(std::make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue()));
-                }
-
-                if (fAddressIndex) {
-
-                    const CTxIn& txin = tx.vin[j];
 #if 1
-                    const CTxOut &prevout = view.GetOutputFor(txin);
+                    const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
 #else
                     const CCoins* coins = view.AccessCoins(txin.prevout.hash);
                     CTxOut prevout;
@@ -2818,8 +2813,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
                     const CTxIn& txin = tx.vin[j];
                     if (txin.prevout.IsNull()) continue;
-#if 0
-                    const CTxOut &prevout = view.GetOutputFor(txin);
+#if 1
+                    const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
 #else
                     const CCoins* coins = view.AccessCoins(txin.prevout.hash);
                     CTxOut prevout;
@@ -2860,14 +2855,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                             CAddressUnspentValue()
                         ));
                     }
-                    if (fSpentIndex) {
-                        // add the spent index to determine the txid and input that spent an output
-                        // and to find the amount and address from an input
-                        spentIndex.push_back(std::make_pair(
+                    // add the spent index to determine the txid and input that spent an output
+                    // and to find the amount and address from an input
+                    spentIndex.push_back(std::make_pair(
                             CSpentIndexKey(txin.prevout.hash, txin.prevout.n),
                             CSpentIndexValue(txhash, j, pindex->nHeight, prevout.nValue, addressType, hashBytes)
-                        ));
-                    }
+                    ));
                 }
             }
 
@@ -2936,7 +2929,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight)
                     ));
                 }
-
             }
         }
 
@@ -3076,6 +3068,22 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
 
 /////////////////////////////////////////////////////////////////////////////////////////
+ if (fAddressIndex) {
+
+            for (unsigned int k = 0; k < tx.vout.size(); k++) {
+                const CTxOut &out = tx.vout[k];
+                CTxDestination dest;
+                if (ExtractDestination(out.scriptPubKey, dest)) {
+                    short type(dest.which());
+
+                    // record receiving activity
+                    addressIndex.push_back(std::make_pair(CAddressIndexKey(type, uint160(), pindex->nHeight, i, tx.GetHash(), k, false), out.nValue));
+
+                    // record unspent output
+                    addressUnspentIndex.push_back(std::make_pair(CAddressUnspentKey(type, uint160(), tx.GetHash(), k), CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight)));
+                }
+            }
+        }
 
         CTxUndo undoDummy;
         if (i > 0) {
