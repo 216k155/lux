@@ -50,6 +50,8 @@ extern bool bZeroBalanceAddressToken;
 extern bool fSendFreeTransactions;
 extern bool fPayAtLeastCustomFee;
 extern bool fNotUseChangeAddress;
+typedef CWallet* CWalletRef;
+extern std::vector<CWalletRef> vpwallets;
 //! -paytxfee default
 static const CAmount DEFAULT_TRANSACTION_FEE = 1000;
 //! -paytxfee will warn if called with a higher fee than this amount (in satoshis) per KB

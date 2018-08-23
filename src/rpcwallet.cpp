@@ -45,7 +45,7 @@ static CUpdatedBlock latestblock;
 
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
-
+static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 bool EnsureWalletIsAvailable(bool avoidException)
 {
     if (!pwalletMain)
@@ -67,6 +67,21 @@ void EnsureWalletIsUnlocked()
 {
     if (pwalletMain->IsLocked() || pwalletMain->fWalletUnlockAnonymizeOnly)
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+}
+
+CWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request) {
+    if (request.URI.substr(0, WALLET_ENDPOINT_BASE.size()) == WALLET_ENDPOINT_BASE) {
+
+        // wallet endpoint was used
+        std::string requestedWallet = urlDecode(request.URI.substr(WALLET_ENDPOINT_BASE.size()));
+        for (CWalletRef pwalletMain : ::vpwallets) {
+            if (pwalletMain->strWalletFile == requestedWallet) {
+                return pwalletMain;
+            }
+        }
+        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Requested wallet does not exist or is not loaded");
+    }
+    return ::vpwallets.size() == 1 || (request.fHelp && ::vpwallets.size() > 0) ? ::vpwallets[0] : nullptr;
 }
 
 void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
@@ -457,7 +472,6 @@ UniValue getrawchangeaddress(const JSONRPCRequest& request)
 
     return EncodeDestination(dest);
 }
-
 
 UniValue setaccount(const JSONRPCRequest& request)
 {

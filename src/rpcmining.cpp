@@ -18,6 +18,7 @@
 #include "masternode.h"
 #include "primitives/transaction.h"
 #include "rpcserver.h"
+#include "rpcserver.h"
 #include "util.h"
 #include "script/script.h"
 #include "script/script_error.h"
@@ -249,11 +250,14 @@ UniValue getmininginfo(const JSONRPCRequest& request)
             HelpExampleCli("getmininginfo", "") + HelpExampleRpc("getmininginfo", ""));
 
     UniValue obj(UniValue::VOBJ);
+    UniValue diff(UniValue::VOBJ);
     CBlockIndex* powTip = GetLastBlockOfType(0);
     obj.push_back(Pair("blocks", (int)chainActive.Height()));
     obj.push_back(Pair("currentblocksize", (uint64_t)nLastBlockSize));
     obj.push_back(Pair("currentblocktx", (uint64_t)nLastBlockTx));
-    obj.push_back(Pair("difficulty", (double)GetDifficulty(powTip)));
+    diff.push_back(Pair("difficulty", (double)GetDifficulty(powTip)));
+    obj.push_back(Pair("netmhashps", GetPoWMHashPS()));
+    obj.push_back(Pair("netstakeweight", GetPoSKernelPS()));
     obj.push_back(Pair("errors", GetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps", getnetworkhashps(request)));
     obj.push_back(Pair("pooledtx", (uint64_t)mempool.size()));
