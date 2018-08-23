@@ -12,6 +12,7 @@
 #include "sync.h"
 #include "version.h"
 
+#include <atomic>
 #include <map>
 #include <string>
 #include <vector>
@@ -46,7 +47,7 @@ public:
     ~CDBEnv();
     void Reset();
     void MakeMock();
-    bool IsMock() { return fMockDb; }
+    bool IsMock() const { return fMockDb; }
 
     /**
      * Verify that database file strFile is OK. If it is not,

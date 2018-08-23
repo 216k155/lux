@@ -6,6 +6,7 @@
 #include "db.h"
 
 #include "addrman.h"
+#include "fs.h"
 #include "hash.h"
 #include "protocol.h"
 #include "util.h"
@@ -24,6 +25,38 @@
 using namespace std;
 using namespace boost;
 
+namespace {
+//! Make sure database has a unique fileid within the environment. If it
+//! doesn't, throw an error. BDB caches do not work properly when more than one
+//! open database has the same fileid (values written to one database may show
+//! up in reads to other databases).
+//!
+//! BerkeleyDB generates unique fileids by default
+//! (https://docs.oracle.com/cd/E17275_01/html/programmer_reference/program_copy.html),
+//! so bitcoin should never create different databases with the same fileid, but
+//! this error can be triggered if users manually copy database files.
+    void CheckUniqueFileid(const CDBEnv& bitdb, const std::string& filename, Db& db) {
+        if (bitdb.IsMock()) return;
+
+        u_int8_t fileid[DB_FILE_ID_LEN];
+        int ret = db.get_mpf()->get_fileid(fileid);
+        if (ret != 0) {
+            throw std::runtime_error(strprintf("CDB: Can't open database %s (get_fileid failed with %d)", filename, ret));
+        }
+
+        for (const auto& item : bitdb.mapDb) {
+            u_int8_t item_fileid[DB_FILE_ID_LEN];
+            if (item.second && item.second->get_mpf()->get_fileid(item_fileid) == 0 &&
+                memcmp(fileid, item_fileid, sizeof(fileid)) == 0) {
+                const char* item_filename = nullptr;
+                item.second->get_dbname(&item_filename, nullptr);
+                throw std::runtime_error(strprintf("CDB: Can't open database %s (duplicates fileid %s from %s)", filename,
+                                                   HexStr(std::begin(item_fileid), std::end(item_fileid)),
+                                                   item_filename ? item_filename : "(unknown database)"));
+            }
+        }
+    }
+} // namespace
 //
 // CDB
 //
@@ -261,22 +294,19 @@ CDB::CDB(const std::string& strFilename, const char* pszMode, bool fFlushOnClose
                 0);
 
             if (ret != 0) {
-                delete pdb;
-                pdb = nullptr;
-                --bitdb.mapFileUseCount[strFile];
-                strFile = "";
-                throw runtime_error(strprintf("CDB : Error %d, can't open database %s", ret, strFile));
+                throw runtime_error(strprintf("CDB: Error %d, can't open database %s", ret, strFile));
             }
 
+            CheckUniqueFileid(bitdb, strFile, *pdb);
             if (fCreate && !Exists(string("version"))) {
                 bool fTmp = fReadOnly;
                 fReadOnly = false;
                 WriteVersion(CLIENT_VERSION);
                 fReadOnly = fTmp;
             }
-
-            bitdb.mapDb[strFile] = pdb;
         }
+        ++bitdb.mapFileUseCount[strFilename];
+        strFile = strFilename;
     }
 }
 
