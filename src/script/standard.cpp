@@ -444,6 +444,31 @@ public:
 };
 }
 
+uint160 GetHashForDestination(const CTxDestination& dest)
+{
+    uint160 hashDest = uint160();
+    CScript script;
+    boost::apply_visitor(CScriptVisitor(&script), dest);
+    txnouttype txType = TX_NONSTANDARD;
+    CTxDestination dummyDest;
+    if(ExtractDestination(script, dummyDest, &txType)) {
+        // TODO: TX_CREATE might be handled if we check only dest.type()
+        if ((txType == TX_PUBKEYHASH || txType == TX_PUBKEY) && dest.type() == typeid(CKeyID)){
+            CKeyID addressKey(boost::get<CKeyID>(dest));
+            std::vector<unsigned char> addrBytes(addressKey.begin(), addressKey.end());
+            hashDest = uint160(addrBytes);
+        }
+        if (txType == TX_SCRIPTHASH && dest.type() == typeid(CScriptID)){
+            CScriptID scriptKey(boost::get<CScriptID>(dest));
+            //hashDest = uint160(std::vector<unsigned char>(scriptPubKey.begin()+2, scriptPubKey.begin()+22));
+            std::vector<unsigned char> hashBytes(scriptKey.begin(), scriptKey.end());
+            hashDest = uint160(hashBytes);
+        }
+        // TODO: Witness TX_WITNESS_V0_KEYHASH & TX_WITNESS_V0_SCRIPTHASH ?
+    }
+    return hashDest;
+}
+
 CScript GetScriptForDestination(const CTxDestination& dest)
 {
     CScript script;
