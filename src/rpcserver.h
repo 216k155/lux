@@ -344,6 +344,7 @@ extern UniValue fromhexaddress(const JSONRPCRequest& request);
 
 extern UniValue getblockcount(const JSONRPCRequest& request); // in rpcblockchain.cpp
 extern UniValue getblockhashes(const JSONRPCRequest& request);
+extern UniValue getblockdeltas(const JSONRPCRequest& request);
 extern UniValue getbestblockhash(const JSONRPCRequest& request);
 extern UniValue getdifficulty(const JSONRPCRequest& request);
 extern UniValue settxfee(const JSONRPCRequest& request);
