@@ -203,4 +203,9 @@ CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
  */
 CScript GetScriptForWitness(const CScript& redeemscript);
 
+/**
+ * Returns the hash 160 for indexing
+ */
+uint160 GetHashForDestination(const CTxDestination& dest);
+
 #endif // BITCOIN_SCRIPT_STANDARD_H
