@@ -924,6 +924,7 @@ public:
 
     CPubKey GenerateNewHDMasterKey();
     bool SetHDMasterKey(const CPubKey& key);
+    bool GetStakeWeight(uint64_t& nWeight);
 };
 
 /** A key allocated from the key pool. */

@@ -5,25 +5,26 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "wallet.h"
+#include <wallet.h>
 
-#include "base58.h"
-#include "checkpoints.h"
-#include "coincontrol.h"
-#include "consensus/validation.h"
-#include "stake.h"
-#include "net.h"
-#include "main.h"
-#include "script/script.h"
-#include "script/sign.h"
-#include "spork.h"
-#include "instantx.h"
-#include "timedata.h"
-#include "txmempool.h"
-#include "util.h"
-#include "ui_interface.h"
-#include "utilmoneystr.h"
-#include "script/interpreter.h"
+#include <base58.h>
+#include <checkpoints.h>
+#include <coincontrol.h>
+#include <consensus/validation.h>
+#include <instantx.h>
+#include <main.h>
+#include <net.h>
+#include <script/interpreter.h>
+#include <script/script.h>
+#include <script/sign.h>
+#include <spork.h>
+#include <stake.h>
+#include <timedata.h>
+#include <txdb.h>
+#include <txmempool.h>
+#include <util.h>
+#include <ui_interface.h>
+#include <utilmoneystr.h>
 
 #include <assert.h>
 
@@ -4858,5 +4859,38 @@ bool CWallet::RemoveTokenEntry(const uint256 &tokenHash, bool fFlushOnClose)
 
     LogPrintf("RemoveTokenEntry %s\n", tokenHash.ToString());
 
+    return true;
+}
+
+bool CWallet::GetStakeWeight(uint64_t& nWeight)
+{
+    int64_t nBalance = GetBalance();
+    CAmount nReserveBalance = stake->GetReservedBalance();
+    if (nBalance <= nReserveBalance)
+        return false;
+
+    std::vector<const CWalletTx*> vwtxPrev;
+    std::set<std::pair<const CWalletTx*,unsigned int> > setCoins;
+
+    if (!stake->SelectStakeCoins(this, setCoins, nBalance - nReserveBalance))
+        return false;
+
+    if (setCoins.empty())
+        return false;
+
+    nWeight = 0;
+    int64_t nCurrentTime = GetAdjustedTime();
+    LOCK(cs_main);
+    for (auto const& pcoin : setCoins) {
+        CDiskTxPos txpos;
+        if (pblocktree->ReadTxIndex(pcoin.first->GetHash(), txpos))
+            continue;
+        // Stake kernel
+        int64_t nTimeWeight = GetWeight((int64_t)pcoin.first->tx->nTime, nCurrentTime);
+        uint256 bnWeight = uint256(pcoin.first->tx->vout[pcoin.second].nValue) * nTimeWeight / COIN / (24 * 60 * 60);
+        if (nTimeWeight > 0) {
+            nWeight += bnWeight.GetCompact();
+        }
+    }
     return true;
 }

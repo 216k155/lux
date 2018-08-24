@@ -1198,6 +1198,18 @@ UniValue getstakingstatus(const JSONRPCRequest& request)
             "  \"walletunlocked\": true|false,     (boolean) if the wallet is unlocked\n"
             "  \"mintablecoins\": true|false,      (boolean) if the wallet has mintable coins\n"
             "  \"enoughcoins\": true|false,        (boolean) if available coins are greater than reserve balance\n"
+            "  \"stakeweight\": {\n"
+            "    \"min\": X,                       (integer) min weight of staked coin\n"
+            "    \"max\": X,                       (integer) max weight of staked coin\n"
+            "    \"combined\": X,                  (integer) sum of weights of staked coins\n"
+            "    \"valuesum\": X,                  (integer) sum of values of staked coins\n"
+            "    \"legacy\": X,                    (integer) weight of current staking wallet\n"
+            "  },\n"
+            "  \"stakeblockscreated\": X,          (integer) number of stake blocks created\n"
+            "  \"stakeblocksaccepted\": X,         (integer) number of stake blocks accepted\n"
+            "  \"foundstake\": X,                  (integer) number of stake kernels found\n"
+            "  \"beststakediff\": X.X,             (double) best diff of staked coins\n"
+            "  \"posdiff\": X.X,                   (double) sum of diff of staked coins\n"
             "}\n"
             "\nExamples:\n" +
             HelpExampleCli("getstakingstatus", "") + HelpExampleRpc("getstakingstatus", ""));
@@ -1209,6 +1221,24 @@ UniValue getstakingstatus(const JSONRPCRequest& request)
         obj.push_back(Pair("walletunlocked", !pwalletMain->IsLocked()));
         obj.push_back(Pair("mintablecoins", pwalletMain->MintableCoins()));
         obj.push_back(Pair("enoughcoins", (stake->GetReservedBalance() <= pwalletMain->GetBalance() ? "yes" : "no")));
+    }
+    uint64_t nWeight = 0;
+    if (pwalletMain)
+        pwalletMain->GetStakeWeight(nWeight);
+    UniValue weight(UniValue::VOBJ);
+    {
+        LOCK(stake->stakeMiner.lock);
+        weight.pushKV("min",    stake->stakeMiner.nWeightMin);
+        weight.pushKV("max",    stake->stakeMiner.nWeightMax);
+        weight.pushKV("combined",   stake->stakeMiner.nWeightSum);
+        weight.pushKV("valuesum",   stake->stakeMiner.dValueSum);
+        weight.pushKV("legacy",   nWeight/(double)COIN);
+        obj.pushKV("stakeweight", weight);
+        obj.pushKV("stakeblockscreated", stake->stakeMiner.nBlocksCreated);
+        obj.pushKV("stakeblocksaccepted", stake->stakeMiner.nBlocksAccepted);
+        obj.pushKV("foundstake", stake->stakeMiner.nKernelsFound);
+        obj.pushKV("beststakediff", stake->stakeMiner.dKernelDiffMax);
+        obj.pushKV("posdiff", stake->stakeMiner.dKernelDiffSum);
     }
     return obj;
 }
