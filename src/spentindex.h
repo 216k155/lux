@@ -96,67 +96,6 @@ struct CSpentIndexKeyCompare
     }
 };
 
-struct CTimestampIndexIteratorKey {
-    unsigned int timestamp;
-
-    size_t GetSerializeSize(int nType, int nVersion) const {
-        return 4;
-    }
-    template<typename Stream>
-    void Serialize(Stream& s) const {
-        ser_writedata32be(s, timestamp);
-    }
-    template<typename Stream>
-    void Unserialize(Stream& s) {
-        timestamp = ser_readdata32be(s);
-    }
-
-    CTimestampIndexIteratorKey(unsigned int time) {
-        timestamp = time;
-    }
-
-    CTimestampIndexIteratorKey() {
-        SetNull();
-    }
-
-    void SetNull() {
-        timestamp = 0;
-    }
-};
-
-struct CTimestampIndexKey {
-    unsigned int timestamp;
-    uint256 blockHash;
-
-    size_t GetSerializeSize(int nType, int nVersion) const {
-        return 36;
-    }
-    template<typename Stream>
-    void Serialize(Stream& s) const {
-        ser_writedata32be(s, timestamp);
-        blockHash.Serialize(s);
-    }
-    template<typename Stream>
-    void Unserialize(Stream& s) {
-        timestamp = ser_readdata32be(s);
-        blockHash.Unserialize(s);
-    }
-
-    CTimestampIndexKey(unsigned int time, uint256 hash) {
-        timestamp = time;
-        blockHash = hash;
-    }
-
-    CTimestampIndexKey() {
-        SetNull();
-    }
-
-    void SetNull() {
-        timestamp = 0;
-        blockHash.SetNull();
-    }
-};
-
 struct CAddressUnspentKey {
     unsigned int type;
     uint160 hashBytes;

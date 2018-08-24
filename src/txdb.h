@@ -23,8 +23,6 @@ struct CAddressUnspentValue;
 struct CAddressIndexKey;
 struct CAddressIndexIteratorKey;
 struct CAddressIndexIteratorHeightKey;
-struct CTimestampIndexKey;
-struct CTimestampIndexIteratorKey;
 struct CSpentIndexKey;
 struct CSpentIndexValue;
 class CCoins;
@@ -109,8 +107,6 @@ public:
     bool WriteAddressIndex(const std::vector<std::pair<CAddressIndexKey, CAmount> > &vect);
     bool EraseAddressIndex(const std::vector<std::pair<CAddressIndexKey, CAmount> > &vect);
     bool ReadAddressIndex(uint160 addressHash, int type, std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex, int start = 0, int end = 0);
-    bool WriteTimestampIndex(const CTimestampIndexKey &timestampIndex);
-    bool ReadTimestampIndex(const unsigned int &high, const unsigned int &low, std::vector<uint256> &vect);
     bool WriteFlag(const std::string& name, bool fValue);
     bool ReadFlag(const std::string& name, bool& fValue);
     bool LoadBlockIndexGuts();

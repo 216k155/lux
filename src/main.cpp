@@ -135,7 +135,6 @@ std::atomic_bool fReindex(false);
 bool fLogEvents = false;
 bool fTxIndex = true;
 bool fAddressIndex = false;
-bool fTimestampIndex = false;
 bool fSpentIndex = false;
 bool fIsBareMultisigStd = true;
 bool fRequireStandard = true;
@@ -1364,17 +1363,6 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     }
 
     SyncWithWallets(tx, nullptr);
-
-    return true;
-}
-
-bool GetTimestampIndex(const unsigned int &high, const unsigned int &low, std::vector<uint256> &hashes)
-{
-    if (!fTimestampIndex)
-        return error("Timestamp index not enabled");
-
-    if (!pblocktree->ReadTimestampIndex(high, low, hashes))
-        return error("Unable to get hashes for timestamps");
 
     return true;
 }
@@ -2854,11 +2842,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
                         hashDest = Hash160(hashBytes);
                     } else {
-                        // generated PoS ?
-                        if (pindex->nHeight > 1000 && pindex->nHeight < 1200) {
-                            LogPrintf("%s(ndx) prevout[%zu] %s txType=%d block %d is %s\n", __func__, j,
-                                    txin.ToString(), txType, pindex->nHeight, tx.IsCoinStake()?"PoS":"PoW");
-                        }
                         hashDest.SetNull();
                     }
 
@@ -3321,12 +3304,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!pblocktree->UpdateSpentIndex(spentIndex)) {
             //return AbortNode(state, "Failed to write transaction index");
             return state.Error("Failed to write transaction index");
-        }
-    }
-    if (fTimestampIndex) {
-        if (!pblocktree->WriteTimestampIndex(CTimestampIndexKey(pindex->nTime, pindex->GetBlockHash()))) {
-            //return AbortNode(state, "Failed to write timestamp index");
-            return state.Error("Failed to write timestamp index");
         }
     }
 
@@ -5491,10 +5468,6 @@ bool static LoadBlockIndexDB()
     pblocktree->ReadFlag("addressindex", fAddressIndex);
     LogPrintf("%s: address index %s\n", __func__, fAddressIndex ? "enabled" : "disabled");
 
-    // Check whether we have a timestamp index
-    pblocktree->ReadFlag("timestampindex", fTimestampIndex);
-    LogPrintf("%s: timestamp index %s\n", __func__, fTimestampIndex ? "enabled" : "disabled");
-
     // Check whether we have a spent index
     pblocktree->ReadFlag("spentindex", fSpentIndex);
     LogPrintf("%s: spent index %s\n", __func__, fSpentIndex ? "enabled" : "disabled");
@@ -5742,10 +5715,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
     fAddressIndex = GetBoolArg("-addressindex", DEFAULT_ADDRESSINDEX);
     pblocktree->WriteFlag("addressindex", fAddressIndex);
 
-    // Use the provided setting for -timestampindex in the new database
-    fTimestampIndex = GetBoolArg("-timestampindex", DEFAULT_TIMESTAMPINDEX);
-    pblocktree->WriteFlag("timestampindex", fTimestampIndex);
-
+    // Use the provided setting for -spentindex in the new database
     fSpentIndex = GetBoolArg("-spentindex", DEFAULT_SPENTINDEX);
     pblocktree->WriteFlag("spentindex", fSpentIndex);
 

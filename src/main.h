@@ -150,7 +150,6 @@ static const unsigned int RELAY_INVENTORY_INTERVAL = 5;
 
 static const unsigned int DEFAULT_BYTES_PER_SIGOP = 20;
 static const bool DEFAULT_ADDRESSINDEX = false;
-static const bool DEFAULT_TIMESTAMPINDEX = false;
 static const bool DEFAULT_SPENTINDEX = false;
 
 static const int64_t STATIC_POS_REWARD = 1 * COIN; //Constant reward 8%
@@ -614,7 +613,6 @@ public:
     ScriptError GetScriptError() const { return error; }
 };
 
-bool GetTimestampIndex(const unsigned int &high, const unsigned int &low, std::vector<uint256> &hashes);
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 bool GetAddressIndex(uint160 addressHash, int type,
                      std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex,

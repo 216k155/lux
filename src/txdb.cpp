@@ -28,7 +28,6 @@ static const char DB_HEAD_BLOCKS = 'H';
 
 static const char DB_ADDRESSINDEX = 'a';
 static const char DB_ADDRESSUNSPENTINDEX = 'u';
-static const char DB_TIMESTAMPINDEX = 's';
 static const char DB_SPENTINDEX = 'p';
 
 static const char DB_FLAG = 'F';
@@ -359,52 +358,6 @@ bool CBlockTreeDB::ReadAddressIndex(uint160 addressHash, int type,
                     pcursor->Next();
                 } catch (const std::exception& e) {
                     return error("failed to get address index value");
-                }
-            } else {
-                break;
-            }
-        } catch (const std::exception& e) {
-            break;
-        }
-    }
-
-    return true;
-}
-
-bool CBlockTreeDB::WriteTimestampIndex(const CTimestampIndexKey &timestampIndex) {
-    CLevelDBBatch batch(GetObfuscateKey());
-    batch.Write(std::make_pair(DB_TIMESTAMPINDEX, timestampIndex), 0);
-    return WriteBatch(batch);
-}
-
-bool CBlockTreeDB::ReadTimestampIndex(const unsigned int &high, const unsigned int &low, std::vector<uint256> &hashes) {
-
-    boost::scoped_ptr<leveldb::Iterator> pcursor(NewIterator());
-
-    CDataStream ssKeySet(SER_DISK, CLIENT_VERSION);
-    ssKeySet << make_pair(DB_TIMESTAMPINDEX, CTimestampIndexIteratorKey(low));
-    pcursor->Seek(ssKeySet.str());
-
-    while (pcursor->Valid()) {
-        boost::this_thread::interruption_point();
-        try {
-            leveldb::Slice slKey = pcursor->key();
-            CDataStream ssKey(slKey.data(), slKey.data()+slKey.size(), SER_DISK, CLIENT_VERSION);
-            char chType;
-            CTimestampIndexKey indexKey;
-            ssKey >> chType;
-            ssKey >> indexKey;
-            if (chType == DB_TIMESTAMPINDEX && indexKey.timestamp < high) {
-                try {
-                    leveldb::Slice slValue = pcursor->value();
-                    CDataStream ssValue(slValue.data(), slValue.data()+slValue.size(), SER_DISK, CLIENT_VERSION);
-                    CTimestampIndexKey nValue;
-                    ssValue >> nValue;
-                    //hashes.push_back(make_pair(indexKey, nValue));
-                    return error("unimplemented");
-                    pcursor->Next();
-                } catch (const std::exception& e) {
-                    return error("failed to get address unspent value");
                 }
             } else {
                 break;
