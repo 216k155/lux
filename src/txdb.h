@@ -131,7 +131,7 @@ public:
      */
     int ReadHeightIndex(int low, int high, int minconf,
                         std::vector<std::vector<uint256>> &blocksOfHashes,
-                        std::set<dev::h160> const &addresses);
+                        std::set<dev::h160> const &addresses, bool searchlogs);
     bool EraseHeightIndex(const unsigned int &height);
     bool WipeHeightIndex();
 

@@ -9,6 +9,9 @@ class CBlock;
 class CBlockIndex;
 class UniValue;
 
+/** Callback for when block tip changed. */
+void RPCNotifyBlockChange(bool ibd, const CBlockIndex *);
+
 /** Block header to JSON */
 UniValue blockheaderToJSON(const CBlockIndex* blockindex);
 
