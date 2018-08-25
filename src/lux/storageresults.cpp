@@ -11,7 +11,7 @@ StorageResults::StorageResults(std::string const& _path){
 StorageResults::~StorageResults()
 {
     delete db;
-    db = NULL;
+    db = nullptr;
 }
 
 void StorageResults::addResult(dev::h256 hashTx, std::vector<TransactionReceiptInfo>& result){

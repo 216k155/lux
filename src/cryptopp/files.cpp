@@ -22,12 +22,12 @@ void Files_TestInstantiations()
 void FileStore::StoreInitialize(const NameValuePairs &parameters)
 {
 	m_waiting = false;
-	m_stream = NULL;
+	m_stream = nullptr;
 	m_file.release();
 
-	const char *fileName = NULL;
+	const char *fileName = nullptr;
 #if defined(CRYPTOPP_UNIX_AVAILABLE) || _MSC_VER >= 1400
-	const wchar_t *fileNameWide = NULL;
+	const wchar_t *fileNameWide = nullptr;
 	if (!parameters.GetValue(Name::InputFileNameWide(), fileNameWide))
 #endif
 		if (!parameters.GetValue(Name::InputFileName(), fileName))
@@ -178,12 +178,12 @@ lword FileStore::Skip(lword skipMax)
 
 void FileSink::IsolatedInitialize(const NameValuePairs &parameters)
 {
-	m_stream = NULL;
+	m_stream = nullptr;
 	m_file.release();
 
-	const char *fileName = NULL;
+	const char *fileName = nullptr;
 #if defined(CRYPTOPP_UNIX_AVAILABLE) || _MSC_VER >= 1400
-	const wchar_t *fileNameWide = NULL;
+	const wchar_t *fileNameWide = nullptr;
 	if (!parameters.GetValue(Name::OutputFileNameWide(), fileNameWide))
 #endif
 		if (!parameters.GetValue(Name::OutputFileName(), fileName))

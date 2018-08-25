@@ -290,7 +290,7 @@ void CallContractPage::on_contractAddressChanged()
 
 QString CallContractPage::toDataHex(int func, QString& errorMessage)
 {
-    if(func == -1 || m_ABIFunctionField == NULL || m_contractABI == NULL)
+    if(func == -1 || m_ABIFunctionField == nullptr || m_contractABI == nullptr)
     {
         return "";
     }

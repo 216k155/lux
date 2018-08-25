@@ -166,7 +166,7 @@ const byte * SimpleKeyingInterface::GetIVAndThrowIfInvalid(const NameValuePairs 
 	{
 		ThrowIfResynchronizable();
 		size = 0;
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -201,7 +201,7 @@ size_t BlockTransformation::AdvancedProcessBlocks(const byte *inBlocks, const by
 	{
 		if (flags & BT_XorInput)
 		{
-			// Coverity finding. However, xorBlocks is never NULL if BT_XorInput.
+			// Coverity finding. However, xorBlocks is never nullptr if BT_XorInput.
 			CRYPTOPP_ASSERT(xorBlocks);
 #if defined(__COVERITY__)
 			if (xorBlocks)
@@ -211,7 +211,7 @@ size_t BlockTransformation::AdvancedProcessBlocks(const byte *inBlocks, const by
 		}
 		else
 		{
-			// xorBlocks can be NULL. See, for example, ECB_OneWay::ProcessData.
+			// xorBlocks can be nullptr. See, for example, ECB_OneWay::ProcessData.
 			ProcessAndXorBlock(inBlocks, xorBlocks, outBlocks);
 		}
 
@@ -395,7 +395,7 @@ public:
 	void Shuffle (IT begin, IT end) {}
 
 private:
-	Clonable* Clone () const { return NULL; }
+	Clonable* Clone () const { return nullptr; }
 #endif
 };
 

@@ -141,7 +141,7 @@ void ExecuteSpork(int nSporkID, int nValue) {
                 ActivateBestChain(state, Params(), nullptr);
             }
 
-            if (pindex->pprev == NULL) {
+            if (pindex->pprev == nullptr) {
                 assert(pindex);
                 break;
             }

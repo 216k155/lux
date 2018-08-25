@@ -248,7 +248,7 @@ static int GCC_RRA_GenerateBlock(byte *output, size_t size, unsigned int safety)
 		{
 			if (size >= sizeof(val))
 			{
-				PutWord(true, LITTLE_ENDIAN_ORDER, output, val, NULL);
+				PutWord(true, LITTLE_ENDIAN_ORDER, output, val, nullptr);
 				output += sizeof(val);
 				size -= sizeof(val);
 			}
@@ -417,7 +417,7 @@ static int GCC_RSA_GenerateBlock(byte *output, size_t size, unsigned int safety)
 		{
 			if (size >= sizeof(val))
 			{
-				PutWord(true, LITTLE_ENDIAN_ORDER, output, val, NULL);
+				PutWord(true, LITTLE_ENDIAN_ORDER, output, val, nullptr);
 				output += sizeof(val);
 				size -= sizeof(val);
 			}

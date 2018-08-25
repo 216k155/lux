@@ -48,7 +48,7 @@ UniValue GetNetworkHashPS(int lookup, int height)
     if (height >= 0 && height < chainActive.Height())
         pb = chainActive[height];
 
-    if (pb == NULL || !pb->nHeight)
+    if (pb == nullptr || !pb->nHeight)
         return 0;
 
     // If lookup is -1, then use blocks since last difficulty change.
@@ -141,7 +141,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
             "\nTurn off generation\n" + HelpExampleCli("setgenerate", "false") +
             "\nUsing json rpc\n" + HelpExampleRpc("setgenerate", "true, 1"));
 
-//    if (pwalletMain == NULL)
+//    if (pwalletMain == nullptr)
 //        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
 //
 //    bool fGenerate = true;
@@ -187,7 +187,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
 //                ++pblock->nNonce;
 //            }
 //            CValidationState state;
-//            if (!ShutdownRequested() && !ProcessNewBlock(state, Params(), NULL, pblock))
+//            if (!ShutdownRequested() && !ProcessNewBlock(state, Params(), nullptr, pblock))
 //                throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
 //            ++nHeight;
 //            blockHashes.push_back(pblock->GetHash().GetHex());
@@ -560,7 +560,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 5) ||
         fLastTemplateSupportsSegwit != fSupportsSegwit) {
         // Clear pindexPrev so future calls make a new block, despite any failures from here on
-        pindexPrev = NULL;
+        pindexPrev = nullptr;
 
         // Store the chainActive.Tip() used before CreateNewBlock, to avoid races
         nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
@@ -923,7 +923,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
         CValidationState state;
-        return ProcessNewBlock(state, Params(), NULL, pblock);
+        return ProcessNewBlock(state, Params(), nullptr, pblock);
     }
 }
 
@@ -992,7 +992,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash(usePhi2), usePhi2);
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, Params(), NULL, &block);
+    bool fAccepted = ProcessNewBlock(state, Params(), nullptr, &block);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found)

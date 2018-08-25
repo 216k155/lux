@@ -70,7 +70,7 @@ void RestoreDialog::on_toolWalletPath_clicked()
 {
     QString filename = GUIUtil::getOpenFileName(this,
                                                 tr("Restore Wallet"), QString(),
-                                                tr("Wallet (*.dat)"), NULL);
+                                                tr("Wallet (*.dat)"), nullptr);
 
     if (filename.isEmpty())
         return;

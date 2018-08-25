@@ -12,7 +12,7 @@
 
 // DoS prevention: limit cache size to less than 40MB (over 500000
 // entries on 64-bit systems).
-static const unsigned int DEFAULT_MAX_SIG_CACHE_SIZE = 40;
+static const unsigned int DEFAULT_MAX_SIG_CACHE_SIZE = 32;
 
 class CPubKey;
 
@@ -26,5 +26,7 @@ public:
 
     bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 };
+
+void InitSignatureCache();
 
 #endif // BITCOIN_SCRIPT_SIGCACHE_H

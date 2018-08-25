@@ -141,11 +141,11 @@ void ABIParam::removeParamItem(int position)
     {
         QLayoutItem *item = m_paramItemsLayout->takeAt(position);
         QWidget * widget = item->widget();
-        if(widget != NULL)
+        if(widget != nullptr)
         {
             m_paramItemsLayout->removeWidget(widget);
             disconnect(widget, 0, 0, 0);
-            widget->setParent(NULL);
+            widget->setParent(nullptr);
             delete widget;
             m_listParamItems.removeAt(position);
         }

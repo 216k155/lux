@@ -281,9 +281,9 @@ int ECCVerifyHandle::refcount = 0;
 ECCVerifyHandle::ECCVerifyHandle()
 {
     if (refcount == 0) {
-        assert(secp256k1_context_verify == NULL);
+        assert(secp256k1_context_verify == nullptr);
         secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
-        assert(secp256k1_context_verify != NULL);
+        assert(secp256k1_context_verify != nullptr);
     }
     refcount++;
 }
@@ -292,8 +292,8 @@ ECCVerifyHandle::~ECCVerifyHandle()
 {
     refcount--;
     if (refcount == 0) {
-        assert(secp256k1_context_verify != NULL);
+        assert(secp256k1_context_verify != nullptr);
         secp256k1_context_destroy(secp256k1_context_verify);
-        secp256k1_context_verify = NULL;
+        secp256k1_context_verify = nullptr;
     }
 }

@@ -156,7 +156,7 @@ size_t NonblockingSource::PumpMessages2(unsigned int &messageCount, bool blockin
 
 	if (!m_messageEndSent && SourceExhausted())
 	{
-		RETURN_IF_NONZERO(AttachedTransformation()->Put2(NULL, 0, GetAutoSignalPropagation(), true));
+		RETURN_IF_NONZERO(AttachedTransformation()->Put2(nullptr, 0, GetAutoSignalPropagation(), true));
 		m_messageEndSent = true;
 		messageCount = 1;
 	}

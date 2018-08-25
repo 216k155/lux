@@ -686,7 +686,7 @@ public:
       *  pvNoSpendsRemaining, if set, will be populated with the list of outpoints
       *  which are not in mempool which no longer have any spends in this mempool.
       */
-    void TrimToSize(size_t sizelimit, std::vector<COutPoint>* pvNoSpendsRemaining=NULL);
+    void TrimToSize(size_t sizelimit, std::vector<COutPoint>* pvNoSpendsRemaining=nullptr);
 
     /** Expire all transaction (and their dependencies) in the mempool older than time. Return the number of removed transactions. */
     int Expire(int64_t time);
@@ -727,7 +727,7 @@ public:
      *  If no answer can be given at nBlocks, return an estimate
      *  at the lowest number of blocks where one can be given
      */
-    CFeeRate estimateSmartFee(int nBlocks, int *answerFoundAtBlocks = NULL) const;
+    CFeeRate estimateSmartFee(int nBlocks, int *answerFoundAtBlocks = nullptr) const;
 
     /** Estimate fee rate needed to get into the next nBlocks */
     CFeeRate estimateFee(int nBlocks) const;
@@ -736,7 +736,7 @@ public:
      *  If no answer can be given at nBlocks, return an estimate
      *  at the lowest number of blocks where one can be given
      */
-    double estimateSmartPriority(int nBlocks, int *answerFoundAtBlocks = NULL) const;
+    double estimateSmartPriority(int nBlocks, int *answerFoundAtBlocks = nullptr) const;
 
     /** Estimate priority needed to get into the next nBlocks */
     double estimatePriority(int nBlocks) const;

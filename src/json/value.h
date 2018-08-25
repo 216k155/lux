@@ -289,7 +289,7 @@ Json::Value obj_value(Json::objectValue); // {}
   Value(UInt64 value);
 #endif // if defined(JSON_HAS_INT64)
   Value(double value);
-  Value(const char* value); ///< Copy til first 0. (NULL causes to seg-fault.)
+  Value(const char* value); ///< Copy til first 0. (nullptr causes to seg-fault.)
   Value(const char* begin, const char* end); ///< Copy all, incl zeroes.
   /** \brief Constructs a value from a static string.
 
@@ -345,7 +345,7 @@ Json::Value obj_value(Json::objectValue); // {}
 #endif
   JSONCPP_STRING asString() const; ///< Embedded zeroes are possible.
   /** Get raw char* of string-value.
-   *  \return false if !string. (Seg-fault if str or end are NULL.)
+   *  \return false if !string. (Seg-fault if str or end are nullptr.)
    */
   bool getString(
       char const** begin, char const** end) const;
@@ -720,7 +720,7 @@ public:
   /// \deprecated This cannot be used for UTF-8 strings, since there can be embedded nulls.
   JSONCPP_DEPRECATED("Use `key = name();` instead.")
   char const* memberName() const;
-  /// Return the member name of the referenced Value, or NULL if it is not an
+  /// Return the member name of the referenced Value, or nullptr if it is not an
   /// objectValue.
   /// \note Better version than memberName(). Allows embedded nulls.
   char const* memberName(char const** end) const;

@@ -358,7 +358,7 @@ void SendToContract::on_contractAddressChanged() {
 }
 
 QString SendToContract::toDataHex(int func, QString& errorMessage) {
-    if(func == -1 || m_ABIFunctionField == NULL || m_contractABI == NULL) {
+    if(func == -1 || m_ABIFunctionField == nullptr || m_contractABI == nullptr) {
         std::string defSelector = FunctionABI::defaultSelector();
         return QString::fromStdString(defSelector);
     }

@@ -55,7 +55,7 @@ public:
 	//! \details size is an \a IN and \a OUT parameter and used as a hint. When the call is made,
 	//!   size is the requested size of the buffer. When the call returns, size is the size of
 	//!   the array returned to the caller.
-	//! \details The base class implementation sets  size to 0 and returns  NULL.
+	//! \details The base class implementation sets  size to 0 and returns  nullptr.
 	//! \note Some objects, like ArraySink, cannot create a space because its fixed.
 	byte * CreateUpdateSpace(size_t &size);
 

@@ -362,7 +362,7 @@ void WalletView::backupWallet()
 {
     QString filename = GUIUtil::getSaveFileName(this,
         tr("Backup Wallet"), QString(),
-        tr("Wallet (*.dat)"), NULL);
+        tr("Wallet (*.dat)"), nullptr);
 
     if (filename.isEmpty())
         return;

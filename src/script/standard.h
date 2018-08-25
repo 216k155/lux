@@ -157,7 +157,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
  * scripts, instead use ExtractDestinations. Currently only works for P2PK,
  * P2PKH, P2SH, P2WPKH, and P2WSH scripts.
  */
-bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype* typeRet = NULL);
+bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype* typeRet = nullptr);
 
 /**
  * Parse a standard scriptPubKey with one or more destination addresses. For

@@ -429,7 +429,7 @@ int64_t GetAverageVoteTime() {
 }
 
 void CleanTransactionLocksList() {
-    if (chainActive.Tip() == NULL) return;
+    if (chainActive.Tip() == nullptr) return;
 
     std::map<uint256, CTransactionLock>::iterator it = mapTxLocks.begin();
 

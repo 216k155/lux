@@ -69,14 +69,14 @@ int LogPrintStr(const std::string& str, bool useVMLog = false);
 /** Push debug files */
 void pushDebugLog(std::string pathDebugStr, int debugNum);
 
-#define LogPrintf(...) LogPrint(NULL, __VA_ARGS__)
+#define LogPrintf(...) LogPrint(nullptr, __VA_ARGS__)
 
 /**
  * When we switch to C++11, this can be switched to variadic templates instead
  * of this macro-based construction (see tinyformat.h).
  */
 #define MAKE_ERROR_AND_LOG_FUNC(n)                                                              \
-    /**   Print to debug.log if -debug=category switch is given OR category is NULL. */         \
+    /**   Print to debug.log if -debug=category switch is given OR category is nullptr. */         \
     template <TINYFORMAT_ARGTYPES(n)>                                                           \
     static inline int LogPrint(const char* category, const char* format, TINYFORMAT_VARARGS(n)) \
     {                                                                                           \
@@ -243,7 +243,7 @@ void TraceThread(const char* name, Callable func)
         PrintExceptionContinue(&e, name);
         throw;
     } catch (...) {
-        PrintExceptionContinue(NULL, name);
+        PrintExceptionContinue(nullptr, name);
         throw;
     }
 }

@@ -108,7 +108,7 @@ static bool rest_block(AcceptedConnection* conn,
 
     CBlock block;
     const Consensus::Params consensusParams = Params().GetConsensus();
-    CBlockIndex* pblockindex = NULL;
+    CBlockIndex* pblockindex = nullptr;
     {
         LOCK(cs_main);
         if (mapBlockIndex.count(hash) == 0)

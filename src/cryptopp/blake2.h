@@ -267,8 +267,8 @@ public:
 	//! \param personalizationLength the size of the byte array
 	//! \param treeMode flag indicating tree mode
 	//! \param digestSize the digest size, in bytes
-	BLAKE2b(const byte *key, size_t keyLength, const byte* salt = NULL, size_t saltLength = 0,
-		const byte* personalization = NULL, size_t personalizationLength = 0,
+	BLAKE2b(const byte *key, size_t keyLength, const byte* salt = nullptr, size_t saltLength = 0,
+		const byte* personalization = nullptr, size_t personalizationLength = 0,
 		bool treeMode=false, unsigned int digestSize = DIGESTSIZE)
 		: ThisBase(key, keyLength, salt, saltLength, personalization, personalizationLength, treeMode, digestSize) {}
 };
@@ -303,8 +303,8 @@ public:
 	//! \param personalizationLength the size of the byte array
 	//! \param treeMode flag indicating tree mode
 	//! \param digestSize the digest size, in bytes
-	BLAKE2s(const byte *key, size_t keyLength, const byte* salt = NULL, size_t saltLength = 0,
-		const byte* personalization = NULL, size_t personalizationLength = 0,
+	BLAKE2s(const byte *key, size_t keyLength, const byte* salt = nullptr, size_t saltLength = 0,
+		const byte* personalization = nullptr, size_t personalizationLength = 0,
 		bool treeMode=false, unsigned int digestSize = DIGESTSIZE)
 		: ThisBase(key, keyLength, salt, saltLength, personalization, personalizationLength, treeMode, digestSize) {}
 };
