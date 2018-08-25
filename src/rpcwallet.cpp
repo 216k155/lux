@@ -803,10 +803,10 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     CAmount nAmount = 0;
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinGenerated() || !IsFinalTx(wtx))
+        if (wtx.IsCoinGenerated() || !IsFinalTx(*wtx.tx))
             continue;
 
-        for (const CTxOut& txout : wtx.vout)
+        for (const CTxOut& txout : wtx.tx->vout)
             if (txout.scriptPubKey == scriptPubKey)
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
@@ -849,7 +849,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
     CAmount nAmount = 0;
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinGenerated() || !IsFinalTx(wtx))
+        if (wtx.IsCoinGenerated() || !IsFinalTx(*wtx.tx))
             continue;
 
         for (const CTxOut& txout : wtx.tx->vout) {
@@ -1285,7 +1285,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
 
-        if (wtx.IsCoinGenerated() || !IsFinalTx(wtx))
+        if (wtx.IsCoinGenerated() || !IsFinalTx(*wtx.tx))
             continue;
 
         int nDepth = wtx.GetDepthInMainChain();
