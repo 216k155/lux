@@ -168,7 +168,7 @@ public:
         uint64_t nServicesInt = nServices;
         READWRITE(nServicesInt);
         nServices = (ServiceFlags)nServicesInt;
-        READWRITE(*(CService*)this);
+        READWRITEAS(CService, *this);
     }
 
 

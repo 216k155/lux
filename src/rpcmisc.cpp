@@ -371,8 +371,10 @@ UniValue validateaddress(const JSONRPCRequest& request)
         ret.push_back(Pair("iswatchonly", bool(mine & ISMINE_WATCH_ONLY)));
         UniValue detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
         ret.pushKVs(detail);
-        if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
+        if (pwalletMain && pwalletMain->mapAddressBook.count(dest)) {
             ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest].name));
+        }
+
         if (pwalletMain) {
             const CKeyMetadata* meta = nullptr;
             CKeyID key_id = GetKeyForDestination(*pwalletMain, dest);
@@ -382,8 +384,18 @@ UniValue validateaddress(const JSONRPCRequest& request)
                     meta = &it->second;
                 }
             }
+            if (!meta) {
+                auto it = pwalletMain->m_script_metadata.find(CScriptID(scriptPubKey));
+                if (it != pwalletMain->m_script_metadata.end()) {
+                    meta = &it->second;
+                }
+            }
             if (meta) {
                 ret.push_back(Pair("timestamp", meta->nCreateTime));
+                if (!meta->hdKeypath.empty()) {
+                    ret.push_back(Pair("hdkeypath", meta->hdKeypath));
+                    ret.push_back(Pair("hdmasterkeyid", meta->hdMasterKeyID.GetHex()));
+                    }
             }
         }
 #endif

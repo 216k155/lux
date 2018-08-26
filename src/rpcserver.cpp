@@ -455,16 +455,6 @@ void StopRPC()
     LogPrint(BCLog::RPC, "Stopping RPC\n");
     deadlineTimers.clear();
     g_rpcSignals.Stopped();
-    if (rpc_worker_group != nullptr)
-        rpc_worker_group->join_all();
-    delete rpc_dummy_work;
-    rpc_dummy_work = nullptr;
-    delete rpc_worker_group;
-    rpc_worker_group = nullptr;
-    delete rpc_ssl_context;
-    rpc_ssl_context = nullptr;
-    delete rpc_io_service;
-    rpc_io_service = nullptr;
 }
 
 bool IsRPCRunning()

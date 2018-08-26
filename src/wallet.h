@@ -227,11 +227,6 @@ public:
         tx = std::move(arg);
     }
 
-    void SetTx(CTransactionRef arg)
-    {
-        tx = std::move(arg);
-    }
-
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
@@ -404,7 +399,11 @@ public:
     std::set<int64_t> setExternalKeyPool;
     int64_t m_max_keypool_index;
     std::map<CKeyID, int64_t> m_pool_key_to_index;
-    std::map<CTxDestination, CKeyMetadata> mapKeyMetadata;
+    // Map from Key ID to key metadata.
+    std::map<CKeyID, CKeyMetadata> mapKeyMetadata;
+
+    // Map from Script ID to key metadata (for watch-only keys).
+    std::map<CScriptID, CKeyMetadata> m_script_metadata;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
@@ -553,7 +552,8 @@ public:
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
     bool LoadKey(const CKey& key, const CPubKey& pubkey) { return CCryptoKeyStore::AddKeyPubKey(key, pubkey); }
     //! Load metadata (used by LoadWallet)
-    bool LoadKeyMetadata(const CTxDestination& pubKey, const CKeyMetadata &metadata);
+    bool LoadKeyMetadata(const CKeyID& keyID, const CKeyMetadata &metadata);
+    bool LoadScriptMetadata(const CScriptID& script_id, const CKeyMetadata &metadata);
 
     bool LoadMinVersion(int nVersion)
     {

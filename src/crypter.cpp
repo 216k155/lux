@@ -53,11 +53,11 @@ bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<unsigned
     // n + AES_BLOCKSIZE bytes
     vchCiphertext.resize(vchPlaintext.size() + AES_BLOCKSIZE);
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV) != 0;
-    if (fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen) != 0;
-    if (fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0]) + nCLen, &nFLen) != 0;
-    EVP_CIPHER_CTX_free(ctx);
+    AES256CBCEncrypt enc(vchKey.data(), vchIV.data(), true);
+    size_t nLen = enc.Encrypt(&vchPlaintext[0], vchPlaintext.size(), &vchCiphertext[0]);
+    if(nLen < vchPlaintext.size())
+        return false;
+    vchCiphertext.resize(nLen);
 
     return true;
 }
@@ -72,15 +72,11 @@ bool CCrypter::Decrypt(const std::vector<unsigned char>& vchCiphertext, CKeyingM
 
     vchPlaintext.resize(nLen);
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV) != 0;
-    if (fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen) != 0;
-    if (fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0]) + nPLen, &nFLen) != 0;
-    EVP_CIPHER_CTX_free(ctx);
-
-    if (!fOk) return false;
-
-    vchPlaintext.resize(nPLen + nFLen);
+    AES256CBCDecrypt dec(vchKey.data(), vchIV.data(), true);
+    nLen = dec.Decrypt(&vchCiphertext[0], vchCiphertext.size(), &vchPlaintext[0]);
+    if(nLen == 0)
+        return false;
+    vchPlaintext.resize(nLen);
     return true;
 }
 

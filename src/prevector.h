@@ -10,8 +10,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <cstddef>
 #include <iterator>
 #include <type_traits>
+
+#include <compat.h>
 
 #pragma pack(push, 1)
 /** Implements a drop-in replacement for std::vector<T> which stores up to N

@@ -141,23 +141,25 @@ bool CWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
 bool CWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript)
 {
     nWalletDBUpdateCounter++;
-    return Write(std::make_pair(std::string("cscript"), hash), *(const CScriptBase*)(&redeemScript), false);
+    return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
 }
 
 bool CWalletDB::WriteWatchOnly(const CScript &dest, const CKeyMetadata& keyMeta)
 {
     nWalletDBUpdateCounter++;
-    if (!Write(std::make_pair(std::string("watchmeta"), *(const CScriptBase*)(&dest)), keyMeta))
+    if (!Write(std::make_pair(std::string("watchmeta"), dest), keyMeta)) {
         return false;
-    return Write(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)), '1');
+    }
+    return Write(std::make_pair(std::string("watchs"), dest), '1');
 }
 
 bool CWalletDB::EraseWatchOnly(const CScript& dest)
 {
     nWalletDBUpdateCounter++;
-    if (!Erase(std::make_pair(std::string("watchmeta"), *(const CScriptBase*)(&dest))))
+    if (!Erase(std::make_pair(std::string("watchmeta"), dest))) {
         return false;
-    return Erase(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)));
+    }
+    return Erase(std::make_pair(std::string("watchs"), dest));
 }
 
 bool CWalletDB::WriteBestBlock(const CBlockLocator& locator)
@@ -459,7 +461,7 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
         } else if (strType == "watchs") {
             wss.nWatchKeys++;
             CScript script;
-            ssKey >> *(CScriptBase*)(&script);
+            ssKey >> script;
             char fYes;
             ssValue >> fYes;
             if (fYes == '1')
@@ -544,26 +546,25 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
                 return false;
             }
             wss.fIsEncrypted = true;
-        } else if (strType == "keymeta" || strType == "watchmeta") {
-            CTxDestination keyID;
-            if (strType == "keymeta") {
+            }
+            else if (strType == "keymeta")
+            {
                 CPubKey vchPubKey;
                 ssKey >> vchPubKey;
-                keyID = vchPubKey.GetID();
+                CKeyMetadata keyMeta;
+                ssValue >> keyMeta;
+                wss.nKeyMeta++;
+                pwallet->LoadKeyMetadata(vchPubKey.GetID(), keyMeta);
             }
-            else if (strType == "watchmeta") {
+            else if (strType == "watchmeta")
+            {
                 CScript script;
-                ssKey >> *(CScriptBase*)(&script);
-                keyID = CScriptID(script);
-            }
-
-            CKeyMetadata keyMeta;
-            ssValue >> keyMeta;
-            wss.nKeyMeta++;
-
-            pwallet->LoadKeyMetadata(keyID, keyMeta);
-
-        } else if (strType == "defaultkey") {
+                ssKey >> script;
+                CKeyMetadata keyMeta;
+                ssValue >> keyMeta;
+                wss.nKeyMeta++;
+                pwallet->LoadScriptMetadata(CScriptID(script), keyMeta);
+            }else if (strType == "defaultkey") {
             ssValue >> pwallet->vchDefaultKey;
         } else if (strType == "pool") {
             int64_t nIndex;
@@ -580,7 +581,7 @@ bool ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue, CW
             uint160 hash;
             ssKey >> hash;
             CScript script;
-            ssValue >> *(CScriptBase*)(&script);
+            ssValue >> script;
             if (!pwallet->LoadCScript(script)) {
                 strErr = "Error reading wallet database: LoadCScript failed";
                 return false;
