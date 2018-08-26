@@ -63,7 +63,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
 class CMasterNode
 {
 private:
-    boost::filesystem::path GetMasternodeConfigFile;
+    fs::path GetMasternodeConfigFile;
     std::string strMagicMessage;
 
 public:

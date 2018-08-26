@@ -167,6 +167,8 @@ signals:
     void incomingTokenTransaction(const QString& date, const QString& amount, const QString& type, const QString& address, const QString& label, const QString& title);
     /** Notify that the out of sync warning icon has been pressed */
     void outOfSyncWarningClicked();
+    /** HD-Enabled status of wallet changed (only possible during startup) */
+    void hdEnabledStatusChanged(int hdEnabled);
 };
 
 #endif // BITCOIN_QT_WALLETVIEW_H

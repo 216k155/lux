@@ -71,7 +71,7 @@ HelpMessageDialog::HelpMessageDialog(QWidget* parent, bool about) : QDialog(pare
                             "  -min                      " + tr("Start minimized") + "\n" +
                             "  -rootcertificates=<file>  " + tr("Set SSL root certificates for payment request (default: -system-)") + "\n" +
                             "  -splash                   " + tr("Show splash screen on startup (default: 1)");
-
+                            "  -resetguisettings         " + tr("Reset all settings changed in the GUI");
         ui->helpMessageLabel->setFont(GUIUtil::bitcoinAddressFont());
         text = version + "\n" + header + "\n" + coreOptions + "\n" + uiOptions;
         ui->helpMessageLabel->setText(text);

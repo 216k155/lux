@@ -95,7 +95,8 @@ private:
 
     UnitDisplayStatusBarControl* unitDisplayControl;
     QLabel* labelStakingIcon;
-    QLabel* labelEncryptionIcon;
+    QLabel* labelWalletEncryptionIcon;
+    QLabel* labelWalletHDStatusIcon;
     QPushButton* labelConnectionsIcon;
     QLabel* labelBlocksIcon;
     QLabel* progressBarLabel;
@@ -186,8 +187,8 @@ public slots:
     void setNumConnections(int count);
     /** Set network state shown in the UI */
     void setNetworkActive(bool networkActive);
-    /** Set number of blocks shown in the UI */
-    void setNumBlocks(int count);
+    /** Set number of blocks and last block date shown in the UI */
+    void setNumBlocks(int count, const QDateTime& blockDate);
     /** Get restart command-line parameters and request restart */
     void handleRestart(QStringList args);
 
@@ -208,6 +209,8 @@ public slots:
        @see WalletModel::EncryptionStatus
     */
     void setEncryptionStatus(int status);
+
+    void setHDStatus(int hdEnabled);
 
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 

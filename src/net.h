@@ -6,6 +6,7 @@
 #ifndef BITCOIN_NET_H
 #define BITCOIN_NET_H
 
+#include "addrdb.h"
 #include "bloom.h"
 #include "compat.h"
 #include "hash.h"
@@ -18,6 +19,7 @@
 #include "sync.h"
 #include "uint256.h"
 #include "utilstrencodings.h"
+#include "fs.h"
 
 #include <atomic>
 #include <deque>
@@ -30,7 +32,6 @@
 #include <arpa/inet.h>
 #endif
 
-#include <boost/filesystem/path.hpp>
 #include <boost/signals2/signal.hpp>
 
 class CAddrMan;
@@ -82,11 +83,37 @@ CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
 CNode* ConnectNode(CAddress addrConnect, const char* pszDest = nullptr, bool darkSendMaster = false);
 bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false, bool fAddnode = false);
+
+struct ListenSocket {
+    SOCKET socket;
+    bool whitelisted;
+
+    ListenSocket(SOCKET socket_, bool whitelisted_) : socket(socket_), whitelisted(whitelisted_) {}
+};
+
+class CConnman
+{
+public:
+    CConnman();
+    ~CConnman();
+    bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
+    void Stop();
+private:
+    void ThreadOpenAddedConnections();
+    void ProcessOneShot();
+    void ThreadOpenConnections();
+    void ThreadMessageHandler();
+    void AcceptConnection(const ListenSocket& hListenSocket);
+    void ThreadSocketHandler();
+    void ThreadDNSAddressSeed();
+};
+extern std::unique_ptr<CConnman> g_connman;
+
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService& bindAddr, std::string& strError, bool fWhitelisted = false);
-void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
-bool StopNode();
+bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
+bool StopNode(CConnman& connman);
 void SocketSendData(CNode* pnode);
 
 typedef int NodeId;
@@ -226,68 +253,6 @@ public:
     int readData(const char* pch, unsigned int nBytes);
 };
 
-
-typedef enum BanReason
-{
-    BanReasonUnknown     = 0,
-    BanMisbehaving       = 1,
-    BanReasonManually    = 2
-} BanReason;
-
-class CBanEntry
-{
-public:
-    static const int CURRENT_VERSION=1;
-    int nVersion;
-    int64_t nCreateTime;
-    int64_t nBanUntil;
-    uint8_t banReason;
-
-    CBanEntry()
-    {
-        SetNull();
-    }
-
-    CBanEntry(int64_t nCreateTimeIn)
-    {
-        SetNull();
-        nCreateTime = nCreateTimeIn;
-    }
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(this->nVersion);
-        READWRITE(nCreateTime);
-        READWRITE(nBanUntil);
-        READWRITE(banReason);
-    }
-
-    void SetNull()
-    {
-        nVersion = CBanEntry::CURRENT_VERSION;
-        nCreateTime = 0;
-        nBanUntil = 0;
-        banReason = BanReasonUnknown;
-    }
-
-    std::string banReasonToString()
-    {
-        switch (banReason) {
-            case BanMisbehaving:
-                return "lux node misbehabing";
-            case BanReasonManually:
-                return "manually";
-            default:
-                return "unknown";
-        }
-    }
-};
-
-typedef std::map<CSubNet, CBanEntry> banmap_t;
-
-
 /** Information about a peer */
 class CNode
 {
@@ -342,7 +307,7 @@ public:
      bool fMasternode;
     CSemaphoreGrant grantOutbound;
     CCriticalSection cs_filter;
-    CBloomFilter* pfilter;
+    std::unique_ptr<CBloomFilter> pfilter;
     std::atomic<int> nRefCount;
     NodeId id;
 
@@ -379,7 +344,7 @@ public:
     int64_t nNextLocalAddrSend;
 
     // inventory based relay
-    mruset<CInv> setInventoryKnown;
+    CRollingBloomFilter setInventoryKnown;
     std::vector<CInv> vInventoryToSend;
     CCriticalSection cs_inventory;
     std::multimap<int64_t, CInv> mapAskFor;
@@ -478,7 +443,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            setInventoryKnown.insert(inv);
+            setInventoryKnown.insert(inv.GetHash());
         }
     }
 
@@ -486,7 +451,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            if (!setInventoryKnown.count(inv))
+            if (!setInventoryKnown.contains(inv.GetHash()))
                 vInventoryToSend.push_back(inv);
         }
     }
@@ -762,13 +727,13 @@ public:
     static uint64_t GetTotalBytesRecv();
     static uint64_t GetTotalBytesSent();
 };
-
+/*
 class CExplicitNetCleanup
 {
 public:
     static void callCleanup();
 };
-
+*/
 class CTransaction;
 void RelayTransaction(const CTransaction& tx);
 void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
@@ -783,29 +748,6 @@ void SendDarkSendElectionEntry(const CTxIn &vin, const CService addr, const std:
 void RelayDarkSendElectionEntryPing(const CTxIn &vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
 void SendDarkSendElectionEntryPing(const CTxIn &vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
 void RelayDarkSendCompletedTransaction(const int sessionID, const bool error, const std::string errorMessage);
-
-/** Access to the (IP) address database (peers.dat) */
-class CAddrDB
-{
-private:
-    boost::filesystem::path pathAddr;
-
-public:
-    CAddrDB();
-    bool Write(const CAddrMan& addr);
-    bool Read(CAddrMan& addr);
-};
-
-/** Access to the banlist database (banlist.dat) */
-class CBanListDB
-{
-private:
-    boost::filesystem::path pathBanlist;
-public:
-    CBanListDB();
-    bool Write(const banmap_t& banSet);
-    bool Read(banmap_t& banSet);
-};
 
 void DumpBanlist();
 

@@ -416,7 +416,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vTxFees[0] = -nFees;
 
     uint64_t nSerializeSize = GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION);
-    LogPrint("miner", "CreateNewBlock(): total size: %u block weight: %u txs: %u fees: %ld sigops %d\n", nSerializeSize, GetBlockCost(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
+    LogPrint(BCLog::LDEBUG, "CreateNewBlock(): total size: %u block weight: %u txs: %u fees: %ld sigops %d\n", nSerializeSize, GetBlockCost(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
 
     // The total fee is the Fees minus the Refund
     if (pTotalFees)
@@ -626,22 +626,22 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     ByteCodeExec exec(*pblock, luxTransactions, hardBlockGasLimit);
     if(!exec.performByteCode()){
         //error, don't add contract
-        globalState->setRoot(oldHashStateRoot);
-        globalState->setRootUTXO(oldHashUTXORoot);
+        setGlobalStateRoot(oldHashStateRoot);
+        setGlobalStateUTXO(oldHashUTXORoot);
         return false;
     }
 
     ByteCodeExecResult testExecResult;
     if(!exec.processingResults(testExecResult)){
-        globalState->setRoot(oldHashStateRoot);
-        globalState->setRootUTXO(oldHashUTXORoot);
+        setGlobalStateRoot(oldHashStateRoot);
+        setGlobalStateUTXO(oldHashUTXORoot);
         return false;
     }
 
     if(bceResult.usedGas + testExecResult.usedGas > softBlockGasLimit){
         //if this transaction could cause block gas limit to be exceeded, then don't add it
-        globalState->setRoot(oldHashStateRoot);
-        globalState->setRootUTXO(oldHashUTXORoot);
+        setGlobalStateRoot(oldHashStateRoot);
+        setGlobalStateUTXO(oldHashUTXORoot);
         return false;
     }
 
@@ -683,8 +683,8 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     if (nBlockSigOpsCost * WITNESS_SCALE_FACTOR > (uint64_t)dgpMaxBlockSigOps ||
         nBlockSize > dgpMaxBlockSerSize) {
         //contract will not be added to block, so revert state to before we tried
-        globalState->setRoot(oldHashStateRoot);
-        globalState->setRootUTXO(oldHashUTXORoot);
+        setGlobalStateRoot(oldHashStateRoot);
+        setGlobalStateUTXO(oldHashUTXORoot);
         return false;
     }
 

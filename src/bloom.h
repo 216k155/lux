@@ -62,14 +62,13 @@ public:
      * It should generally always be a random value (and is largely only exposed for unit testing)
      * nFlags should be one of the BLOOM_UPDATE_* enums (not _MASK)
      */
-    CBloomFilter(unsigned int nElements, double nFPRate, unsigned int nTweak, unsigned char nFlagsIn);
+    CBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweak, unsigned char nFlagsIn);
     CBloomFilter() : isFull(true), isEmpty(false), nHashFuncs(0), nTweak(0), nFlags(0) {}
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(vData);
         READWRITE(nHashFuncs);
         READWRITE(nTweak);
@@ -85,6 +84,7 @@ public:
     bool contains(const uint256& hash) const;
 
     void clear();
+    void reset(const unsigned int nNewTweak);
 
     //! True if the size is <= MAX_BLOOM_FILTER_SIZE and the number of hash functions is <= MAX_HASH_FUNCS
     //! (catch a filter which was just deserialized which was too big)
@@ -96,5 +96,30 @@ public:
     //! Checks for empty and full filters to avoid wasting cpu
     void UpdateEmptyFull();
 };
+
+class CRollingBloomFilter
+{
+public:
+    // A random bloom filter calls GetRand() at creation time.
+    // Don't create global CRollingBloomFilter objects, as they may be
+    // constructed before the randomizer is properly initialized.
+    CRollingBloomFilter(const unsigned int nElements, const double nFPRate);
+
+    void insert(const std::vector<unsigned char>& vKey);
+    void insert(const uint256& hash);
+    bool contains(const std::vector<unsigned char>& vKey) const;
+    bool contains(const uint256& hash) const;
+
+    void reset();
+
+private:
+    int nEntriesPerGeneration;
+    int nEntriesThisGeneration;
+    int nGeneration;
+    std::vector<uint64_t> data;
+    unsigned int nTweak;
+    int nHashFuncs;
+};
+
 
 #endif // BITCOIN_BLOOM_H

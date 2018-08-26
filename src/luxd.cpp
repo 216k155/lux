@@ -14,11 +14,14 @@
 #include "rpcserver.h"
 #include "ui_interface.h"
 #include "util.h"
+#include "httpserver.h"
+#include "httprpc.h"
+#include "rpcserver.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
-
+#include <stdio.h>
 /* Introduction text for doxygen: */
 
 /*! \mainpage Developer documentation
@@ -46,7 +49,7 @@ void DetectShutdownThread(boost::thread_group* threadGroup)
         fShutdown = ShutdownRequested();
     }
     if (threadGroup) {
-        threadGroup->interrupt_all();
+        Interrupt(*threadGroup);
         threadGroup->join_all();
     }
 }
@@ -59,7 +62,6 @@ bool AppInit(int argc, char* argv[])
 {
     boost::thread_group threadGroup;
     CScheduler scheduler;
-    boost::thread* detectShutdownThread = nullptr;
 
     bool fRet = false;
 
@@ -83,11 +85,11 @@ bool AppInit(int argc, char* argv[])
         }
 
         fprintf(stdout, "%s", strUsage.c_str());
-        return false;
+        return true;
     }
 
     try {
-        if (!boost::filesystem::is_directory(GetDataDir(false))) {
+        if (!fs::is_directory(GetDataDir(false))) {
             fprintf(stderr, "Error: Specified data directory \"%s\" does not exist.\n", mapArgs["-datadir"].c_str());
             return false;
         }
@@ -120,7 +122,7 @@ bool AppInit(int argc, char* argv[])
 
         if (fCommandLine) {
             fprintf(stderr, "Error: There is no RPC client functionality in luxd anymore. Use the lux-cli utility instead.\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
 #ifndef WIN32
         fDaemon = GetBoolArg("-daemon", false);
@@ -146,7 +148,6 @@ bool AppInit(int argc, char* argv[])
 #endif
         SoftSetBoolArg("-server", true);
 
-        detectShutdownThread = new boost::thread(boost::bind(&DetectShutdownThread, &threadGroup));
         fRet = AppInit2(threadGroup, scheduler);
     } catch (std::exception& e) {
         PrintExceptionContinue(&e, "AppInit()");
@@ -155,19 +156,12 @@ bool AppInit(int argc, char* argv[])
     }
 
     if (!fRet) {
-        if (detectShutdownThread)
-            detectShutdownThread->interrupt();
-
-        threadGroup.interrupt_all();
+        Interrupt(threadGroup);
         // threadGroup.join_all(); was left out intentionally here, because we didn't re-test all of
         // the startup-failure cases to make sure they don't result in a hang due to some
         // thread-blocking-waiting-for-another-thread-during-startup case
-    }
-
-    if (detectShutdownThread) {
-        detectShutdownThread->join();
-        delete detectShutdownThread;
-        detectShutdownThread = nullptr;
+    } else {
+        DetectShutdownThread(&threadGroup);
     }
     Shutdown();
 
@@ -181,5 +175,5 @@ int main(int argc, char* argv[])
     // Connect luxd signal handlers
     noui_connect();
 
-    return (AppInit(argc, argv) ? 0 : 1);
+    return (AppInit(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

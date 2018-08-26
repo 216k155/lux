@@ -1,13 +1,13 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto             -*- c++ -*-
-// Copyright (c) 2009-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
+// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2017 The Bitcoin Core developers
+// Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_STREAMS_H
 #define BITCOIN_STREAMS_H
 
 #include <support/allocators/zeroafterfree.h>
-#include <serialize.h>
+#include "serialize.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -17,8 +17,8 @@
 #include <set>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <string>
+#include <string.h>
 #include <utility>
 #include <vector>
 
@@ -75,7 +75,7 @@ OverrideStream<S> WithOrVersion(S* s, int nVersionFlag)
  */
 class CVectorWriter
 {
-public:
+ public:
 
 /*
  * @param[in]  nTypeIn Serialization Type
@@ -154,14 +154,14 @@ protected:
     int nVersion;
 public:
 
-    typedef vector_type::allocator_type allocator_type;
-    typedef vector_type::size_type size_type;
-    typedef vector_type::difference_type difference_type;
-    typedef vector_type::reference reference;
-    typedef vector_type::const_reference const_reference;
-    typedef vector_type::value_type value_type;
-    typedef vector_type::iterator iterator;
-    typedef vector_type::const_iterator const_iterator;
+    typedef vector_type::allocator_type   allocator_type;
+    typedef vector_type::size_type        size_type;
+    typedef vector_type::difference_type  difference_type;
+    typedef vector_type::reference        reference;
+    typedef vector_type::const_reference  const_reference;
+    typedef vector_type::value_type       value_type;
+    typedef vector_type::iterator         iterator;
+    typedef vector_type::const_iterator   const_iterator;
     typedef vector_type::reverse_iterator reverse_iterator;
 
     explicit CDataStream(int nTypeIn, int nVersionIn)
@@ -422,14 +422,6 @@ public:
 };
 
 
-
-
-
-
-
-
-
-
 /** Non-refcounted RAII wrapper for FILE*
  *
  * Will automatically close the file when it goes out of scope if not null.
@@ -580,7 +572,7 @@ protected:
 
 public:
     CBufferedFile(FILE *fileIn, uint64_t nBufSize, uint64_t nRewindIn, int nTypeIn, int nVersionIn) :
-            nType(nTypeIn), nVersion(nVersionIn), nSrcPos(0), nReadPos(0), nReadLimit((uint64_t)(-1)), nRewind(nRewindIn), vchBuf(nBufSize, 0)
+        nType(nTypeIn), nVersion(nVersionIn), nSrcPos(0), nReadPos(0), nReadLimit((uint64_t)(-1)), nRewind(nRewindIn), vchBuf(nBufSize, 0)
     {
         src = fileIn;
     }

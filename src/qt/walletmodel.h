@@ -122,7 +122,8 @@ public:
         TransactionCreationFailed, // Error returned when wallet is still locked
         TransactionCommitFailed,
         AnonymizeOnlyUnlocked,
-        InsaneFee
+        AbsurdFee,
+        PaymentRequestExpired
     };
 
     enum EncryptionStatus {
@@ -240,6 +241,7 @@ public:
     std::vector<CTokenInfo> getInvalidTokens();
 
     bool isMineAddress(const std::string &Address);
+    bool hdEnabled() const;
 
 private:
     CWallet* wallet;

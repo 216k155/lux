@@ -13,7 +13,7 @@
 #include "serialize.h"
 #include "uint256.h"
 #include "undo.h"
-
+#include "memusage.h"
 #include <assert.h>
 #include <stdint.h>
 
@@ -105,6 +105,21 @@ public:
         FromTx(tx, nHeightIn);
     }
 
+    CCoins(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn)
+    {
+        vout.resize(1);
+        vout[0] = std::move(outIn);
+        fCoinBase = fCoinBaseIn;
+        nHeight = nHeightIn;
+    }
+    CCoins(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn)
+    {
+       vout.resize(1);
+       vout[0] = outIn;
+       fCoinBase = fCoinBaseIn;
+       nHeight = nHeightIn;
+    }
+
     void Clear()
     {
         fCoinBase = false;
@@ -148,7 +163,7 @@ public:
     friend bool operator==(const CCoins& a, const CCoins& b)
     {
         // Empty CCoins objects are always equal.
-        if (a.IsPruned() && b.IsPruned())
+        if (a.IsSpent() && b.IsSpent())
             return true;
         return a.fCoinBase == b.fCoinBase &&
                a.fCoinStake == b.fCoinStake &&
@@ -244,11 +259,8 @@ public:
         Cleanup();
     }
 
-    //! mark an outpoint spent, and construct undo information
-    bool Spend(const COutPoint& out, CTxInUndo& undo);
-
     //! mark a vout spent
-    bool Spend(int nPos);
+    bool Spend(uint32_t nPos);
 
     //! check whether a particular output is still available
     bool IsAvailable(unsigned int nPos) const
@@ -257,13 +269,20 @@ public:
     }
 
     //! check whether the entire CCoins is spent
-    //! note that only !IsPruned() CCoins can be serialized
-    bool IsPruned() const
+    //! note that only !IsSpent() CCoins can be serialized
+    bool IsSpent() const
     {
         for (const CTxOut& out : vout)
             if (!out.IsNull())
                 return false;
         return true;
+    }
+
+    size_t DynamicMemoryUsage() const {
+        size_t size = 0;
+        for (const CTxOut& out : vout)
+            size += memusage::DynamicUsage(out.scriptPubKey);
+        return size;
     }
 };
 
@@ -312,17 +331,37 @@ struct CCoinsStats {
     CCoinsStats() : nHeight(0), hashBlock(0), nTransactions(0), nTransactionOutputs(0), nSerializedSize(0), hashSerialized(0), nTotalAmount(0) {}
 };
 
+/** Cursor for iterating over CoinsView state */
+class CCoinsViewCursor
+{
+public:
+    CCoinsViewCursor(const uint256 &hashBlockIn): hashBlock(hashBlockIn) {}
+    virtual ~CCoinsViewCursor() {}
+
+    virtual bool GetKey(COutPoint &key) const = 0;
+    virtual bool GetValue(CCoins &coins) const = 0;
+    /* Don't care about GetKeySize here */
+    virtual unsigned int GetValueSize() const = 0;
+
+    virtual bool Valid() const = 0;
+    virtual void Next() = 0;
+
+    //! Get best block at the time this cursor was created
+    const uint256 &GetBestBlock() const { return hashBlock; }
+private:
+    uint256 hashBlock;
+};
 
 /** Abstract view on the open txout dataset. */
 class CCoinsView
 {
 public:
     //! Retrieve the CCoins (unspent transaction outputs) for a given txid
-    virtual bool GetCoins(const uint256& txid, CCoins& coins) const;
+    virtual bool GetCoin(const uint256& txid, CCoins& coins) const;
 
     //! Just check whether we have data for a given txid.
     //! This may (but cannot always) return true for fully spent transactions
-    virtual bool HaveCoins(const uint256& txid) const;
+    virtual bool HaveCoin(const uint256& txid) const;
 
     //! Retrieve the block hash whose state this CCoinsView currently represents
     virtual uint256 GetBestBlock() const;
@@ -347,8 +386,8 @@ protected:
 
 public:
     CCoinsViewBacked(CCoinsView* viewIn);
-    bool GetCoins(const uint256& txid, CCoins& coins) const;
-    bool HaveCoins(const uint256& txid) const;
+    bool GetCoin(const uint256& txid, CCoins& coins) const;
+    bool HaveCoin(const uint256& txid) const;
     uint256 GetBestBlock() const;
     void SetBackend(CCoinsView& viewIn);
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
@@ -389,25 +428,29 @@ protected:
      */
     mutable uint256 hashBlock;
     mutable CCoinsMap cacheCoins;
-
+    mutable size_t cachedCoinsUsage;
 public:
     CCoinsViewCache(CCoinsView* baseIn);
     ~CCoinsViewCache();
 
     // Standard CCoinsView methods
-    bool GetCoins(const uint256& txid, CCoins& coins) const;
-    bool HaveCoins(const uint256& txid) const;
+    bool GetCoin(const uint256& txid, CCoins& coins) const;
+    bool HaveCoin(const uint256& txid) const;
+    bool HaveCoin(const COutPoint &outpoint) const;
     uint256 GetBestBlock() const;
     void SetBestBlock(const uint256& hashBlock);
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
+    CCoinsViewCursor* Cursor() const {
+        throw std::logic_error("CCoinsViewCache cursor iteration not supported.");
+    }
 
     /**
-     * Return a pointer to CCoins in the cache, or nullptr if not found. This is
+     * Return a pointer to CCoins in the cache, or NULL if not found. This is
      * more efficient than GetCoins. Modifications to other cache entries are
      * allowed while accessing the returned pointer.
      */
     const CCoins* AccessCoins(const uint256& txid) const;
-
+    const CCoins AccessCoin(const COutPoint &output) const;
     /**
      * Return a modifiable reference to a CCoins. If no entry with the given
      * txid exists, a new one is created. Simultaneous modifications are not
@@ -415,6 +458,14 @@ public:
      */
     CCoinsModifier ModifyCoins(const uint256& txid);
 
+    void AddCoin(const COutPoint& outpoint, CCoins&& coin, bool potential_overwrite);
+
+    /**
+     * Spend a coin. Pass moveto in order to get the deleted data.
+     * If no unspent output exists for the passed outpoint, this call
+     * has no effect.
+     */
+    void SpendCoin(const COutPoint &outpoint, CCoins* moveto = nullptr);
     /**
      * Push the modifications applied to this cache to its base.
      * Failure to call this method before destruction will cause the changes to be forgotten.
@@ -425,7 +476,15 @@ public:
     //! Calculate the size of the cache (in number of transactions)
     unsigned int GetCacheSize() const;
 
-    /** 
+    /**
+    * Removes the UTXO with the given outpoint from the cache, if it is
+    * not modified.
+    */
+    void Uncache(const COutPoint &outpoint);
+
+    //! Calculate the size of the cache (in bytes)
+    size_t DynamicMemoryUsage() const;
+    /**
      * Amount of lux coming in to a transaction
      * Note that lightweight clients may not know anything besides the hash of previous transactions,
      * so may not be able to calculate this.
@@ -446,8 +505,18 @@ public:
     friend class CCoinsModifier;
 
 private:
-    CCoinsMap::iterator FetchCoins(const uint256& txid);
-    CCoinsMap::const_iterator FetchCoins(const uint256& txid) const;
+    CCoinsMap::iterator FetchCoin(const COutPoint &outpoint) const;
+    CCoinsViewCache(const CCoinsViewCache &);
+    CCoinsMap::iterator FetchCoin(const uint256& txid) const;
 };
+
+//! Utility function to add all of a transaction's outputs to a cache.
+// It assumes that overwrites are only possible for coinbase transactions,
+// TODO: pass in a boolean to limit these possible overwrites to known
+// (pre-BIP34) cases.
+void AddCoins(CCoinsViewCache& cache, const CTransaction& tx, int nHeight);
+
+//! Utility function to find any unspent output with a given txid.
+const CCoins AccessByTxid(const CCoinsViewCache& cache, const uint256& txid);
 
 #endif // BITCOIN_COINS_H

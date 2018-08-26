@@ -26,7 +26,7 @@
 #include "walletmodel.h"
 #endif
 #include "masternodeconfig.h"
-
+#include "fs.h"
 #include "init.h"
 #include "main.h"
 #include "rpcserver.h"
@@ -40,7 +40,6 @@
 
 #include <stdint.h>
 
-#include <boost/filesystem/operations.hpp>
 #include <boost/thread.hpp>
 
 #include <QApplication>
@@ -157,15 +156,21 @@ static void initTranslations(QTranslator& qtTranslatorBase, QTranslator& qtTrans
 #if QT_VERSION < 0x050000
 void DebugMessageHandler(QtMsgType type, const char* msg)
 {
-    const char* category = (type == QtDebugMsg) ? "qt" : nullptr;
-    LogPrint(category, "GUI: %s\n", msg);
+    if (type == QtDebugMsg) {
+        LogPrint(BCLog::QT, "GUI: %s\n", msg);
+    } else {
+        LogPrintf("GUI: %s\n", msg);
+    }
 }
 #else
 void DebugMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     Q_UNUSED(context);
-    const char* category = (type == QtDebugMsg) ? "qt" : nullptr;
-    LogPrint(category, "GUI: %s\n", msg.toStdString());
+    if (type == QtDebugMsg) {
+        LogPrint(BCLog::QT, "GUI: %s\n", msg.toStdString());
+    } else {
+        LogPrintf("GUI: %s\n", msg.toStdString());
+    }
 }
 #endif
 
@@ -184,8 +189,8 @@ public slots:
     void restart(QStringList args);
 
 signals:
-    void initializeResult(int retval);
-    void shutdownResult(int retval);
+    void initializeResult(bool success);
+    void shutdownResult();
     void runawayException(const QString& message);
 
 private:
@@ -232,8 +237,8 @@ public:
     void restoreWallet();
 
 public slots:
-    void initializeResult(int retval);
-    void shutdownResult(int retval);
+    void initializeResult(bool success);
+    void shutdownResult();
     /// Handle runaway exceptions. Shows a message box with the problem and quits the program.
     void handleRunawayException(const QString& message);
 
@@ -281,13 +286,7 @@ void BitcoinCore::initialize()
 
     try {
         qDebug() << __func__ << ": Running AppInit2 in thread";
-        int rv = AppInit2(threadGroup, scheduler);
-        if (rv) {
-            /* Start a dummy RPC thread if no RPC thread is active yet
-             * to handle timeouts.
-             */
-            StartDummyRPCThread();
-        }
+        bool rv = AppInit2(threadGroup, scheduler);
         emit initializeResult(rv);
     } catch (std::exception& e) {
         handleRunawayException(&e);
@@ -302,12 +301,12 @@ void BitcoinCore::restart(QStringList args)
         execute_restart = false;
         try {
             qDebug() << __func__ << ": Running Restart in thread";
-            threadGroup.interrupt_all();
+            Interrupt(threadGroup);
             threadGroup.join_all();
             PrepareShutdown();
             qDebug() << __func__ << ": Shutdown finished";
-            emit shutdownResult(1);
-            CExplicitNetCleanup::callCleanup();
+            emit shutdownResult();
+            //CExplicitNetCleanup::callCleanup();
             QProcess::startDetached(QApplication::applicationFilePath(), args);
             qDebug() << __func__ << ": Restart initiated...";
             QApplication::quit();
@@ -327,7 +326,7 @@ void BitcoinCore::shutdown()
         threadGroup.join_all();
         Shutdown();
         qDebug() << __func__ << ": Shutdown finished";
-        emit shutdownResult(1);
+        emit shutdownResult();
     } catch (std::exception& e) {
         handleRunawayException(&e);
     } catch (...) {
@@ -410,7 +409,6 @@ void BitcoinApplication::createSplashScreen(const NetworkStyle* networkStyle)
     SplashScreen* splash = new SplashScreen(0, networkStyle);
     // We don't hold a direct pointer to the splash screen after creation, so use
     // Qt::WA_DeleteOnClose to make sure that the window will be deleted eventually.
-    splash->setAttribute(Qt::WA_DeleteOnClose);
     splash->show();
     connect(this, SIGNAL(splashFinished(QWidget*)), splash, SLOT(slotFinish(QWidget*)));
 }
@@ -424,8 +422,8 @@ void BitcoinApplication::startThread()
     executor->moveToThread(coreThread);
 
     /*  communication to and from thread */
-    connect(executor, SIGNAL(initializeResult(int)), this, SLOT(initializeResult(int)));
-    connect(executor, SIGNAL(shutdownResult(int)), this, SLOT(shutdownResult(int)));
+    connect(executor, SIGNAL(initializeResult(bool)), this, SLOT(initializeResult(bool)));
+    connect(executor, SIGNAL(shutdownResult()), this, SLOT(shutdownResult()));
     connect(executor, SIGNAL(runawayException(QString)), this, SLOT(handleRunawayException(QString)));
     connect(this, SIGNAL(requestedInitialize()), executor, SLOT(initialize()));
     connect(this, SIGNAL(requestedShutdown()), executor, SLOT(shutdown()));
@@ -473,12 +471,12 @@ void BitcoinApplication::requestShutdown()
     emit requestedShutdown();
 }
 
-void BitcoinApplication::initializeResult(int retval)
+void BitcoinApplication::initializeResult(bool success)
 {
-    qDebug() << __func__ << ": Initialization result: " << retval;
-    // Set exit result: 0 if successful, 1 if failure
-    returnValue = retval ? 0 : 1;
-    if (retval) {
+    qDebug() << __func__ << ": Initialization result: " << success;
+    // Set exit result.
+    returnValue = success ? EXIT_SUCCESS : EXIT_FAILURE;
+    if(success) {
 #ifdef ENABLE_WALLET
         PaymentServer::LoadRootCAs();
         paymentServer->setOptionsModel(optionsModel);
@@ -525,16 +523,15 @@ void BitcoinApplication::initializeResult(int retval)
     }
 }
 
-void BitcoinApplication::shutdownResult(int retval)
+void BitcoinApplication::shutdownResult()
 {
-    qDebug() << __func__ << ": Shutdown result: " << retval;
     quit(); // Exit main loop after shutdown finished
 }
 
 void BitcoinApplication::handleRunawayException(const QString& message)
 {
     QMessageBox::critical(0, "Runaway exception", BitcoinGUI::tr("A fatal error occurred. LUX can no longer continue safely and will quit.") + QString("\n\n") + message);
-    ::exit(1);
+    ::exit(EXIT_FAILURE);
 }
 
 WId BitcoinApplication::getMainWinId() const
@@ -561,7 +558,7 @@ void BitcoinApplication::restoreWallet()
         commandLine = arg.join(' ');
 
         // Copy the new wallet.dat to the data folder
-        boost::filesystem::path path = GetDataDir() / "wallet.dat";
+        fs::path path = GetDataDir() / "wallet.dat";
         QString pathWallet = QString::fromStdString(path.string());
         QFile::remove(pathWallet);
         if(QFile::copy(restorePath, pathWallet))
@@ -633,7 +630,7 @@ int main(int argc, char* argv[])
     if (mapArgs.count("-?") || mapArgs.count("-help") || mapArgs.count("-version")) {
         HelpMessageDialog help(nullptr, mapArgs.count("-version"));
         help.showOrPrint();
-        return 1;
+        return EXIT_SUCCESS;
     }
 
     // Show End User License agreement window
@@ -646,17 +643,17 @@ int main(int argc, char* argv[])
 
     /// 6. Determine availability of data directory and parse lux.conf
     /// - Do not call GetDataDir(true) before this step finishes
-    if (!boost::filesystem::is_directory(GetDataDir(false))) {
+    if (!fs::is_directory(GetDataDir(false))) {
         QMessageBox::critical(0, QObject::tr("Luxcore"),
             QObject::tr("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
-        return 1;
+        return EXIT_FAILURE;
     }
     try {
         ReadConfigFile(mapArgs, mapMultiArgs);
     } catch (std::exception& e) {
         QMessageBox::critical(0, QObject::tr("Luxcore"),
             QObject::tr("Error: Cannot parse configuration file: %1. Only use key=value syntax.").arg(e.what()));
-        return 1;
+        return EXIT_FAILURE;
     }
 
     /// 7. Determine network (and switch to network specific options)
@@ -668,7 +665,7 @@ int main(int argc, char* argv[])
     // Check for -testnet or -regtest parameter (Params() calls are only valid after this clause)
     if (!SelectParamsFromCommandLine()) {
         QMessageBox::critical(0, QObject::tr("Luxcore"), QObject::tr("Error: Invalid combination of -regtest and -testnet."));
-        return 1;
+        return EXIT_FAILURE;
     }
 #ifdef ENABLE_WALLET
     // Parse URIs on command line -- this can affect Params()
@@ -689,7 +686,7 @@ int main(int argc, char* argv[])
         QMessageBox::critical(0, QObject::tr("Luxcore"),
             QObject::tr("Error reading masternode configuration file: %1").arg(strErr.c_str()));
 #if defined(REQUIRE_MASTERNODE_CONFIG)
-        return 1;
+        return EXIT_FAILURE;
 #endif
     }
 
@@ -700,7 +697,7 @@ int main(int argc, char* argv[])
     // - Do this after creating app and setting up translations, so errors are
     // translated properly.
     if (PaymentServer::ipcSendCommandLine())
-        exit(0);
+        exit(EXIT_SUCCESS);
 
     // Start up the payment server early, too, so impatient users that click on
     // lux: links repeatedly have their payment requests routed to this process:

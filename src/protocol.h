@@ -171,8 +171,14 @@ public:
         READWRITE(*(CService*)this);
     }
 
-    // TODO: make private (improves encapsulation)
-public:
+
+    void SetServices(ServiceFlags services) { nServices = services; }
+    void SetTime(unsigned int time)         { nTime = time; }
+
+    ServiceFlags GetServices()  const { return nServices; }
+    unsigned int GetTime()      const { return nTime; }
+
+private:
     ServiceFlags nServices;
 
     // disk and network only
@@ -221,8 +227,10 @@ public:
     std::string GetCommand() const;
     std::string ToString() const;
 
-    // TODO: make private (improves encapsulation)
-public:
+    int GetType()       const { return type; }
+    uint256 GetHash()   const { return hash; }
+
+private:
     int type;
     uint256 hash;
 };

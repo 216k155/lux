@@ -81,6 +81,8 @@ public:
         MNReward,
         RecvFromOther,
         SendToSelf,
+        ContractRecv,
+        ContractSend,
         RecvWithDarksend,
         DarksendDenominate,
         DarksendCollateralPayment,

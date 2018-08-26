@@ -71,7 +71,9 @@ endif
 # Luxcore #
 BITCOIN_CORE_H = \
   activemasternode.h \
+  addrdb.h \
   addrman.h \
+  addressindex.h \
   alert.h \
   amount.h \
   base58.h \
@@ -98,6 +100,7 @@ BITCOIN_CORE_H = \
   core_memusage.h \
   cuckoocache.h \
   crypter.h \
+  fs.h \
   darksend.h \
   db.h \
   hash.h \
@@ -130,6 +133,7 @@ BITCOIN_CORE_H = \
   random.h \
   reverse_iterator.h \
   reverselock.h \
+  rpcblockchain.h \
   rpcclient.h \
   rpcprotocol.h \
   httprpc.h \
@@ -145,14 +149,15 @@ BITCOIN_CORE_H = \
   script/standard.h \
   script/script_error.h \
   serialize.h \
+  spentindex.h \
   spork.h \
   stake.h \
   streams.h \
-  support/cleanse.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
   support/pagelocker.h \
+  support/lockedpool.h \
   support/events.h \
   sync.h \
   threadsafety.h \
@@ -193,6 +198,7 @@ libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(MINIUPNPC_CP
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
   addrman.cpp \
+  addrdb.cpp \
   alert.cpp \
   bloom.cpp \
   chain.cpp \
@@ -270,6 +276,7 @@ libbitcoin_wallet_a_SOURCES = \
 crypto_libbitcoin_crypto_a_CFLAGS = $(PIE_FLAGS)
 crypto_libbitcoin_crypto_a_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES) $(BITCOIN_INCLUDES) -DLUX_BUILD
 crypto_libbitcoin_crypto_a_SOURCES = \
+  crypto/aes.cpp \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
@@ -287,6 +294,7 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/fugue.c \
   crypto/lyra2/Lyra2.c \
   crypto/lyra2/Sponge.c  \
+  crypto/aes.h \
   crypto/common.h \
   crypto/sha256.h \
   crypto/sha512.h \
@@ -597,14 +605,15 @@ endif
 libbitcoin_util_a_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_a_SOURCES = \
   support/pagelocker.cpp \
+  support/lockedpool.cpp \
   compat/strnlen.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
+  fs.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
   random.cpp \
   rpcprotocol.cpp \
-  support/cleanse.cpp \
   rpcutil.cpp \
   support/cleanse.cpp \
   sync.cpp \
@@ -717,7 +726,11 @@ libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) $(BITCOIN_INCLUDES) -I$(build
 
 endif
 
-CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a
+CTAES_DIST = crypto/ctaes/ctaes.c crypto/ctaes/ctaes.h
+
+CLEANFILES = $(EXTRA_LIBRARIES)
+
+CLEANFILES += leveldb/libleveldb.a leveldb/libmemenv.a
 CLEANFILES += *.a *.la crypto/*.a cryptopp/*.a qt/*.a
 CLEANFILES += *.gcda *.gcno
 CLEANFILES += compat/*.gcda compat/*.gcno
@@ -732,7 +745,7 @@ CLEANFILES += zmq/*.gcda zmq/*.gcno
 
 DISTCLEANFILES = obj/build.h
 
-EXTRA_DIST = leveldb
+EXTRA_DIST = leveldb $(CTAES_DIST)
 
 # workaround for travis builds
 dist_pkgdata_DATA = multipliers.hpp univalue/univalue_utffilter.h

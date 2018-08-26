@@ -1383,8 +1383,8 @@ string tradingDialog::encryptDecrypt(string toEncrypt, string password) {
 void tradingDialog::on_SaveKeys_clicked()
 {
     bool fSuccess = true;
-    boost::filesystem::path pathConfigFile = GetDataDir() / "APIcache.txt";
-    boost::filesystem::ofstream stream (pathConfigFile.string(), ios::out | ios::trunc);
+    fs::path pathConfigFile = GetDataDir() / "APIcache.txt";
+    fs::ofstream stream (pathConfigFile.string(), ios::out | ios::trunc);
 
     // Qstring to string
     string password = ui->PasswordInput->text().toStdString();
@@ -1419,8 +1419,8 @@ void tradingDialog::on_SaveKeys_clicked()
 void tradingDialog::on_LoadKeys_clicked()
 {
     bool fSuccess = true;
-    boost::filesystem::path pathConfigFile = GetDataDir() / "APIcache.txt";
-    boost::filesystem::ifstream stream (pathConfigFile.string());
+    fs::path pathConfigFile = GetDataDir() / "APIcache.txt";
+    fs::ifstream stream (pathConfigFile.string());
 
     // Qstring to string
     string password = ui->PasswordInput->text().toUtf8().constData();

@@ -701,9 +701,7 @@ void CoinControlDialog::updateLabels(WalletModel* model, QDialog* dialog)
         }
 
         // after fee
-        nAfterFee = nAmount - nPayFee;
-        if (nAfterFee < 0)
-            nAfterFee = 0;
+        nAfterFee = std::max<CAmount>(nAmount - nPayFee, 0);
 
         // if use Split UTXO
         if (CoinControlDialog::nSplitBlockDummy > 1 && CoinControlDialog::coinControl->fSplitBlock) {

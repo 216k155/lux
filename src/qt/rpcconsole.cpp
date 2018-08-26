@@ -27,6 +27,7 @@
 
 #include <QDir>
 #include <QKeyEvent>
+#include <QMessageBox>
 #include <QMenu>
 #include <QScrollBar>
 #include <QSignalMapper>
@@ -116,8 +117,7 @@ signals:
  * @param[out]   pstrFilteredOut  Command line, filtered to remove any sensitive data
  */
 
-bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &strCommand, const bool fExecute, std::string * const pstrFilteredOut)
-{
+bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &strCommand, const bool fExecute, std::string * const pstrFilteredOut) {
     std::vector< std::vector<std::string> > stack;
     stack.push_back(std::vector<std::string>());
 
@@ -183,7 +183,7 @@ bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &
                                 curarg += ch;
                                 break;
                             }
-                            if (curarg.size() && fExecute)
+                            if (curarg.size())
                             {
                                 // if we have a value query, query arrays with index and objects with a string key
                                 UniValue subelement;
@@ -263,11 +263,13 @@ bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &
                     }
                     if ((ch == ')' || ch == '\n') && stack.size() > 0)
                     {
-                        if (fExecute) {
-                            // Convert argument list to JSON objects in method-dependent way,
-                            // and pass it along with the method name to the dispatcher.
-                            lastResult = tableRPC.execute(stack.back()[0], RPCConvertValues(stack.back()[0], std::vector<std::string>(stack.back().begin() + 1, stack.back().end())));
-                        }
+                        std::string strPrint;
+                        // Convert argument list to JSON objects in method-dependent way,
+                        // and pass it along with the method name to the dispatcher.
+                        JSONRPCRequest req;
+                        req.params = RPCConvertValues(stack.back()[0], std::vector<std::string>(stack.back().begin() + 1, stack.back().end()));
+                        req.strMethod = stack.back()[0];
+                        lastResult = tableRPC.execute(req);
 
                         state = STATE_COMMAND_EXECUTED;
                         curarg.clear();
@@ -492,8 +494,8 @@ void RPCConsole::setClientModel(ClientModel* model)
         setNumConnections(model->getNumConnections());
         connect(model, SIGNAL(numConnectionsChanged(int)), this, SLOT(setNumConnections(int)));
 
-        setNumBlocks(model->getNumBlocks());
-        connect(model, SIGNAL(numBlocksChanged(int)), this, SLOT(setNumBlocks(int)));
+        setNumBlocks(model->getNumBlocks(), model->getLastBlockDate());
+        connect(model, SIGNAL(numBlocksChanged(int,QDateTime)), this, SLOT(setNumBlocks(int,QDateTime)));
 
         updateNetworkState();
         connect(model, SIGNAL(networkActiveChanged(bool)), this, SLOT(setNetworkActive(bool)));
@@ -756,11 +758,10 @@ void RPCConsole::setNetworkActive(bool networkActive)
     updateNetworkState();
 }
 
-void RPCConsole::setNumBlocks(int count)
+void RPCConsole::setNumBlocks(int count, const QDateTime& blockDate)
 {
     ui->numberOfBlocks->setText(QString::number(count));
-    if (clientModel)
-        ui->lastBlockTime->setText(clientModel->getLastBlockDate().toString());
+    ui->lastBlockTime->setText(blockDate.toString());
 }
 
 void RPCConsole::setMasternodeCount(const QString& strMasternodes)

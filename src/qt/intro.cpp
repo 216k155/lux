@@ -8,7 +8,7 @@
 #include "ui_intro.h"
 
 #include "guiutil.h"
-
+#include "fs.h"
 #include "util.h"
 
 #include <boost/filesystem.hpp>
@@ -147,7 +147,7 @@ QString Intro::getDefaultDataDirectory()
 
 bool Intro::pickDataDirectory()
 {
-    namespace fs = boost::filesystem;
+    namespace fs = fs;
     QSettings settings;
     /* If data directory provided on command line, no need to look at settings
        or show a picking dialog */
@@ -167,7 +167,7 @@ bool Intro::pickDataDirectory()
         while (true) {
             if (!intro.exec()) {
                 /* Cancel clicked */
-                return false;
+                exit(EXIT_SUCCESS);
             }
             dataDir = intro.getDataDirectory();
             try {

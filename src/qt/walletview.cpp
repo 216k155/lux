@@ -143,6 +143,8 @@ void WalletView::setBitcoinGUI(BitcoinGUI* gui)
         // Clicking on add token button sends you to add token page
         connect(overviewPage, SIGNAL(addTokenClicked(bool)), gui, SLOT(gotoLSRTokenPage(bool)));
 
+        // Connect HD enabled state signal
+        connect(this, SIGNAL(hdEnabledStatusChanged(int)), gui, SLOT(setHDStatus(int)));
     }
 }
 
@@ -183,6 +185,9 @@ void WalletView::setWalletModel(WalletModel* walletModel)
         // Handle changes in encryption status
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SIGNAL(encryptionStatusChanged(int)));
         updateEncryptionStatus();
+
+        // update HD status
+        emit hdEnabledStatusChanged(walletModel->hdEnabled());
 
         // Balloon pop-up for new transaction
         connect(walletModel->getTransactionTableModel(), SIGNAL(rowsInserted(QModelIndex, int, int)),

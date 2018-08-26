@@ -18,6 +18,7 @@
 #include "hash.h"
 #include "init.h"
 #include "stake.h"
+#include "serialize.h"
 #include "masternode.h"
 #include "merkleblock.h"
 #include "net.h"
@@ -38,26 +39,26 @@
 #include "util.h"
 #include "utilmoneystr.h"
 #include "validationinterface.h"
+#include "undo.h"
 #include "versionbits.h"
 #include "script/interpreter.h"
+#include "fs.h"
 
 #include "univalue/univalue.h"
 #include <atomic>
 #include <sstream>
 
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/algorithm/string/join.hpp>
 
 #if defined(DEBUG_DUMP_STAKING_INFO)
 #  include "DEBUG_DUMP_STAKING_INFO.hpp"
 #endif
 
 using namespace boost;
-using namespace std;
 
 #if defined(NDEBUG)
 #error "LUX cannot be compiled without assertions."
@@ -133,6 +134,8 @@ std::atomic_bool fImporting(false);
 std::atomic_bool fReindex(false);
 bool fLogEvents = false;
 bool fTxIndex = true;
+bool fAddressIndex = false;
+bool fSpentIndex = false;
 bool fIsBareMultisigStd = true;
 bool fRequireStandard = true;
 bool fCheckBlockIndex = false;
@@ -171,7 +174,7 @@ static void CheckBlockIndex(const Consensus::Params& consensusParams);
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "Lux Signed Message:\n";
+const std::string strMessageMagic = "Lux Signed Message:\n";
 
 // Internal stuff
 namespace
@@ -203,11 +206,11 @@ CBlockIndex* pindexBestInvalid;
      * The set of all CBlockIndex entries with BLOCK_VALID_TRANSACTIONS (for itself and all ancestors) and
      * as good as our current tip or better. Entries may be failed, though.
      */
-set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
+    std::set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
 /** Number of nodes with fSyncStarted. */
 int nSyncStarted = 0;
 /** All pairs A->B, where A (or one if its ancestors) misses transactions, but B has transactions. */
-multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
+    std::multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
 
 CCriticalSection cs_LastBlockFile;
 std::vector<CBlockFileInfo> vinfoBlockFile;
@@ -232,6 +235,9 @@ uint32_t nBlockSequenceId = 1;
      * them, if processing happens afterwards. Protected by cs_main.
      */
 map<uint256, NodeId> mapBlockSource;
+std::unique_ptr<CRollingBloomFilter> recentRejects;
+
+uint256 hashRecentRejectsChainTip;
 
 /** Blocks that are in flight, and that are in the queue to be downloaded. Protected by cs_main. */
 struct QueuedBlock {
@@ -252,10 +258,10 @@ int nPreferredDownload = 0;
 // int g_outbound_peers_with_protect_from_disconnect = 0;
 
 /** Dirty block index entries. */
-set<CBlockIndex*> setDirtyBlockIndex;
+std::set<CBlockIndex*> setDirtyBlockIndex;
 
 /** Dirty block file entries. */
-set<int> setDirtyFileInfo;
+std::set<int> setDirtyFileInfo;
 } // anon namespace
 
 //////////////////////////////////////////////////////////////////////////////
@@ -628,7 +634,7 @@ bool AddOrphanTx(const CTransaction& tx, NodeId peer)
     // at most 500 megabytes of orphans:
     unsigned int sz = GetTransactionCost(tx);
     if (sz >= MAX_STANDARD_TX_COST) {
-        LogPrint("mempool", "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
+        LogPrint(BCLog::MEMPOOL, "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
         return false;
     }
 
@@ -638,7 +644,7 @@ bool AddOrphanTx(const CTransaction& tx, NodeId peer)
     for (const CTxIn& txin : tx.vin)
         mapOrphanTransactionsByPrev[txin.prevout.hash].insert(hash);
 
-    LogPrint("mempool", "stored orphan tx %s (mapsz %u prevsz %u)\n", hash.ToString(),
+    LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u prevsz %u)\n", hash.ToString(),
         mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
     return true;
 }
@@ -670,7 +676,7 @@ void EraseOrphansFor(NodeId peer)
             ++nErased;
         }
     }
-    if (nErased > 0) LogPrint("mempool", "Erased %d orphan tx from peer %d\n", nErased, peer);
+    if (nErased > 0) LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx from peer %d\n", nErased, peer);
 }
 
 
@@ -697,7 +703,7 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
         }
         // Sweep again 5 minutes after the next entry that expires in order to batch the linear scan.
         nNextSweep = nMinExpTime + ORPHAN_TX_EXPIRE_INTERVAL;
-        if (nErased > 0) LogPrint("mempool", "Erased %d orphan tx due to expiration\n", nErased);
+        if (nErased > 0) LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx due to expiration\n", nErased);
     }
 
     while (mapOrphanTransactions.size() > nMaxOrphans) {
@@ -880,7 +886,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state)
     CAmount nValueOut = 0;
     for (const CTxOut& txout : tx.vout) {
         //Removed tx out empty in function CheckTransaction , CHECKSEQUENCEVERIFY doesn't have non-empty tx out
-        //if (txout.IsEmpty() && !tx.IsCoinBase() && !tx.IsCoinStake())
+        //if (txout.IsEmpty() && !tx.IsCoinGenerated())
         //    return state.DoS(100, error("CheckTransaction(): txout empty for user transaction"));
         if (txout.nValue < 0)
             return state.DoS(100, error("%s: tx.vout[%d].nValue negative (%s, empty=%s, coinstake=%s)", __func__, i,
@@ -909,7 +915,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state)
 
 
     // Check for duplicate inputs
-    set<COutPoint> vInOutPoints;
+    std::set<COutPoint> vInOutPoints;
     for (const CTxIn& txin : tx.vin) {
         if (vInOutPoints.count(txin.prevout))
             return state.DoS(100, error("CheckTransaction() : duplicate inputs"),
@@ -959,6 +965,55 @@ bool CheckFinalTx(const CTransaction& tx, int flags)
     const int64_t nBlockTime = (flags & LOCKTIME_MEDIAN_TIME_PAST) ? chainActive.Tip()->GetMedianTimePast() : GetAdjustedTime();
 
     return IsFinalTx(tx, nBlockHeight, nBlockTime);
+}
+
+static void LimitMempoolSize(CTxMemPool& pool, size_t limit, unsigned long age) {
+    int expired = pool.Expire(GetTime() - age);
+    if (expired != 0) {
+        LogPrint(BCLog::MEMPOOL, "Expired %i transactions from the memory pool\n", expired);
+    }
+
+    std::vector<COutPoint> vNoSpendsRemaining;
+    pool.TrimToSize(limit, &vNoSpendsRemaining);
+    for (const COutPoint& removed : vNoSpendsRemaining)
+        pcoinsTip->Uncache(removed);
+}
+
+void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool fAddToMempool)
+{
+    AssertLockHeld(cs_main);
+    std::vector<uint256> vHashUpdate;
+    // disconnectpool's insertion_order index sorts the entries from
+    // oldest to newest, but the oldest entry will be the last tx from the
+    // latest mined block that was disconnected.
+    // Iterate disconnectpool in reverse, so that we add transactions
+    // back to the mempool starting with the earliest transaction that had
+    // been previously seen in a block.
+    auto it = disconnectpool.queuedTx.get<insertion_order>().rbegin();
+    while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
+        // ignore validation errors in resurrected transactions
+        CValidationState stateDummy;
+        if (!fAddToMempool || (*it)->IsCoinBase() || !AcceptToMemoryPool(mempool, stateDummy, *it, false, NULL, NULL, true)) {
+            // If the transaction doesn't make it in to the mempool, remove any
+            // transactions that depend on it (which would now be orphans).
+            mempool.removeRecursive(**it, MemPoolRemovalReason::REORG);
+        } else if (mempool.exists((*it)->GetHash())) {
+            vHashUpdate.push_back((*it)->GetHash());
+        }
+        ++it;
+    }
+    disconnectpool.queuedTx.clear();
+    // AcceptToMemoryPool/addUnchecked all assume that new mempool entries have
+    // no in-mempool children, which is generally not true when adding
+    // previously-confirmed transactions back to the mempool.
+    // UpdateTransactionsFromBlock finds descendants of any transactions in
+    // the disconnectpool that were added back and cleans up the mempool state.
+    mempool.UpdateTransactionsFromBlock(vHashUpdate);
+
+    // We also need to remove any now-immature transactions
+    mempool.removeForReorg(pcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+    // Re-limit mempool size, in case we added any transactions
+    LimitMempoolSize(mempool, GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
 }
 
 CAmount GetMinRelayFee(const CTransaction& tx, unsigned int nBytes, bool fAllowFree)
@@ -1018,7 +1073,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     }
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
-    string reason;
+    std::string reason;
     if (fRequireStandard && !IsStandardTx(tx, reason, witnessEnabled))
         return state.DoS(0,
             error("AcceptToMemoryPool : nonstandard transaction: %s", reason),
@@ -1065,14 +1120,14 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
             view.SetBackend(viewMemPool);
 
             // do we already have it?
-            if (view.HaveCoins(hash))
+            if (view.HaveCoin(hash))
                 return false;
 
             // do all inputs exist?
             // Note that this does not check for the presence of actual outputs (see the next check for that),
             // only helps filling in pfMissingInputs (to determine missing vs spent).
             for (const CTxIn txin : tx.vin) {
-                if (!view.HaveCoins(txin.prevout.hash)) {
+                if (!view.HaveCoin(txin.prevout.hash)) {
 #                   if defined(DEBUG_DUMP_STAKING_INFO)&&defined(DEBUG_DUMP_AcceptToMemoryPool)
                     DEBUG_DUMP_AcceptToMemoryPool();
 #                   endif
@@ -1254,7 +1309,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                 if (dFreeCount >= GetArg("-limitfreerelay", 15) * 10 * 1000)
                     return state.DoS(0, error("AcceptToMemoryPool : free transaction rejected by rate limiter"),
                         REJECT_INSUFFICIENTFEE, "rate limited free transaction");
-                LogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
+                LogPrint(BCLog::MEMPOOL, "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
                 dFreeCount += nSize;
             }
         }
@@ -1295,9 +1350,57 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
 
         // Store transaction in memory
         pool.addUnchecked(hash, entry);
+
+        // Add memory address index
+        if (fAddressIndex) {
+            pool.addAddressIndex(entry, view);
+        }
+
+        // Add memory spent index
+        if (fSpentIndex) {
+            pool.addSpentIndex(entry, view);
+        }
     }
 
     SyncWithWallets(tx, nullptr);
+
+    return true;
+}
+
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
+{
+    if (!fSpentIndex)
+        return false;
+
+    if (mempool.getSpentIndex(key, value))
+        return true;
+
+    if (!pblocktree->ReadSpentIndex(key, value))
+        return false;
+
+    return true;
+}
+
+bool GetAddressIndex(uint160 addressHash, int type,
+                     std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex, int start, int end)
+{
+    if (!fAddressIndex)
+        return error("address index not enabled");
+
+    if (!pblocktree->ReadAddressIndex(addressHash, type, addressIndex, start, end))
+        return error("unable to get txids for address");
+
+    return true;
+}
+
+bool GetAddressUnspent(uint160 addressHash, int type,
+                       std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &unspentOutputs)
+{
+    if (!fAddressIndex)
+        return error("address index not enabled");
+
+    if (!pblocktree->ReadAddressUnspentIndex(addressHash, type, unspentOutputs))
+        return error("unable to get txids for address");
 
     return true;
 }
@@ -1366,14 +1469,14 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
             view.SetBackend(viewMemPool);
 
             // do we already have it?
-            if (view.HaveCoins(hash))
+            if (view.HaveCoin(hash))
                 return false;
 
             // do all inputs exist?
             // Note that this does not check for the presence of actual outputs (see the next check for that),
             // only helps filling in pfMissingInputs (to determine missing vs spent).
             for (const CTxIn txin : tx.vin) {
-                if (!view.HaveCoins(txin.prevout.hash)) {
+                if (!view.HaveCoin(txin.prevout.hash)) {
                     if (pfMissingInputs)
                         *pfMissingInputs = true;
                     return false;
@@ -1553,7 +1656,7 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
                 if (dFreeCount >= GetArg("-limitfreerelay", 15) * 10 * 1000)
                     return state.DoS(0, error("AcceptableInputs : free transaction rejected by rate limiter"),
                         REJECT_INSUFFICIENTFEE, "rate limited free transaction");
-                LogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
+                LogPrint(BCLog::MEMPOOL, "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
                 dFreeCount += nSize;
             }
         }
@@ -1685,7 +1788,7 @@ bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos)
         return error("WriteBlockToDisk : OpenBlockFile failed");
 
     // Write index header
-    unsigned int nSize = GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
+    unsigned int nSize = GetSerializeSize(fileout, block);
     fileout << FLATDATA(Params().MessageStart()) << nSize;
 
     // Write block
@@ -1981,15 +2084,26 @@ void static InvalidBlockFound(CBlockIndex* pindex, const CValidationState& state
     }
 }
 
-void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCache& inputs, CTxUndo& txundo, int nHeight)
-{
+void UpdateCoins(const CTransaction& tx, CValidationState &state, CCoinsViewCache &inputs, CTxUndo &txundo, int nHeight) {
     // mark inputs spent
     if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
-        for (const CTxIn& txin : tx.vin) {
-            txundo.vprevout.push_back(CTxInUndo());
-            bool ret = inputs.ModifyCoins(txin.prevout.hash)->Spend(txin.prevout, txundo.vprevout.back());
-            assert(ret);
+        for (const CTxIn &txin : tx.vin) {
+            CCoinsModifier coins = inputs.ModifyCoins(txin.prevout.hash);
+            unsigned nPos = txin.prevout.n;
+
+            if (nPos >= coins->vout.size() || coins->vout[nPos].IsNull())
+                assert(false);
+            // mark an outpoint spent, and construct undo information
+            txundo.vprevout.push_back(CTxInUndo(coins->vout[nPos]));
+            coins->Spend(nPos);
+            if (coins->vout.size() == 0) {
+                CTxInUndo& undo = txundo.vprevout.back();
+                undo.nHeight = coins->nHeight;
+                undo.fCoinBase = coins->fCoinBase;
+                undo.fCoinStake = coins->fCoinStake;
+                undo.nVersion = coins->nVersion;
+            }
         }
     }
 
@@ -1997,8 +2111,12 @@ void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCach
     inputs.ModifyCoins(tx.GetHash())->FromTx(tx, nHeight);
 }
 
-bool CScriptCheck::operator()()
-{
+void UpdateCoins(const CTransaction& tx, CValidationState &state, CCoinsViewCache &inputs, int nHeight) {
+    CTxUndo txundo;
+    UpdateCoins(tx, state, inputs, txundo, nHeight);
+}
+
+bool CScriptCheck::operator()() {
     const CScript& scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = (nIn < ptxTo->wit.vtxinwit.size()) ? &ptxTo->wit.vtxinwit[nIn].scriptWitness : nullptr;
     if (!VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata), &error)) {
@@ -2007,8 +2125,7 @@ bool CScriptCheck::operator()()
     return true;
 }
 
-bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck>* pvChecks)
-{
+bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck>* pvChecks) {
     if (!tx.IsCoinBase()) {
         if (pvChecks)
             pvChecks->reserve(tx.vin.size());
@@ -2121,31 +2238,90 @@ bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsVi
     return true;
 }
 
-static bool ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const COutPoint& out) {
+namespace {
+
+    bool UndoWriteToDisk(const CBlockUndo& blockundo, CDiskBlockPos& pos, const uint256& hashBlock) {
+        // Open history file to append
+        CAutoFile fileout(OpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
+        if (fileout.IsNull())
+            return error("%s : OpenUndoFile failed", __func__);
+
+        // Write index header
+        unsigned int nSize = GetSerializeSize(fileout, blockundo);
+        fileout << FLATDATA(Params().MessageStart()) << nSize;
+
+        // Write undo data
+        long fileOutPos = ftell(fileout.Get());
+        if (fileOutPos < 0)
+            return error("%s : ftell failed", __func__);
+        pos.nPos = (unsigned int)fileOutPos;
+        fileout << blockundo;
+
+        // calculate & write checksum
+        CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
+        hasher << hashBlock;
+        hasher << blockundo;
+        fileout << hasher.GetHash();
+
+        return true;
+    }
+
+    bool UndoReadFromDisk(CBlockUndo& blockundo, const CDiskBlockPos& pos, const uint256& hashBlock) {
+        // Open history file to read
+        CAutoFile filein(OpenUndoFile(pos, true), SER_DISK, CLIENT_VERSION);
+        if (filein.IsNull())
+            return error("%s : OpenBlockFile failed", __func__);
+
+        // Read block
+        uint256 hashChecksum;
+        try {
+            filein >> blockundo;
+            filein >> hashChecksum;
+        } catch (std::exception& e) {
+            return error("%s : Deserialize or I/O error - %s", __func__, e.what());
+        }
+
+        // Verify checksum
+        CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
+        hasher << hashBlock;
+        hasher << blockundo;
+        if (hashChecksum != hasher.GetHash())
+            return error("%s : Checksum mismatch", __func__);
+
+        return true;
+    }
+};
+
+enum DisconnectResult
+{
+    DISCONNECT_OK,      // All good.
+    DISCONNECT_UNCLEAN, // Rolled back, but UTXO set was inconsistent with block.
+    DISCONNECT_FAILED   // Something else went wrong.
+};
+
+int ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const COutPoint& out) {
     bool fClean = true;
 
     CCoinsModifier coins = view.ModifyCoins(out.hash);
     if (undo.nHeight != 0) {
-        if (!coins->IsPruned())
-            fClean = fClean && error("%s: Avoid data that will overwrite the transaction", __func__);
+        // undo data contains height: this is the last output of the prevout tx being spent
+        if (!coins->IsSpent()) fClean = false;
         coins->Clear();
         coins->fCoinBase = undo.fCoinBase;
         coins->nHeight = undo.nHeight;
         coins->nVersion = undo.nVersion;
     } else {
-        if (coins->IsPruned())
-            fClean = fClean && error("%s: undo data adding output to missing transaction", __func__);
+        if (coins->IsSpent()) fClean = false;
     }
-    if (coins->IsAvailable(out.n))
-        fClean = fClean && error("%s: undo data overwriting existing output", __func__);
+    if (coins->IsAvailable(out.n)) fClean = false;
     if (coins->vout.size() < out.n + 1)
         coins->vout.resize(out.n + 1);
     coins->vout[out.n] = undo.txout;
 
-    return fClean;
+    return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
 
-bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& view, bool* pfClean)
+static DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* pindex, CCoinsViewCache& view, bool* pfClean)
 {
     assert(pindex->GetBlockHash() == view.GetBestBlock());
 
@@ -2156,18 +2332,74 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
 
     CBlockUndo blockUndo;
     CDiskBlockPos pos = pindex->GetUndoPos();
-    if (pos.IsNull())
-        return error("DisconnectBlock() : no undo data available");
-    if (!blockUndo.ReadFromDisk(pos, pindex->pprev->GetBlockHash()))
-        return error("DisconnectBlock() : failure reading undo data");
+    if (pos.IsNull()) {
+        error("DisconnectBlock(): no undo data available");
+        return DISCONNECT_FAILED;
+    }
+    if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash())) {
+        error("DisconnectBlock(): failure reading undo data");
+        return DISCONNECT_FAILED;
+    }
 
-    if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
-        return error("DisconnectBlock() : block and undo data inconsistent");
+
+    if (blockUndo.vtxundo.size() + 1 != block.vtx.size()) {
+        error("DisconnectBlock(): block and undo data inconsistent");
+        return DISCONNECT_FAILED;
+    }
+
+    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
+    std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
-        const CTransaction& tx = *(block.vtx[i]);
+        const CTransaction &tx = *(block.vtx[i]);
         uint256 hash = tx.GetHash();
+
+        if (fAddressIndex)
+        {
+            for (unsigned int k = tx.vout.size(); k-- > 0;)
+            {
+                CTxDestination dest; uint160 hashDest;
+                txnouttype txType = TX_NONSTANDARD;
+                unsigned int addressType = 0;
+                const CTxOut &out = tx.vout[k];
+                if (ExtractDestination(out.scriptPubKey, dest, &txType)) {
+                    addressType = dest.which();
+                    hashDest = GetHashForDestination(dest);
+                }
+
+                if (txType == TX_PUBKEYHASH || out.scriptPubKey.IsPayToPubkeyHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+3, out.scriptPubKey.begin()+23);
+                    hashDest = uint160(hashBytes);
+                } else if (txType == TX_SCRIPTHASH || out.scriptPubKey.IsPayToScriptHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22);
+                    hashDest = uint160(hashBytes);
+                } else if (txType == TX_PUBKEY || out.scriptPubKey.IsPayToPubkey()) {
+                    hashDest = Hash160(out.scriptPubKey.begin()+1, out.scriptPubKey.end()-1);
+                } else if (txType == TX_WITNESS_V0_KEYHASH || out.scriptPubKey.IsPayToWitnessPubkeyHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
+                    hashDest = uint160(hashBytes);
+                } else if (txType == TX_WITNESS_V0_SCRIPTHASH || out.scriptPubKey.IsPayToWitnessScriptHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
+                    hashDest = Hash160(hashBytes);
+                } else {
+                    LogPrintf("%s: unhandled addressindex type %u\n", __func__, addressType);
+                    continue;
+                }
+
+                // undo receiving activity
+                addressIndex.push_back(std::make_pair(
+                    CAddressIndexKey(addressType, hashDest, pindex->nHeight, i, hash, k, false),
+                    out.nValue
+                ));
+                // undo unspent index
+                addressUnspentIndex.push_back(std::make_pair(
+                    CAddressUnspentKey(addressType, hashDest, hash, k),
+                    CAddressUnspentValue()
+                ));
+            }
+        }
 
         // Check that all outputs are available and match the outputs in the block itself
         // exactly. Note that transactions with only provably unspendable outputs won't
@@ -2184,7 +2416,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
             if (outsBlock.nVersion < 0)
                 outs->nVersion = outsBlock.nVersion;
             if (*outs != outsBlock)
-                fClean = fClean && error("DisconnectBlock() : added transaction mismatch? database corrupted");
+                fClean = fClean && error("DisconnectBlock(): added transaction mismatch? database corrupted");
 
             // remove outputs
             outs->Clear();
@@ -2192,36 +2424,107 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
 
         // restore inputs
         if (i > 0) { // not coinbases
-            const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
-            if (txundo.vprevout.size() != tx.vin.size())
-                return error("DisconnectBlock() : transaction and undo data inconsistent - txundo.vprevout.siz=%d tx.vin.siz=%d", txundo.vprevout.size(), tx.vin.size());
+            CTxUndo& txundo = blockUndo.vtxundo[i - 1];
+            if (txundo.vprevout.size() != tx.vin.size()) {
+                error("DisconnectBlock(): transaction and undo data inconsistent");
+                return DISCONNECT_FAILED;
+            }
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
                 const COutPoint& out = tx.vin[j].prevout;
-                const CTxInUndo& undo = txundo.vprevout[j];
-                if (!ApplyTxInUndo(undo, view, out))
-                    fClean = false;
+                int res = ApplyTxInUndo(std::move(txundo.vprevout[j]), view, out);
+                if (res == DISCONNECT_FAILED)
+                    return DISCONNECT_FAILED;
+                fClean = fClean && res != DISCONNECT_UNCLEAN;
+
+                int undoHeight = txundo.vprevout[j].nHeight;
+                const CTxIn input = tx.vin[j];
+
+                if (fSpentIndex)
+                    // undo and delete the spent index
+                    spentIndex.push_back(std::make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue()));
+
+                if (fAddressIndex) { // Unindex inputs
+#ifndef DEBUG
+                    const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
+#else
+                    const CTxIn &txin = tx.vin[j];
+                    const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                    CTxOut prevout;
+                    if (coins && coins->IsAvailable(txin.prevout.n)) {
+                        prevout = coins->vout[txin.prevout.n];
+                    } else {
+                        LogPrintf("%s(ndx) vin[%zu] %s not found, block %d (%s)\n", __func__, j,
+                                    txin.ToString(), pindex->nHeight, tx.IsCoinStake()?"PoS":"PoW");
+                        continue;
+                    }
+#endif
+                    CTxDestination dest; uint160 hashDest;
+                    txnouttype txType = TX_NONSTANDARD;
+                    unsigned int addressType = 0;
+                    if (ExtractDestination(prevout.scriptPubKey, dest, &txType)) {
+                        addressType = dest.which();
+                        hashDest = GetHashForDestination(dest);
+                    }
+
+                    if (txType == TX_PUBKEYHASH || prevout.scriptPubKey.IsPayToPubkeyHash()) {
+                        std::vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+3, prevout.scriptPubKey.begin()+23);
+                        hashDest = uint160(hashBytes);
+                    } else if (txType == TX_SCRIPTHASH || prevout.scriptPubKey.IsPayToScriptHash()) {
+                        std::vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.begin()+22);
+                        hashDest = uint160(hashBytes);
+                    } else if (txType == TX_PUBKEY || prevout.scriptPubKey.IsPayToPubkey()) {
+                        hashDest = Hash160(prevout.scriptPubKey.begin()+1, prevout.scriptPubKey.end()-1);
+                    } else if (txType == TX_WITNESS_V0_KEYHASH || prevout.scriptPubKey.IsPayToWitnessPubkeyHash()) {
+                        std::vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.end());
+                        hashDest = uint160(hashBytes);
+                    } else if (txType == TX_WITNESS_V0_SCRIPTHASH || prevout.scriptPubKey.IsPayToWitnessScriptHash()) {
+                        std::vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.end());
+                        hashDest = Hash160(hashBytes);
+                    } else {
+                        LogPrintf("%s: unhandled addressindex type %u\n", __func__, addressType);
+                        continue;
+                    }
+
+                    // undo spending activity
+                    addressIndex.push_back(std::make_pair(
+                        CAddressIndexKey(addressType, hashDest, pindex->nHeight, i, hash, j, true),
+                        prevout.nValue * -1
+                    ));
+                    // restore unspent index
+                    addressUnspentIndex.push_back(std::make_pair(
+                        CAddressUnspentKey(addressType, hashDest, input.prevout.hash, input.prevout.n),
+                        CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undoHeight)
+                    ));
+                }
             }
+            // At this point, all of txundo.vprevout should have been moved out.
         }
     }
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
-//#if 0
-      if (pindex->nHeight > Params().FirstSCBlock()) {
-        globalState->setRoot(uintToh256(pindex->pprev->hashStateRoot)); // lux
-        globalState->setRootUTXO(uintToh256(pindex->pprev->hashUTXORoot)); // lux
 
-        if (pfClean == nullptr && fLogEvents) {
-            pstorageresult->deleteResults(block.vtx);
-            pblocktree->EraseHeightIndex(pindex->nHeight);
-        }
-   }
-//#endif
-    if (pfClean) {
-        *pfClean = fClean;
-        return true;
+    setGlobalStateRoot(uintToh256(pindex->pprev->hashStateRoot));
+    setGlobalStateUTXO(uintToh256(pindex->pprev->hashUTXORoot));
+    if (fClean == false && fLogEvents) {
+        pstorageresult->deleteResults(block.vtx);
+        pblocktree->EraseHeightIndex(pindex->nHeight);
     }
-    return fClean;
+
+    if (fAddressIndex) {
+        if (!pblocktree->EraseAddressIndex(addressIndex)) {
+            //AbortNode(state, "Failed to delete address index");
+            error("%s(): Failed to delete address index", __func__);
+            return DISCONNECT_FAILED;
+        }
+        if (!pblocktree->UpdateAddressUnspentIndex(addressUnspentIndex)) {
+            //AbortNode(state, "Failed to write address unspent index");
+            error("%s(): Failed to write address unspent index", __func__);
+            return DISCONNECT_FAILED;
+        }
+    }
+
+    return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
 
 void static FlushBlockFile(bool fFinalize = false)
@@ -2417,7 +2720,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (fEnforceBIP30) {
         for (const auto& tx : block.vtx) {
             const CCoins* coins = view.AccessCoins(tx->GetHash());
-            if (coins && !coins->IsPruned())
+            if (coins && !coins->IsSpent())
                 return state.DoS(100, error("%s: tried to overwrite transaction", __func__),
                     REJECT_INVALID, "bad-txns-BIP30");
         }
@@ -2461,6 +2764,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
+    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
+    std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
+
     int64_t nValueOut = 0;
     int64_t nValueIn = 0;
     int64_t nStakeReward = 0;
@@ -2471,6 +2778,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     for (unsigned int i = 0; i < block.vtx.size(); i++) {
         const CTransaction& tx = *(block.vtx[i]);
+        const uint256 txhash = tx.GetHash();
 
         nInputs += tx.vin.size();
 
@@ -2489,6 +2797,73 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             if (!view.HaveInputs(tx))
                 return state.DoS(100, error("%s: inputs missing/spent", __func__),
                     REJECT_INVALID, "bad-txns-inputs-missingorspent");
+
+            if (fAddressIndex || fSpentIndex) // INPUTS
+            {
+                for (size_t j = 0; j < tx.vin.size(); j++) {
+                    const CTxIn &txin = tx.vin[j];
+#ifndef DEBUG
+                    const CTxOut &out = view.GetOutputFor(txin);
+#else
+                    const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                    CTxOut out;
+                    if (coins && coins->IsAvailable(txin.prevout.n)) {
+                        out = coins->vout[txin.prevout.n];
+                    } else {
+                        LogPrintf("%s(ndx) vin[%zu] %s not found, block %d (%s)\n", __func__, j,
+                                    txin.ToString(), pindex->nHeight, tx.IsCoinStake()?"PoS":"PoW");
+                        continue;
+                    }
+#endif
+                    CTxDestination dest; uint160 hashDest;
+                    txnouttype txType = TX_NONSTANDARD;
+                    unsigned int addressType = 0;
+                    if (ExtractDestination(out.scriptPubKey, dest, &txType)) {
+                        addressType = dest.which();
+                        hashDest = GetHashForDestination(dest);
+                    }
+
+                    if (txType == TX_PUBKEYHASH || out.scriptPubKey.IsPayToPubkeyHash()) {
+                        hashDest = uint160(std::vector<unsigned char>(out.scriptPubKey.begin()+3, out.scriptPubKey.begin()+23));
+                        addressType = 1;
+                    } else if (txType == TX_SCRIPTHASH || out.scriptPubKey.IsPayToScriptHash()) {
+                        hashDest = uint160(std::vector<unsigned char>(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22));
+                        addressType = 2;
+                    } else if (txType == TX_PUBKEY || out.scriptPubKey.IsPayToPubkey()) {
+                        hashDest = Hash160(out.scriptPubKey.begin()+1, out.scriptPubKey.end()-1);
+                        addressType = 1;
+                    } else if (txType == TX_WITNESS_V0_KEYHASH || out.scriptPubKey.IsPayToWitnessPubkeyHash()) {
+                        std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
+                        hashDest = uint160(hashBytes);
+                    } else if (txType == TX_WITNESS_V0_SCRIPTHASH || out.scriptPubKey.IsPayToWitnessScriptHash()) {
+                        std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
+                        hashDest = Hash160(hashBytes);
+                    } else {
+                        hashDest.SetNull();
+                    }
+
+                    if (fAddressIndex && addressType > 0) {
+                        // record spending activity
+                        addressIndex.push_back(std::make_pair(
+                            CAddressIndexKey(addressType, hashDest, pindex->nHeight, i, txhash, j, true),
+                            out.nValue * -1
+                        ));
+                        // remove address from unspent index
+                        addressUnspentIndex.push_back(std::make_pair(
+                            CAddressUnspentKey(addressType, hashDest, txin.prevout.hash, txin.prevout.n),
+                            CAddressUnspentValue()
+                        ));
+                    }
+                    // add the spent index to determine the txid and input that spent an output
+                    // and to find the amount and address from an input
+                    if (fSpentIndex && addressType > 0) {
+                        spentIndex.push_back(std::make_pair(
+                            CSpentIndexKey(txin.prevout.hash, txin.prevout.n),
+                            CSpentIndexValue(txhash, j, pindex->nHeight, out.nValue, addressType, hashDest)
+                        ));
+                    }
+                }
+            }
 
             if (fStrictPayToScriptHash) {
                 // Add in sigops done by pay-to-script-hash inputs;
@@ -2515,7 +2890,50 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             nValueOut += tx.GetValueOut();
         }
 
-///////////////////////////////////////////////////////////////////////////////////////// lux
+        if (fAddressIndex) { // OUTPUTS
+            for (unsigned int k = 0; k < tx.vout.size(); k++) {
+                const CTxOut &out = tx.vout[k];
+                CTxDestination dest; uint160 hashDest;
+                txnouttype txType = TX_NONSTANDARD;
+                unsigned int addressType = 0;
+                if (ExtractDestination(out.scriptPubKey, dest, &txType)) {
+                    addressType = dest.which();
+                    hashDest = GetHashForDestination(dest);
+                }
+
+                if (txType == TX_PUBKEYHASH || out.scriptPubKey.IsPayToPubkeyHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+3, out.scriptPubKey.begin()+23);
+                    hashDest = uint160(hashBytes);
+                } else if (txType == TX_SCRIPTHASH || out.scriptPubKey.IsPayToScriptHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22);
+                    hashDest = uint160(hashBytes);
+                } else if (txType == TX_PUBKEY || out.scriptPubKey.IsPayToPubkey()) {
+                    hashDest = Hash160(out.scriptPubKey.begin()+1, out.scriptPubKey.end()-1);
+                } else if (txType == TX_WITNESS_V0_KEYHASH || out.scriptPubKey.IsPayToWitnessPubkeyHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
+                    hashDest = uint160(hashBytes);
+                } else if (txType == TX_WITNESS_V0_SCRIPTHASH || out.scriptPubKey.IsPayToWitnessScriptHash()) {
+                    std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
+                    hashDest = Hash160(hashBytes);
+                } else {
+                    continue;
+                }
+
+                // record receiving activity
+                addressIndex.push_back(std::make_pair(
+                    CAddressIndexKey(addressType, hashDest, pindex->nHeight, i, txhash, k, false),
+                    out.nValue
+                ));
+                // record unspent output
+                addressUnspentIndex.push_back(std::make_pair(
+                    CAddressUnspentKey(addressType, hashDest, txhash, k),
+                    CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight)
+                ));
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////// lux
+
         if (pindex->nHeight >= Params().FirstSCBlock()) {
             bool hasOpSpend = tx.HasOpSpend();
 
@@ -2624,31 +3042,53 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 }
 
                 blockGasUsed += bcer.usedGas;
-                if(blockGasUsed > blockGasLimit){
+                if (blockGasUsed > blockGasLimit) {
                     return state.DoS(1000, error("ConnectBlock(): Block exceeds gas limit"), REJECT_INVALID, "bad-blk-gaslimit");
                 }
-                for(CTxOut refundVout : bcer.refundOutputs){
+                for (CTxOut refundVout : bcer.refundOutputs) {
                     gasRefunds += refundVout.nValue;
                 }
                 checkVouts.insert(checkVouts.end(), bcer.refundOutputs.begin(), bcer.refundOutputs.end());
-                for (CTransaction& t : bcer.valueTransfers){
+                for (CTransaction& t : bcer.valueTransfers) {
                     checkBlock.vtx.push_back(MakeTransactionRef(std::move(t)));
                 }
-                if(fRecordLogOpcodes && !fJustCheck){
+                if (fRecordLogOpcodes && !fJustCheck) {
                     writeVMlog(resultExec, tx, block);
                 }
 
-                for(ResultExecute& re: resultExec){
-                    if(re.execRes.newAddress != dev::Address() && !fJustCheck)
+                for (ResultExecute& re: resultExec) {
+                    if (re.execRes.newAddress != dev::Address() && !fJustCheck)
                         dev::g_logPost(std::string("Address : " + re.execRes.newAddress.hex()), nullptr);
                 }
             }
 
             if(nFees < gasRefunds) { //make sure it won't overflow
-                return state.DoS(1000, error("ConnectBlock(): Less total fees than gas refund fees"), REJECT_INVALID, "bad-blk-fees-greater-gasrefund");
+                return state.DoS(1000, error("ConnectBlock(): Less total fees than gas refund fees"),
+                        REJECT_INVALID, "bad-blk-fees-greater-gasrefund");
             }
         }
-/////////////////////////////////////////////////////////////////////////////////////////
+
+        if (0 && fAddressIndex) { // OUTPUTS (made twice ?)
+            for (unsigned int k = 0; k < tx.vout.size(); k++) {
+                const CTxOut &out = tx.vout[k];
+                CTxDestination dest;
+                if (ExtractDestination(out.scriptPubKey, dest)) {
+                    unsigned int type(dest.which());
+                    uint160 hashDest = GetHashForDestination(dest);
+                    // record receiving activity
+                    addressIndex.push_back(std::make_pair(
+                        CAddressIndexKey(type, hashDest, pindex->nHeight, i, tx.GetHash(), k, false),
+                        out.nValue));
+                    // record unspent output
+                    addressUnspentIndex.push_back(std::make_pair(
+                        CAddressUnspentKey(type, hashDest, tx.GetHash(), k),
+                        CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight))
+                    );
+                }
+            }
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////
 
         CTxUndo undoDummy;
         if (i > 0) {
@@ -2669,7 +3109,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTime1 = GetTimeMicros();
     nTimeConnect += nTime1 - nTimeStart;
-    LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs - 1), nTimeConnect * 0.000001);
+    LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs - 1), nTimeConnect * 0.000001);
 
     if (block.IsProofOfWork()) {
         auto nReward = GetProofOfWorkReward(nFees, pindex->nHeight/*pindex->pprev->nHeight*/);
@@ -2707,7 +3147,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTime2 = GetTimeMicros();
     nTimeVerify += nTime2 - nTimeStart;
-    LogPrint("bench", "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs - 1), nTimeVerify * 0.000001);
+    LogPrint(BCLog::BENCH, "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs - 1), nTimeVerify * 0.000001);
 
     ////////////////////////////////////////////////////////////////// // lux
     if (pindex->nHeight >= Params().FirstSCBlock()) {
@@ -2809,8 +3249,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 prevHashStateRoot = uintToh256(pindex->pprev->hashStateRoot);
                 prevHashUTXORoot = uintToh256(pindex->pprev->hashUTXORoot);
             }
-            globalState->setRoot(prevHashStateRoot);
-            globalState->setRootUTXO(prevHashUTXORoot);
+            setGlobalStateRoot(prevHashStateRoot);
+            setGlobalStateUTXO(prevHashUTXORoot);
         }
         return true;
     }
@@ -2822,7 +3262,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             CDiskBlockPos pos;
             if (!FindUndoPos(state, pindex->nFile, pos, ::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40))
                 return error("%s: FindUndoPos failed", __func__);
-            if (!blockundo.WriteToDisk(pos, pindex->pprev->GetBlockHash()))
+            if (!UndoWriteToDisk(blockundo, pos, pindex->pprev->GetBlockHash()))
                 return state.Error("Failed to write undo data");
 
             // update nUndoPos in block index
@@ -2845,12 +3285,31 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!pblocktree->WriteTxIndex(vPos))
             return state.Error("Failed to write transaction index");
 
+    if (fAddressIndex) {
+        if (!pblocktree->WriteAddressIndex(addressIndex)) {
+            //return AbortNode(state, "Failed to write address index");
+            return state.Error("Failed to write address index");
+        }
+
+        if (!pblocktree->UpdateAddressUnspentIndex(addressUnspentIndex)) {
+            //return AbortNode(state, "Failed to write address unspent index");
+            return state.Error("Failed to write address unspent index");
+        }
+    }
+
+    if (fSpentIndex) {
+        if (!pblocktree->UpdateSpentIndex(spentIndex)) {
+            //return AbortNode(state, "Failed to write transaction index");
+            return state.Error("Failed to write transaction index");
+        }
+    }
+
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
     int64_t nTime3 = GetTimeMicros();
     nTimeIndex += nTime3 - nTime2;
-    LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime3 - nTime2), nTimeIndex * 0.000001);
+    LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime3 - nTime2), nTimeIndex * 0.000001);
 
     // Watch for changes to the previous coinbase transaction.
     static uint256 hashPrevBestCoinBase;
@@ -2859,7 +3318,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTime4 = GetTimeMicros();
     nTimeCallbacks += nTime4 - nTime3;
-    LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime4 - nTime3), nTimeCallbacks * 0.000001);
+    LogPrint(BCLog::BENCH, "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime4 - nTime3), nTimeCallbacks * 0.000001);
 
     if (fLogEvents)
         pstorageresult->commitResults();
@@ -2928,7 +3387,7 @@ static bool FlushStateToDisk(CValidationState& state, FlushStateMode mode, int n
 		        FlushBlockFile();
 		        // Then update all block file information (which may refer to block and undo files).
 		        bool fileschanged = false;
-		        for (set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end();) {
+		        for (std::set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end();) {
 		            if (!pblocktree->WriteBlockFileInfo(*it, vinfoBlockFile[*it])) {
 		                return state.Error("Failed to write to block index");
 		            }
@@ -2938,7 +3397,7 @@ static bool FlushStateToDisk(CValidationState& state, FlushStateMode mode, int n
 		        if (fileschanged && !pblocktree->WriteLastBlockFile(nLastBlockFile)) {
 		            return state.Error("Failed to write to block index");
 		        }
-		        for (set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end();) {
+		        for (std::set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end();) {
 		            if (!pblocktree->WriteBlockIndex(CDiskBlockIndex(*it))) {
 		                return state.Error("Failed to write to block index");
 		            }
@@ -3062,11 +3521,11 @@ static bool DisconnectTip(CValidationState& state, const CChainParams& chainpara
     int64_t nStart = GetTimeMicros();
     {
         CCoinsViewCache view(pcoinsTip);
-        if (!DisconnectBlock(block, state, pindexDelete, view))
+        if (DisconnectBlock(block, pindexDelete, view, nullptr) != DISCONNECT_OK)
             return error("DisconnectTip() : DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         assert(view.Flush());
     }
-    LogPrint("bench", "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
+    LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
     // Write the chain state to disk, if necessary.
     if (!FlushStateToDisk(state, FLUSH_STATE_ALWAYS))
         return false;
@@ -3126,7 +3585,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     int64_t nTime2 = GetTimeMicros();
     nTimeReadFromDisk += nTime2 - nTime1;
     int64_t nTime3;
-    LogPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
+    LogPrint(BCLog::BENCH, "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
     {
         CInv inv(MSG_BLOCK, pindexNew->GetBlockHash());
         dev::h256 oldHashStateRoot;
@@ -3162,21 +3621,21 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             if (state.IsInvalid())
                 InvalidBlockFound(pindexNew, state);
             if (pindexNew->nHeight >= chainparams.FirstSCBlock()) {
-                globalState->setRoot(oldHashStateRoot); // lux
-                globalState->setRootUTXO(oldHashUTXORoot); // lux
+                setGlobalStateRoot(oldHashStateRoot);
+                setGlobalStateUTXO(oldHashUTXORoot);
                 pstorageresult->clearCacheResult();
             }
             return error("ConnectTip() : ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
         }
-        mapBlockSource.erase(inv.hash);
+        mapBlockSource.erase(inv.GetHash());
         nTime3 = GetTimeMicros();
         nTimeConnectTotal += nTime3 - nTime2;
-        LogPrint("bench", "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
+        LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
         assert(view.Flush());
     }
     int64_t nTime4 = GetTimeMicros();
     nTimeFlush += nTime4 - nTime3;
-    LogPrint("bench", "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);
+    LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);
 
     // Write the chain state to disk, if necessary. Always write to disk if this is the first of a new file.
     FlushStateMode flushMode = FLUSH_STATE_IF_NEEDED;
@@ -3186,7 +3645,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         return false;
     int64_t nTime5 = GetTimeMicros();
     nTimeChainState += nTime5 - nTime4;
-    LogPrint("bench", "  - Writing chainstate: %.2fms [%.2fs]\n", (nTime5 - nTime4) * 0.001, nTimeChainState * 0.000001);
+    LogPrint(BCLog::BENCH, "  - Writing chainstate: %.2fms [%.2fs]\n", (nTime5 - nTime4) * 0.001, nTimeChainState * 0.000001);
 
     // Remove conflicting transactions from the mempool.
     list<CTransaction> txConflicted;
@@ -3207,8 +3666,8 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     int64_t nTime6 = GetTimeMicros();
     nTimePostConnect += nTime6 - nTime5;
     nTimeTotal += nTime6 - nTime1;
-    LogPrint("bench", "  - Connect postprocess: %.2fms [%.2fs]\n", (nTime6 - nTime5) * 0.001, nTimePostConnect * 0.000001);
-    LogPrint("bench", "- Connect block: %.2fms [%.2fs]\n", (nTime6 - nTime1) * 0.001, nTimeTotal * 0.000001);
+    LogPrint(BCLog::BENCH, "  - Connect postprocess: %.2fms [%.2fs]\n", (nTime6 - nTime5) * 0.001, nTimePostConnect * 0.000001);
+    LogPrint(BCLog::BENCH, "- Connect block: %.2fms [%.2fs]\n", (nTime6 - nTime1) * 0.001, nTimeTotal * 0.000001);
     return true;
 }
 
@@ -3266,10 +3725,10 @@ bool DisconnectBlocksAndReprocess(int blocks)
 //        // Queue memory transactions to resurrect.
 //        // We only do this for blocks after the last checkpoint (reorganisation before that
 //        // point should only happen with -reindex/-loadblock, or a misbehaving peer.
-//        BOOST_FOREACH (const CTransaction& tx, block.vtx) {
+//        for (const CTransaction& tx : block.vtx) {
 //            if (!tx.IsCoinBase()) {
-//                BOOST_FOREACH (const CTxIn& in1, txLock.vin) {
-//                    BOOST_FOREACH (const CTxIn& in2, tx.vin) {
+//                for (const CTxIn& in1 : txLock.vin) {
+//                    for (const CTxIn& in2 : tx.vin) {
 //                        if (in1.prevout == in2.prevout) foundConflictingTx = true;
 //                    }
 //                }
@@ -3290,7 +3749,7 @@ bool DisconnectBlocksAndReprocess(int blocks)
 //
 //    if (vDisconnect.size() > 0) {
 //        LogPrintf("REORGANIZE: Disconnect Conflicting Blocks %lli blocks; %s..\n", vDisconnect.size(), pindexNew->GetBlockHash().ToString());
-//        BOOST_FOREACH (CBlockIndex* pindex, vDisconnect) {
+//        for (CBlockIndex* pindex : vDisconnect) {
 //            LogPrintf(" -- disconnect %s\n", pindex->GetBlockHash().ToString());
 //            DisconnectTip(state, chainParams);
 //        }
@@ -3676,7 +4135,7 @@ bool ReceivedBlockTransactions(const CBlock& block, CValidationState& state, CBl
 
     if (pindexNew->pprev == nullptr || pindexNew->pprev->nChainTx) {
         // If pindexNew is the genesis block or all parents are BLOCK_VALID_TRANSACTIONS.
-        deque<CBlockIndex*> queue;
+        std::deque<CBlockIndex*> queue;
         queue.push_back(pindexNew);
 
         // Recursively process any descendant blocks that now may be eligible to be connected.
@@ -3947,7 +4406,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     // 3 minute future drift for PoS
     auto const nBlockTimeLimit = GetAdjustedTime() + (block.IsProofOfStake() ? 180 : 7200);
 
-    LogPrint("debug", "%s: block=%s (%s %d %d)\n", __func__, block.GetHash().GetHex(), s,
+    LogPrint(BCLog::LDEBUG, "%s: block=%s (%s %d %d)\n", __func__, block.GetHash().GetHex(), s,
              block.GetBlockTime(), nBlockTimeLimit);
 
     // Check block time, reject far future blocks.
@@ -4011,7 +4470,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         }
     }
 
-    LogPrint("debug", "%s: checking transactions, block %s (%s)\n", __func__, block.GetHash().GetHex(), s);
+    LogPrint(BCLog::LDEBUG, "%s: checking transactions, block %s (%s)\n", __func__, block.GetHash().GetHex(), s);
 
     // -------------------------------------------
 
@@ -4025,7 +4484,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
         }
 
         if (!CheckTransaction(*tx, state)) {
-            LogPrint("debug", "%s: invalid transaction %s", __func__, tx->ToString());
+            LogPrint(BCLog::LDEBUG, "%s: invalid transaction %s", __func__, tx->ToString());
             return error("%s: CheckTransaction failed (nTx=%d, reason: %s)", __func__, nTx, state.GetRejectReason());
 
             // OP_SPEND can only exist immediately after a contract tx in a block.
@@ -4043,7 +4502,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
             continue;
 
         if (fCheckPOW && !CheckForMasternodePayment(*tx, block)) {
-            LogPrint("debug", "%s: invalid masternode payment in %s", __func__, tx->ToString());
+            LogPrint(BCLog::LDEBUG, "%s: invalid masternode payment in %s", __func__, tx->ToString());
             return error("%s: CheckForMasternodePayment failed (nTx=%d)", __func__, nTx);
         }
         ++nTx;
@@ -4586,8 +5045,8 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
     }
     if (!ConnectBlock(block, state, &index, viewNew, chainparams, true)) {
         if (index.nHeight >= chainparams.FirstSCBlock()) {
-            globalState->setRoot(oldHashStateRoot); // lux
-            globalState->setRootUTXO(oldHashUTXORoot); // lux
+            setGlobalStateRoot(oldHashStateRoot);
+            setGlobalStateUTXO(oldHashUTXORoot);
             pstorageresult->clearCacheResult();
         }
         return false;
@@ -4660,10 +5119,10 @@ void PruneOneBlockFile(const int fileNumber)
 
 void UnlinkPrunedFiles(std::set<int>& setFilesToPrune)
 {
-    for (set<int>::iterator it = setFilesToPrune.begin(); it != setFilesToPrune.end(); ++it) {
+    for (std::set<int>::iterator it = setFilesToPrune.begin(); it != setFilesToPrune.end(); ++it) {
         CDiskBlockPos pos(*it, 0);
-        boost::filesystem::remove(GetBlockPosFilename(pos, "blk"));
-        boost::filesystem::remove(GetBlockPosFilename(pos, "rev"));
+        fs::remove(GetBlockPosFilename(pos, "blk"));
+        fs::remove(GetBlockPosFilename(pos, "rev"));
         LogPrintf("Prune: %s deleted blk/rev (%05u)\n", __func__, *it);
     }
 }
@@ -4742,7 +5201,7 @@ void FindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight
         }
     }
 
-    LogPrint("prune", "Prune: target=%dMiB actual=%dMiB diff=%dMiB min_must_keep=%d removed %d blk/rev pairs\n",
+    LogPrint(BCLog::PRUNE, "Prune: target=%dMiB actual=%dMiB diff=%dMiB min_must_keep=%d removed %d blk/rev pairs\n",
            nPruneTarget/1024/1024, nCurrentUsage/1024/1024,
            ((int64_t)nPruneTarget - (int64_t)nCurrentUsage)/1024/1024,
            nLastBlockWeMustKeep, count);
@@ -4763,8 +5222,8 @@ FILE* OpenDiskFile(const CDiskBlockPos& pos, const char* prefix, bool fReadOnly)
 {
     if (pos.IsNull())
         return nullptr;
-    boost::filesystem::path path = GetBlockPosFilename(pos, prefix);
-    boost::filesystem::create_directories(path.parent_path());
+    fs::path path = GetBlockPosFilename(pos, prefix);
+    fs::create_directories(path.parent_path());
     FILE* file = fopen(path.string().c_str(), "rb+");
     if (!file && !fReadOnly)
         file = fopen(path.string().c_str(), "wb+");
@@ -4792,7 +5251,7 @@ FILE* OpenUndoFile(const CDiskBlockPos& pos, bool fReadOnly)
     return OpenDiskFile(pos, "rev", fReadOnly);
 }
 
-boost::filesystem::path GetBlockPosFilename(const CDiskBlockPos& pos, const char* prefix)
+fs::path GetBlockPosFilename(const CDiskBlockPos& pos, const char* prefix)
 {
     return GetDataDir() / "blocks" / strprintf("%s%05u.dat", prefix, pos.nFile);
 }
@@ -4810,7 +5269,7 @@ CBlockIndex* InsertBlockIndex(uint256 hash)
     // Create new
     CBlockIndex* pindexNew = new CBlockIndex();
     if (!pindexNew)
-        throw runtime_error("LoadBlockIndex() : new CBlockIndex failed");
+        throw std::runtime_error("LoadBlockIndex() : new CBlockIndex failed");
     mi = mapBlockIndex.emplace(hash, pindexNew).first;
 
     pindexNew->phashBlock = &((*mi).first);
@@ -4827,11 +5286,11 @@ bool static LoadBlockIndexDB()
     boost::this_thread::interruption_point();
 
     // Calculate nChainWork
-    vector<pair<int, CBlockIndex*> > vSortedByHeight;
+    std::vector<std::pair<int, CBlockIndex*> > vSortedByHeight;
     vSortedByHeight.reserve(mapBlockIndex.size());
     for (auto const &item : mapBlockIndex) {
         CBlockIndex* pindex = item.second;
-        vSortedByHeight.push_back(make_pair(pindex->nHeight, pindex));
+        vSortedByHeight.push_back(std::make_pair(pindex->nHeight, pindex));
     }
     sort(vSortedByHeight.begin(), vSortedByHeight.end());
     for (auto const &item : vSortedByHeight) {
@@ -4882,7 +5341,7 @@ bool static LoadBlockIndexDB()
 
     // Check presence of blk files
     LogPrintf("Checking all blk files are present...\n");
-    set<int> setBlkDataFiles;
+    std::set<int> setBlkDataFiles;
     for (auto const &item : mapBlockIndex) {
         CBlockIndex* pindex = item.second;
         if (pindex->nStatus & BLOCK_HAVE_DATA) {
@@ -5002,6 +5461,14 @@ bool static LoadBlockIndexDB()
     pblocktree->ReadFlag("logevents", fLogEvents);
     LogPrintf("%s: log events index %s\n", __func__, fLogEvents ? "enabled" : "disabled");
 
+    // Check whether we have an address index
+    pblocktree->ReadFlag("addressindex", fAddressIndex);
+    LogPrintf("%s: address index %s\n", __func__, fAddressIndex ? "enabled" : "disabled");
+
+    // Check whether we have a spent index
+    pblocktree->ReadFlag("spentindex", fSpentIndex);
+    LogPrintf("%s: spent index %s\n", __func__, fSpentIndex ? "enabled" : "disabled");
+
     // If this is written true before the next client init, then we know the shutdown process failed
     pblocktree->WriteFlag("shutdown", false);
 
@@ -5081,6 +5548,11 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
         uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
         if (pindex->nHeight < chainActive.Height() - nCheckDepth)
             break;
+        if (fPruneMode && !(pindex->nStatus & BLOCK_HAVE_DATA)) {
+            // If in pruning mode, only go back as far as we have data.
+            LogPrintf("VerifyDB(): block verification stopping at height %d (pruning, no data)\n", pindex->nHeight);
+            break;
+        }
         CBlock block;
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
@@ -5090,24 +5562,28 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
             return error("VerifyDB() : *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
-            CBlockUndo undo;
+            CBlockUndo blockUndo;
             CDiskBlockPos pos = pindex->GetUndoPos();
             if (!pos.IsNull()) {
-                if (!undo.ReadFromDisk(pos, pindex->pprev->GetBlockHash()))
+                if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
                     return error("VerifyDB() : *** found bad undo data at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.GetCacheSize() + pcoinsTip->GetCacheSize()) <= nCoinCacheSize) {
-            bool fClean = true;
-            if (!DisconnectBlock(block, state, pindex, coins, &fClean))
-                return error("VerifyDB() : *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            bool fClean=true;
+            DisconnectResult res = DisconnectBlock(block, pindex, coins, &fClean);
+            if (res == DISCONNECT_FAILED) {
+                return error("VerifyDB() : *** irrecoverable inconsistency in block data at %d, hash=%s",
+                             pindex->nHeight, pindex->GetBlockHash().ToString());
+            }
             pindexState = pindex->pprev;
-            if (!fClean) {
+            if (res == DISCONNECT_UNCLEAN) {
                 nGoodTransactions = 0;
                 pindexFailure = pindex;
-            } else
+            } else {
                 nGoodTransactions += block.vtx.size();
+            }
         }
         if (ShutdownRequested())
             return true;
@@ -5124,7 +5600,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
             pindex = chainActive.Next(pindex);
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
-                return error("VerifyDB() : *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return error("VerifyDB: *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
 
             dev::h256 oldHashStateRoot;
             dev::h256 oldHashUTXORoot;
@@ -5151,19 +5627,16 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
             }
 
             if (!ConnectBlock(block, state, pindex, coins, chainparams)) {
-                if (chainActive.Height() >= chainparams.FirstSCBlock()) {
-                    globalState->setRoot(oldHashStateRoot); // lux
-                    globalState->setRootUTXO(oldHashUTXORoot); // lux
+                setGlobalStateRoot(oldHashStateRoot);
+                setGlobalStateUTXO(oldHashUTXORoot);
+                if (pstorageresult != nullptr)
                     pstorageresult->clearCacheResult();
-                }
-                return error("VerifyDB() : *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return error("VerifyDB: *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
     } else {
-        if (chainActive.Height() >= chainparams.FirstSCBlock()) {
-            globalState->setRoot(oldHashStateRoot); // lux
-            globalState->setRootUTXO(oldHashUTXORoot); // lux
-        }
+        setGlobalStateRoot(oldHashStateRoot);
+        setGlobalStateUTXO(oldHashUTXORoot);
     }
 
     LogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", chainActive.Height() - pindexState->nHeight, nGoodTransactions);
@@ -5177,11 +5650,30 @@ void UnloadBlockIndex()
     setBlockIndexCandidates.clear();
     chainActive.SetTip(nullptr);
     pindexBestInvalid = nullptr;
+
+    fHavePruned = false;
+    pindexBestHeader = nullptr;
+    mempool.clear();
+    mapOrphanTransactions.clear();
+    mapOrphanTransactionsByPrev.clear();
+    nSyncStarted = 0;
+    mapBlocksUnlinked.clear();
+    vinfoBlockFile.clear();
+    nLastBlockFile = 0;
+    nBlockSequenceId = 1;
+    mapBlockSource.clear();
+    mapBlocksInFlight.clear();
+    nQueuedValidatedHeaders = 0;
+    nPreferredDownload = 0;
+    setDirtyBlockIndex.clear();
+    setDirtyFileInfo.clear();
+    mapNodeState.clear();
+    recentRejects.reset(nullptr);
+
     for (BlockMap::value_type& entry : mapBlockIndex) {
         delete entry.second;
     }
     mapBlockIndex.clear();
-    fHavePruned = false;
 }
 
 bool LoadBlockIndex()
@@ -5212,6 +5704,15 @@ bool InitBlockIndex(const CChainParams& chainparams)
     // Use the provided setting for -txindex in the new database
     fTxIndex = GetBoolArg("-txindex", true);
     pblocktree->WriteFlag("txindex", fTxIndex);
+
+    // Use the provided setting for -addressindex in the new database
+    fAddressIndex = GetBoolArg("-addressindex", DEFAULT_ADDRESSINDEX);
+    pblocktree->WriteFlag("addressindex", fAddressIndex);
+
+    // Use the provided setting for -spentindex in the new database
+    fSpentIndex = GetBoolArg("-spentindex", DEFAULT_SPENTINDEX);
+    pblocktree->WriteFlag("spentindex", fSpentIndex);
+
     LogPrintf("Initializing databases...\n");
 
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)
@@ -5237,7 +5738,8 @@ bool InitBlockIndex(const CChainParams& chainparams)
             return error("InitBlockIndex() : failed to initialize block database: %s", e.what());
         }
     }
-
+    // Initialize global variables that cannot be constructed at startup.
+    recentRejects.reset(new CRollingBloomFilter(120000, 0.000001));
     return true;
 }
 
@@ -5290,7 +5792,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 uint256 hash = block.GetHash();
                 CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
                 if (hash != chainparams.GetConsensus().hashGenesisBlock && pindexPrev == nullptr) {
-                    LogPrint("reindex", "%s: Out of order block %s, parent %s not known\n", __func__, hash.ToString(),
+                    LogPrint(BCLog::REINDEX, "%s: Out of order block %s, parent %s not known\n", __func__, hash.ToString(),
                         block.hashPrevBlock.ToString());
                     if (dbp)
                         mapBlocksUnknownParent.insert(std::make_pair(block.hashPrevBlock, *dbp));
@@ -5314,7 +5816,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 }
 
                 // Recursively process earlier encountered successors of this block
-                deque<uint256> queue;
+                std::deque<uint256> queue;
                 queue.push_back(hash);
                 while (!queue.empty()) {
                     uint256 head = queue.front();
@@ -5594,27 +6096,34 @@ string GetWarnings(string strFor)
 
 bool static AlreadyHave(const CInv& inv)
 {
-    switch (inv.type) {
+    switch (inv.GetType()) {
     case MSG_TX:
-    case MSG_WITNESS_TX:
-        {
-        bool txInMap = false;
-        txInMap = mempool.exists(inv.hash);
-        return txInMap || mapOrphanTransactions.count(inv.hash) ||
-               pcoinsTip->HaveCoins(inv.hash);
+    case MSG_WITNESS_TX: {
+            if (chainActive.Tip()->GetBlockHash() != hashRecentRejectsChainTip) {
+                // If the chain tip has changed previously rejected transactions
+                // might be now valid, e.g. due to a nLockTime'd tx becoming valid,
+                // or a double-spend. Reset the rejects filter and give those
+                // txs a second chance.
+                hashRecentRejectsChainTip = chainActive.Tip()->GetBlockHash();
+
+                if (recentRejects)
+                    recentRejects->reset();
+            }
+            return (recentRejects && recentRejects->contains(inv.GetHash())) || mempool.exists(inv.GetHash()) ||
+                   mapOrphanTransactions.count(inv.GetHash()) || pcoinsTip->HaveCoin(inv.GetHash());
         }
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:
-        return mapBlockIndex.count(inv.hash);
+        return mapBlockIndex.count(inv.GetHash());
     case MSG_TXLOCK_REQUEST:
-        return mapTxLockReq.count(inv.hash) ||
-               mapTxLockReqRejected.count(inv.hash);
+        return mapTxLockReq.count(inv.GetHash()) ||
+               mapTxLockReqRejected.count(inv.GetHash());
     case MSG_TXLOCK_VOTE:
-        return mapTxLockVote.count(inv.hash);
+        return mapTxLockVote.count(inv.GetHash());
     case MSG_SPORK:
-        return mapSporks.count(inv.hash);
+        return mapSporks.count(inv.GetHash());
     case MSG_MASTERNODE_WINNER:
-        return mapSeenMasternodeVotes.count(inv.hash);
+        return mapSeenMasternodeVotes.count(inv.GetHash());
     }
     // Don't know what it is, just say we already got one
     return true;
@@ -5639,9 +6148,11 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
             boost::this_thread::interruption_point();
             it++;
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_WITNESS_BLOCK) {
+            int nInvType = inv.GetType();
+            uint256 hashInv = inv.GetHash();
+            if (nInvType == MSG_BLOCK || nInvType == MSG_FILTERED_BLOCK || nInvType == MSG_WITNESS_BLOCK) {
                 bool send = false;
-                CBlockIndex* pindex = LookupBlockIndex(inv.hash);
+                CBlockIndex* pindex = LookupBlockIndex(hashInv);
                 if (pindex) {
                     if (chainActive.Contains(pindex)) {
                         send = true;
@@ -5662,12 +6173,10 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 if (send && pindex && (pindex->nStatus & BLOCK_HAVE_DATA)) {
                     // Send block from disk
                     CBlock block;
-                    if (ReadBlockFromDisk(block, pindex, consensusParams)) {    
-                        if (inv.type == MSG_BLOCK)
+                    if (ReadBlockFromDisk(block, pindex, consensusParams)) {
+                        if (nInvType == MSG_BLOCK)
                             pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, block);
-                        else if (inv.type == MSG_WITNESS_BLOCK)
-                            pfrom->PushMessage(NetMsgType::BLOCK, block);
-                        else if (inv.type == MSG_WITNESS_BLOCK)
+                        else if (nInvType == MSG_WITNESS_BLOCK)
                             pfrom->PushMessage(NetMsgType::BLOCK, block);
                         else // MSG_FILTERED_BLOCK)
                         {
@@ -5683,19 +6192,17 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                                 // however we MUST always provide at least what the remote peer needs
                                 typedef std::pair<unsigned int, uint256> PairType;
                                 for (PairType& pair : merkleBlock.vMatchedTxn)
-                                    if (!pfrom->setInventoryKnown.count(CInv(MSG_TX, pair.second)))
                                         pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::TX, block.vtx[pair.first]);
                             }
                             // else
                             // no response
                         }
                     } else {
-                        // no response
-                        LogPrintf("ProcessGetData(): Cannot read ReadBlockFromDisk (peer=%i; block = %d)\n", pfrom->GetId(), pindex->nHeight);
+                        LogPrintf("ProcessGetData(): Cannot read ReadBlockFromDisk (peer=%i; block = %d; hashInv = %s)\n", pfrom->GetId(), pindex->nHeight, hashInv.ToString());
                     }
 
                     // Trigger them to send a getblocks request for the next batch of inventory
-                    if (inv.hash == pfrom->hashContinue) {
+                    if (hashInv == pfrom->hashContinue) {
                         // Bypass PushInventory, this must send even if redundant,
                         // and we want it right after the last block so they don't
                         // wait for other stuff first.
@@ -5705,63 +6212,63 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         pfrom->hashContinue.SetNull();
                     }
                 }
-            } else if (inv.type == MSG_TX || inv.type == MSG_WITNESS_TX) {
+            } else if (nInvType == MSG_TX || nInvType == MSG_WITNESS_TX) {
                 // Send stream from relay memory
                 bool pushed = false;
                 {
                     LOCK(cs_mapRelay);
                     map<CInv, CDataStream>::iterator mi = mapRelay.find(inv);
                     if (mi != mapRelay.end()) {
-                        pfrom->PushMessageWithFlag(inv.type == MSG_TX ? SERIALIZE_TRANSACTION_NO_WITNESS : 0, NetMsgType::TX, (*mi).second);
+                        pfrom->PushMessageWithFlag(nInvType == MSG_TX ? SERIALIZE_TRANSACTION_NO_WITNESS : 0, NetMsgType::TX, (*mi).second);
                         pushed = true;
                     }
                 }
 
-                if (!pushed && inv.type == MSG_TX) { //TODO: probably should check for MSG_TX_WITNESS too
+                if (!pushed && nInvType == MSG_TX) { //TODO: probably should check for MSG_TX_WITNESS too
                     CTransaction tx;
-                    CTransactionRef ptx = mempool.get(inv.hash);
+                    CTransactionRef ptx = mempool.get(hashInv);
                     if (ptx) {
                         tx = *ptx.get();
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000); //TODO: if we check for MSG_TX_WITNESS, should this value be changed?
+                        ss.reserve(1000);
                         ss << tx;
                         pfrom->PushMessage("tx", ss);
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_TXLOCK_VOTE) {
-                    if (mapTxLockVote.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_TXLOCK_VOTE) {
+                    if (mapTxLockVote.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << mapTxLockVote[inv.hash];
+                        ss << mapTxLockVote[hashInv];
                         pfrom->PushMessage("txlvote", ss); //TODO: push message with flags
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_TXLOCK_REQUEST) {
-                    if (mapTxLockReq.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_TXLOCK_REQUEST) {
+                    if (mapTxLockReq.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << mapTxLockReq[inv.hash];
+                        ss << mapTxLockReq[hashInv];
                         pfrom->PushMessage("ix", ss);
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_SPORK) {
-                    if (mapSporks.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_SPORK) {
+                    if (mapSporks.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << mapSporks[inv.hash];
+                        ss << mapSporks[hashInv];
                         pfrom->PushMessage("spork", ss);
                         pushed = true;
                     }
                 }
-                if (!pushed && inv.type == MSG_MASTERNODE_WINNER) {
-                    if (mapSeenMasternodeVotes.count(inv.hash)) {
+                if (!pushed && nInvType == MSG_MASTERNODE_WINNER) {
+                    if (mapSeenMasternodeVotes.count(hashInv)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         int a = 0;
                         ss.reserve(1000);
-                        ss << mapSeenMasternodeVotes[inv.hash] << a;
+                        ss << mapSeenMasternodeVotes[hashInv] << a;
                         pfrom->PushMessage("mnw", ss);
                         pushed = true;
                     }
@@ -5773,9 +6280,9 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
             }
 
             // Track requests for our stuff.
-            GetMainSignals().Inventory(inv.hash);
+            GetMainSignals().Inventory(hashInv);
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_WITNESS_BLOCK)
+            if (nInvType == MSG_BLOCK || nInvType == MSG_FILTERED_BLOCK || nInvType == MSG_WITNESS_BLOCK)
                 break;
         }
     }
@@ -5828,7 +6335,7 @@ int GetMajorVersionFromVersion(const string& cleanVersion) {
 
 static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& vRecv, int64_t nTimeReceived, const CChainParams& chainparams)
 {
-    RandAddSeedPerfmon();
+
     if (fDebug) {
         LogPrintf("received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
     }
@@ -5845,6 +6352,15 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         return false;
     }
 
+    if (!(nLocalServices & NODE_BLOOM) &&
+        (strCommand == "filterload" ||
+         strCommand == "filteradd" ||
+         strCommand == "filterclear")) {
+        if (pfrom->nVersion >= NO_BLOOM_VERSION) {
+            Misbehaving(pfrom->GetId(), 100);
+            return false;
+        }
+    }
     if (strCommand == "version") {
         // Each connection can only send one version message
         if (pfrom->nVersion != 0) {
@@ -5862,7 +6378,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         pfrom->nServices = ServiceFlags(nServiceInt);
         if (pfrom->nServicesExpected & ~pfrom->nServices)
         {
-            LogPrint("net", "peer=%d does not offer the expected services (%08x offered, %08x expected); disconnecting\n", pfrom->id, pfrom->nServices, pfrom->nServicesExpected);
+            LogPrint(BCLog::NET, "peer=%d does not offer the expected services (%08x offered, %08x expected); disconnecting\n", pfrom->id, pfrom->nServices, pfrom->nServicesExpected);
             pfrom->PushMessage("reject", strCommand, REJECT_NONSTANDARD,
                                strprintf("Expected to offer services %08x", pfrom->nServicesExpected));
             pfrom->fDisconnect = true;
@@ -6009,14 +6525,14 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         for (CAddress& addr : vAddr) {
             boost::this_thread::interruption_point();
 
-            if ((addr.nServices & REQUIRED_SERVICES) != REQUIRED_SERVICES)
+            if ((addr.GetServices() & REQUIRED_SERVICES) != REQUIRED_SERVICES)
                 continue;
 
-            if (addr.nTime <= 100000000 || addr.nTime > nNow + 10 * 60)
-                addr.nTime = nNow - 5 * 24 * 60 * 60;
+            if (addr.GetTime() <= 100000000 || addr.GetTime() > nNow + 10 * 60)
+                addr.SetTime(nNow - 5 * 24 * 60 * 60);
             pfrom->AddAddressKnown(addr);
             bool fReachable = IsReachable(addr);
-            if (addr.nTime > nSince && !pfrom->fGetAddr && vAddr.size() <= 10 && addr.IsRoutable()) {
+            if (addr.GetTime() > nSince && !pfrom->fGetAddr && vAddr.size() <= 10 && addr.IsRoutable()) {
                 // Relay to a limited number of other nodes
                 {
                     vector<CNode*> vNodesCopy;
@@ -6079,23 +6595,25 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(inv);
-            LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
+            LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
 
-            if (!fAlreadyHave && !fImporting && !fReindex && inv.type != MSG_BLOCK)
+            if (!fAlreadyHave && !fImporting && !fReindex && inv.GetType() != MSG_BLOCK)
                 pfrom->AskFor(inv);
 
+            uint256 hashInv = inv.GetHash();
+
             //TODO get fetch flags and check witness
-            if (inv.type == MSG_BLOCK) {
-                UpdateBlockAvailability(pfrom->GetId(), inv.hash);
-                if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash)) {
+            if (inv.GetType() == MSG_BLOCK) {
+                UpdateBlockAvailability(pfrom->GetId(), hashInv);
+                if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(hashInv)) {
                     // Add this to the list of blocks to request
                     vToFetch.push_back(inv);
-                    LogPrint("net", "getblocks (%d) %s to peer=%d\n", pindexBestHeader->nHeight, inv.hash.ToString(), pfrom->id);
+                    LogPrint(BCLog::NET, "getblocks (%d) %s to peer=%d\n", pindexBestHeader->nHeight, hashInv.ToString(), pfrom->id);
                 }
             }
 
             // Track requests for our stuff
-            GetMainSignals().Inventory(inv.hash);
+            GetMainSignals().Inventory(hashInv);
 
             if (pfrom->nSendSize > (SendBufferSize() * 2)) {
                 Misbehaving(pfrom->GetId(), 50);
@@ -6117,10 +6635,10 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         }
 
         if (fDebug || (vInv.size() != 1))
-            LogPrint("net", "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
+            LogPrint(BCLog::NET, "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
 
         if ((fDebug && vInv.size() > 0) || (vInv.size() == 1))
-            LogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
+            LogPrint(BCLog::NET, "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
         pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
         ProcessGetData(pfrom, chainparams.GetConsensus());
@@ -6145,14 +6663,14 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         LogPrintf("getblocks %d to %s limit %d from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop == uint256(0) ? "end" : hashStop.ToString(), nLimit, pfrom->id);
         for (; pindex; pindex = chainActive.Next(pindex)) {
             if (pindex->GetBlockHash() == hashStop) {
-                LogPrint("net", "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogPrint(BCLog::NET, "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
             }
             pfrom->PushInventory(CInv(MSG_BLOCK, pindex->GetBlockHash()));
             if (--nLimit <= 0) {
                 // When this block is requested, we'll send an inv that'll make them
                 // getblocks the next batch of inventory.
-                LogPrint("net", "  getblocks stopping at limit %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogPrint(BCLog::NET, "  getblocks stopping at limit %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 pfrom->hashContinue = pindex->GetBlockHash();
                 break;
             }
@@ -6226,10 +6744,10 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, false, ignoreFees)) {
             mempool.check(pcoinsTip);
             RelayTransaction(tx);
-            vWorkQueue.push_back(inv.hash);
-            vEraseQueue.push_back(inv.hash);
+            vWorkQueue.push_back(inv.GetHash());
+            vEraseQueue.push_back(inv.GetHash());
 
-            LogPrint("mempool", "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u)\n",
+            LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u)\n",
                 pfrom->id,
                 tx.GetHash().ToString(),
                 mempool.mapTx.size());
@@ -6258,7 +6776,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                     if (setMisbehaving.count(fromPeer))
                         continue;
                     if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &fMissingInputs2)) {
-                        LogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
+                        LogPrint(BCLog::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
                         RelayTransaction(orphanTx);
                         vWorkQueue.push_back(orphanHash);
                         vEraseQueue.push_back(orphanHash);
@@ -6268,11 +6786,11 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                             // Punish peer that gave us an invalid orphan tx
                             Misbehaving(fromPeer, nDos);
                             setMisbehaving.insert(fromPeer);
-                            LogPrint("mempool", "   invalid orphan tx %s\n", orphanHash.ToString());
+                            LogPrint(BCLog::MEMPOOL, "   invalid orphan tx %s\n", orphanHash.ToString());
                         }
                         // Has inputs but not accepted to mempool
                         // Probably non-standard or insufficient fee/priority
-                        LogPrint("mempool", "   removed orphan tx %s\n", orphanHash.ToString());
+                        LogPrint(BCLog::MEMPOOL, "   removed orphan tx %s\n", orphanHash.ToString());
                         vEraseQueue.push_back(orphanHash);
 
                     }
@@ -6283,13 +6801,30 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
         } else if (fMissingInputs) {
-            AddOrphanTx(tx, pfrom->GetId());
+            // It may be the case that the orphans parents have all been rejected
+            bool fRejectedParents = false;
+            for (const CTxIn& txin : tx.vin) {
+                if (recentRejects && recentRejects->contains(txin.prevout.hash)) {
+                    fRejectedParents = true;
+                    break;
+                }
+            }
+            if (!fRejectedParents) {
+                for (const CTxIn& txin : tx.vin) {
+                    CInv inv(MSG_TX, txin.prevout.hash);
+                    pfrom->AddInventoryKnown(inv);
+                    if (!AlreadyHave(inv)) pfrom->AskFor(inv);
+                }
+                AddOrphanTx(tx, pfrom->GetId());
 
-            // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
-            unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
-            unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
-            if (nEvicted > 0)
-                LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+                // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
+                unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
+                unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
+                if (nEvicted > 0)
+                    LogPrint(BCLog::MEMPOOL, "mapOrphan overflow, removed %u tx\n", nEvicted);
+            } else {
+                LogPrint(BCLog::MEMPOOL, "not keeping orphan with rejected parents %s\n",tx.GetHash().ToString());
+            }
         } else {
 
             if (pfrom->fWhitelisted && GetBoolArg("-whitelistalwaysrelay", DEFAULT_WHITELISTALWAYSRELAY)) {
@@ -6305,11 +6840,11 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         int nDoS = 0;
         if (state.IsInvalid(nDoS)) {
-            LogPrint("mempool", "%s from peer=%d %s was not accepted into the memory pool: %s\n", tx.GetHash().ToString(),
+            LogPrint(BCLog::MEMPOOL, "%s from peer=%d %s was not accepted into the memory pool: %s\n", tx.GetHash().ToString(),
                 pfrom->id,
                 state.GetRejectReason());
             pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
-                state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.GetHash());
             if (nDoS > 0 && (!state.CorruptionPossible() || State(pfrom->id)->fHaveWitness))
                 Misbehaving(pfrom->GetId(), nDoS);
         }
@@ -6383,7 +6918,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         uint256 hashBlock = block.GetHash(usePhi2);
         CInv inv(MSG_BLOCK, hashBlock);
-        LogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
+        LogPrint(BCLog::NET, "received block %s peer=%d\n", inv.GetHash().ToString(), pfrom->id);
 
         //sometimes we will be sent their most recent block and its not the one we want, in that case tell where we are
         if (!mapBlockIndex.count(block.hashPrevBlock)) {
@@ -6404,7 +6939,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             int nDoS;
             if (state.IsInvalid(nDoS)) {
                 pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
-                    state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                    state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.GetHash());
                 if (nDoS > 0) {
                     TRY_LOCK(cs_main, lockMain);
                     if (lockMain) Misbehaving(pfrom->GetId(), nDoS);
@@ -6515,7 +7050,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         }
 
         if (!(sProblem.empty())) {
-            LogPrint("net", "pong peer=%d %s: %s, %x expected, %x received, %u bytes\n",
+            LogPrint(BCLog::NET, "pong peer=%d %s: %s, %x expected, %x received, %u bytes\n",
                 pfrom->id,
                 sProblem,
                 pfrom->nPingNonceSent,
@@ -6559,16 +7094,6 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         }
     }
 
-
-    else if (!(nLocalServices & NODE_BLOOM) &&
-             (strCommand == "filterload" ||
-              strCommand == "filteradd" ||
-              strCommand == "filterclear")) {
-        LogPrintf("bloom message=%s\n", strCommand);
-        Misbehaving(pfrom->GetId(), 100);
-    }
-
-
     else if (strCommand == "filterload") {
         CBloomFilter filter;
         vRecv >> filter;
@@ -6578,8 +7103,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
             Misbehaving(pfrom->GetId(), 100);
         else {
             LOCK(pfrom->cs_filter);
-            delete pfrom->pfilter;
-            pfrom->pfilter = new CBloomFilter(filter);
+            pfrom->pfilter.reset(new CBloomFilter(filter));
             pfrom->pfilter->UpdateEmptyFull();
         }
         pfrom->fRelayTxes = true;
@@ -6606,8 +7130,7 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
     else if (strCommand == "filterclear") {
         LOCK(pfrom->cs_filter);
-        delete pfrom->pfilter;
-        pfrom->pfilter = new CBloomFilter();
+        pfrom->pfilter.reset(new CBloomFilter());
         pfrom->fRelayTxes = true;
     }
 
@@ -6628,10 +7151,10 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                     vRecv >> hash;
                     ss << ": hash " << hash.ToString();
                 }
-                LogPrint("net", "Reject %s\n", SanitizeString(ss.str()));
+                LogPrint(BCLog::NET, "Reject %s\n", SanitizeString(ss.str()));
             } catch (std::ios_base::failure& e) {
                 // Avoid feedback loops by preventing reject messages from triggering a new reject message.
-                LogPrint("net", "Unparseable reject message received\n");
+                LogPrint(BCLog::NET, "Unparseable reject message received\n");
             }
         }
     }
@@ -6715,7 +7238,7 @@ bool ProcessMessages(CNode* pfrom)
 
         // Scan for message start
         if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), MESSAGE_START_SIZE) != 0) {
-            LogPrint("net", "%s: INVALID MESSAGESTART %s peer=%d\n", __func__, SanitizeString(msg.hdr.GetCommand()), pfrom->id);
+            LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
             fOk = false;
             break;
         }
@@ -6723,7 +7246,7 @@ bool ProcessMessages(CNode* pfrom)
         // Read header
         CMessageHeader& hdr = msg.hdr;
         if (!hdr.IsValid()) {
-            LogPrint("net", "%s: ERRORS IN HEADER %s peer=%d\n", __func__, SanitizeString(hdr.GetCommand()), pfrom->id);
+            LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
             continue;
         }
         string strCommand = hdr.GetCommand();
@@ -6734,8 +7257,7 @@ bool ProcessMessages(CNode* pfrom)
         // Checksum
         CDataStream& vRecv = msg.vRecv;
         uint256 hash = Hash(vRecv.begin(), vRecv.begin() + nMessageSize);
-        unsigned int nChecksum = 0;
-        memcpy(&nChecksum, &hash, sizeof(nChecksum));
+        unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
         if (nChecksum != hdr.nChecksum) {
             LogPrintf("ProcessMessages(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n",
                 SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
@@ -6780,9 +7302,8 @@ bool ProcessMessages(CNode* pfrom)
 }
 
 
-bool SendMessages(CNode* pto)
-{
-    const Consensus::Params& consensusParams = Params().GetConsensus();
+bool SendMessages(CNode* pto) {
+    const Consensus::Params &consensusParams = Params().GetConsensus();
     {
         // Don't send anything until we get their version message
         if (pto->nVersion == 0)
@@ -6803,7 +7324,7 @@ bool SendMessages(CNode* pto)
         if (pingSend) {
             uint64_t nonce = 0;
             while (nonce == 0) {
-                GetRandBytes((unsigned char*)&nonce, sizeof(nonce));
+                GetRandBytes((unsigned char *) &nonce, sizeof(nonce));
             }
             pto->fPingQueued = false;
             pto->nPingUsecStart = GetTimeMicros();
@@ -6833,9 +7354,9 @@ bool SendMessages(CNode* pto)
         //
         if (pto->nNextAddrSend < nNow) {
             pto->nNextAddrSend = nNextSend(nNow, RELAY_ADDRESS_INTERVAL);
-            vector<CAddress> vAddr;
+            vector <CAddress> vAddr;
             vAddr.reserve(pto->vAddrToSend.size());
-            for (const CAddress& addr : pto->vAddrToSend) {
+            for (const CAddress &addr : pto->vAddrToSend) {
                 // returns true if wasn't already contained in the set
                 if (pto->setAddrKnown.insert(addr).second) {
                     vAddr.push_back(addr);
@@ -6851,7 +7372,7 @@ bool SendMessages(CNode* pto)
                 pto->PushMessage("addr", vAddr);
         }
 
-        CNodeState& state = *State(pto->GetId());
+        CNodeState &state = *State(pto->GetId());
         if (state.fShouldBan) {
             if (pto->fWhitelisted)
                 LogPrintf("Warning: not punishing whitelisted peer %s!\n", pto->addr.ToString());
@@ -6866,21 +7387,23 @@ bool SendMessages(CNode* pto)
             state.fShouldBan = false;
         }
 
-        for (const CBlockReject& reject : state.rejects)
+        for (const CBlockReject &reject : state.rejects)
             pto->PushMessage("reject", (string) "block", reject.chRejectCode, reject.strRejectReason, reject.hashBlock);
         state.rejects.clear();
 
         // Start block sync
         if (pindexBestHeader == nullptr)
             pindexBestHeader = chainActive.Tip();
-        bool fFetch = state.fPreferredDownload || (nPreferredDownload == 0 && !pto->fClient && !pto->fOneShot); // Download if this is a nice peer, or we have no nice peers and this one might do.
+        bool fFetch = state.fPreferredDownload || (nPreferredDownload == 0 && !pto->fClient &&
+                                                   !pto->fOneShot); // Download if this is a nice peer, or we have no nice peers and this one might do.
         if (!state.fSyncStarted && !pto->fClient && fFetch /*&& !fImporting*/ && !fReindex) {
             // Only actively request headers from a single peer, unless we're close to end of initial download.
-            if (nSyncStarted == 0 || pindexBestHeader->GetBlockTime() > GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
+            if (nSyncStarted == 0 || pindexBestHeader->GetBlockTime() >
+                                     GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
                 state.fSyncStarted = true;
                 nSyncStarted++;
                 //CBlockIndex *pindexStart = chainActive.Tip()->pprev ? chainActive.Tip()->pprev : chainActive.Tip();
-                //LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
+                //LogPrint(BCLog::NET, "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
                 //pto->PushMessage("getheaders", chainActive.GetLocator(pindexStart), uint256(0));
                 pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
             }
@@ -6896,8 +7419,8 @@ bool SendMessages(CNode* pto)
         //
         // Message: inventory
         //
-        vector<CInv> vInv;
-        vector<CInv> vInvWait;
+        vector <CInv> vInv;
+        vector <CInv> vInvWait;
         {
             bool fSendTrickle = pto->fWhitelisted;
             if (pto->nNextInvSend < nNow) {
@@ -6907,17 +7430,18 @@ bool SendMessages(CNode* pto)
             LOCK(pto->cs_inventory);
             vInv.reserve(std::min<size_t>(1000, pto->vInventoryToSend.size()));
             vInvWait.reserve(pto->vInventoryToSend.size());
-            for (const CInv& inv : pto->vInventoryToSend) {
-                if (pto->setInventoryKnown.count(inv))
+            for (const CInv &inv : pto->vInventoryToSend) {
+                uint256 hashInv = inv.GetHash();
+                if (pto->setInventoryKnown.contains(hashInv))
                     continue;
 
                 // trickle out tx inv to protect privacy
-                if (inv.type == MSG_TX && !fSendTrickle) {
+                if (inv.GetType() == MSG_TX && !fSendTrickle) {
                     // 1/4 of tx invs blast to all immediately
                     static uint256 hashSalt;
                     if (hashSalt == 0)
                         hashSalt = GetRandHash();
-                    uint256 hashRand = inv.hash ^ hashSalt;
+                    uint256 hashRand = hashInv ^hashSalt;
                     hashRand = Hash(BEGIN(hashRand), END(hashRand));
                     bool fTrickleWait = ((hashRand & 3) != 0);
 
@@ -6928,7 +7452,8 @@ bool SendMessages(CNode* pto)
                 }
 
                 // returns true if wasn't already contained in the set
-                if (pto->setInventoryKnown.insert(inv).second) {
+                if (!pto->setInventoryKnown.contains(hashInv)) {
+                    pto->setInventoryKnown.insert(hashInv);
                     vInv.push_back(inv);
                     if (vInv.size() >= 1000) {
                         pto->PushMessage("inv", vInv);
@@ -6943,7 +7468,8 @@ bool SendMessages(CNode* pto)
 
         // Detect whether we're stalling
         nNow = GetTimeMicros();
-        if (!pto->fDisconnect && state.nStallingSince && state.nStallingSince < nNow - 1000000 * BLOCK_STALLING_TIMEOUT) {
+        if (!pto->fDisconnect && state.nStallingSince &&
+            state.nStallingSince < nNow - 1000000 * BLOCK_STALLING_TIMEOUT) {
             // Stalling only triggers when the block download window cannot move. During normal steady state,
             // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
             // should only happen during initial block download.
@@ -6955,20 +7481,26 @@ bool SendMessages(CNode* pto)
         // timeout. We compensate for in-flight blocks to prevent killing off peers due to our own downstream link
         // being saturated. We only count validated in-flight blocks so peers can't advertize nonexisting block hashes
         // to unreasonably increase our timeout.
-        if (!pto->fDisconnect && state.vBlocksInFlight.size() > 0 && state.vBlocksInFlight.front().nTime < nNow - 500000 * Params().TargetSpacing() * (4 + state.vBlocksInFlight.front().nValidatedQueuedBefore)) {
-            LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", state.vBlocksInFlight.front().hash.ToString(), pto->id);
+        if (!pto->fDisconnect && state.vBlocksInFlight.size() > 0 && state.vBlocksInFlight.front().nTime < nNow -
+                                                                                                           500000 *
+                                                                                                           Params().TargetSpacing() *
+                                                                                                           (4 +
+                                                                                                            state.vBlocksInFlight.front().nValidatedQueuedBefore)) {
+            LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n",
+                      state.vBlocksInFlight.front().hash.ToString(), pto->id);
             pto->fDisconnect = true;
         }
 
         //
         // Message: getdata (blocks)
         //
-        vector<CInv> vGetData;
+        vector <CInv> vGetData;
         if (!pto->fDisconnect && !pto->fClient && fFetch && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
-            vector<CBlockIndex*> vToDownload;
+            vector < CBlockIndex * > vToDownload;
             NodeId staller = -1;
-            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
-            for (CBlockIndex* pindex : vToDownload) {
+            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload,
+                                     staller);
+            for (CBlockIndex *pindex : vToDownload) {
                 if (State(pto->GetId())->fHaveWitness || !IsWitnessEnabled(pindex->pprev, consensusParams)) {
                     uint32_t nFetchFlags = GetFetchFlags(pto, pindex->pprev, consensusParams);
                     vGetData.push_back(CInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
@@ -6980,7 +7512,7 @@ bool SendMessages(CNode* pto)
             if (state.nBlocksInFlight == 0 && staller != -1) {
                 if (State(staller)->nStallingSince == 0) {
                     State(staller)->nStallingSince = nNow;
-                    LogPrint("net", "Stall started peer=%d\n", staller);
+                    LogPrint(BCLog::NET, "Stall started peer=%d\n", staller);
                 }
             }
         }
@@ -6989,10 +7521,10 @@ bool SendMessages(CNode* pto)
         // Message: getdata (non-blocks)
         //
         while (!pto->fDisconnect && !pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow) {
-            const CInv& inv = (*pto->mapAskFor.begin()).second;
+            const CInv &inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(inv)) {
                 if (fDebug)
-                    LogPrint("net", "Requesting %s peer=%d\n", inv.ToString(), pto->id);
+                    LogPrint(BCLog::NET, "Requesting %s peer=%d\n", inv.ToString(), pto->id);
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000) {
                     pto->PushMessage("getdata", vGetData);
@@ -7255,7 +7787,7 @@ UniValue vmLogToJSON(const ResultExecute& execRes, const CTransaction& tx, const
 }
 
 void writeVMlog(const std::vector<ResultExecute>& res, const CTransaction& tx, const CBlock& block){
-    boost::filesystem::path luxDir = GetDataDir() / "vmExecLogs.json";
+    fs::path luxDir = GetDataDir() / "vmExecLogs.json";
     std::stringstream ss;
     if(fIsVMlogFile){
         ss << ",";
@@ -7485,3 +8017,4 @@ LuxTransaction LuxTxConverter::createEthTX(const EthTransactionParams& etp, uint
     return txEth;
 }
 ///////////////////////////////////////////////////////////////////////
+

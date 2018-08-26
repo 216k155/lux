@@ -95,7 +95,7 @@ struct ReadAlerts
     }
     ~ReadAlerts() { }
 
-    static std::vector<std::string> read_lines(boost::filesystem::path filepath)
+    static std::vector<std::string> read_lines(fs::path filepath)
     {
         std::vector<std::string> result;
 
@@ -156,8 +156,8 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
 {
     SetMockTime(11);
 
-    boost::filesystem::path temp = GetTempPath() / "alertnotify.txt";
-    boost::filesystem::remove(temp);
+    fs::path temp = GetTempPath() / "alertnotify.txt";
+    fs::remove(temp);
 
     mapArgs["-alertnotify"] = std::string("echo %s >> ") + temp.string();
 
@@ -167,6 +167,7 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
     std::vector<std::string> r = read_lines(temp);
     BOOST_CHECK_EQUAL(r.size(), 4u);
 
+    if (r.size() >= 4) {
 // Windows built-in echo semantics are different than posixy shells. Quotes and
 // whitespace are printed literally.
 
@@ -181,7 +182,9 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
     BOOST_CHECK_EQUAL(r[2], "'Alert 2, cancels 1' ");
     BOOST_CHECK_EQUAL(r[3], "'Evil Alert; /bin/ls; echo ' ");
 #endif
-    boost::filesystem::remove(temp);
+    }
+
+    fs::remove(temp);
 
     SetMockTime(0);
 }

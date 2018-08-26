@@ -151,7 +151,7 @@ void SendCoinsDialog::setClientModel(ClientModel* clientModel)
     this->clientModel = clientModel;
 
     if (clientModel) {
-        connect(clientModel, SIGNAL(numBlocksChanged(int)), this, SLOT(updateSmartFeeLabel()));
+        connect(clientModel, SIGNAL(numBlocksChanged(int,QDateTime)), this, SLOT(updateSmartFeeLabel()));
     }
 }
 
@@ -231,7 +231,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
         //UTXO splitter - address should be our own
         CTxDestination address = DecodeDestination(entry->getValue().address.toStdString());
-        if (!model->isMine(address) && ui->splitBlockCheckBox->checkState() == Qt::Checked) {
+        if (!model->IsSpendable(address) && ui->splitBlockCheckBox->checkState() == Qt::Checked) {
             CoinControlDialog::coinControl->fSplitBlock = false;
             ui->splitBlockCheckBox->setCheckState(Qt::Unchecked);
             QMessageBox::warning(this, tr("Send Coins"),
@@ -651,8 +651,12 @@ void SendCoinsDialog::processSendCoinsReturn(const WalletModel::SendCoinsReturn&
             msgParams.first = tr("Error: The wallet was unlocked only to anonymize coins.");
         break;
 
-    case WalletModel::InsaneFee:
-        msgParams.first = tr("A fee %1 times higher than %2 per kB is considered an insanely high fee.").arg(10000).arg(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), ::minRelayTxFee.GetFeePerK()));
+        case WalletModel::AbsurdFee:
+            msgParams.first = tr("A fee higher than %1 is considered an absurdly high fee.").arg(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), 10000000));
+            break;
+        case WalletModel::PaymentRequestExpired:
+            msgParams.first = tr("Payment request expired!");
+            msgParams.second = CClientUIInterface::MSG_ERROR;
         break;
     // included to prevent a compiler warning.
     case WalletModel::OK:

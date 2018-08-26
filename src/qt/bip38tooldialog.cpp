@@ -235,7 +235,7 @@ void Bip38ToolDialog::on_importAddressButton_DEC_clicked()
         }
 
         // whenever a key is imported, we need to scan the whole chain
-        pwalletMain->nTimeFirstKey = 1; // 0 would be considered 'no value'
+        pwalletMain->UpdateTimeFirstKey(1);
         pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
     }
 

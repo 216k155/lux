@@ -18,13 +18,21 @@
 #include "sync.h"
 #include "utilstrencodings.h"
 #include "utiltime.h"
+#include "fs.h"
+
+#if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
+#include <pthread.h>
+#include <pthread_np.h>
+#endif
 
 #include <stdarg.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
+#include <openssl/crypto.h> // for OPENSSL_cleanse()
+#include <openssl/evp.h>
 
-#include <openssl/conf.h>
-#include <openssl/rand.h>
 
 #ifndef WIN32
 // for posix_fallocate
@@ -78,11 +86,12 @@
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
 #include <boost/program_options/detail/config_file.hpp>
 #include <boost/program_options/parsers.hpp>
 #include <boost/thread.hpp>
+#include <openssl/conf.h>
+#include <openssl/crypto.h>
+#include <openssl/rand.h>
 
 // Work around clang compilation problem in Boost 1.46:
 // /usr/include/boost/program_options/detail/config_file.hpp:163:17: error: call to function 'to_internal' that is neither visible in the template definition nor found by argument-dependent lookup
@@ -131,6 +140,9 @@ string strMiscWarning;
 bool fLogTimestamps = false;
 bool fLogIPs = false;
 volatile bool fReopenDebugLog = false;
+
+/** Log categories bitfield. Leveldb/libevent need special handling if their flags are changed at runtime. */
+std::atomic<uint32_t> logCategories(0);
 
 /** Init OpenSSL library multithreading support */
 static CCriticalSection** ppmutexOpenSSL;
@@ -214,48 +226,14 @@ static void DebugPrintInit()
     assert(fileoutVM == nullptr); // lux
     assert(mutexDebugLog == nullptr);
 
-    boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
-    boost::filesystem::path pathDebugVM = GetDataDir() / "vm.log"; // lux
+    fs::path pathDebug = GetDataDir() / "debug.log";
+    fs::path pathDebugVM = GetDataDir() / "vm.log"; // lux
     fileout = fopen(pathDebug.string().c_str(), "a");
     fileoutVM = fopen(pathDebugVM.string().c_str(), "a"); // lux
     if (fileout) setbuf(fileout, nullptr); // unbuffered
     if (fileoutVM) setbuf(fileoutVM, nullptr); // unbuffered // lux
 
     mutexDebugLog = new boost::mutex();
-}
-
-bool LogAcceptCategory(const char* category)
-{
-    if (category != nullptr) {
-        if (!fDebug)
-            return false;
-
-        // Give each thread quick access to -debug settings.
-        // This helps prevent issues debugging global destructors,
-        // where mapMultiArgs might be deleted before another
-        // global destructor calls LogPrint()
-        static boost::thread_specific_ptr<set<string> > ptrCategory;
-        if (ptrCategory.get() == nullptr) {
-            const vector<string>& categories = mapMultiArgs["-debug"];
-            ptrCategory.reset(new set<string>(categories.begin(), categories.end()));
-            // thread_specific_ptr automatically deletes the set when the thread ends.
-            // "lux" is a composite category enabling all LUX-related debug output
-            if (ptrCategory->count(string("lux"))) {
-                ptrCategory->insert(string("darksend"));
-                ptrCategory->insert(string("instantx"));
-                ptrCategory->insert(string("masternode"));
-                ptrCategory->insert(string("mnpayments"));
-                ptrCategory->insert(string("mnbudget"));
-            }
-        }
-        const set<string>& setCategories = *ptrCategory.get();
-
-        // if not debugging everything and not debugging specific category, LogPrint does nothing.
-        if (setCategories.count(string("")) == 0 &&
-            setCategories.count(string(category)) == 0)
-            return false;
-    }
-    return true;
 }
 
 void pushDebugLog(std::string pathDebugStr, int debugNum)
@@ -277,6 +255,77 @@ void pushDebugLog(std::string pathDebugStr, int debugNum)
 
 }
 
+struct CLogCategoryDesc
+{
+    uint32_t flag;
+    std::string category;
+};
+
+const CLogCategoryDesc LogCategories[] =
+{
+    {BCLog::NONE, "0"},
+    {BCLog::NET, "net"},
+    {BCLog::TOR, "tor"},
+    {BCLog::MEMPOOL, "mempool"},
+    {BCLog::HTTP, "http"},
+    {BCLog::BENCH, "bench"},
+    {BCLog::ZMQ, "zmq"},
+    {BCLog::DB, "db"},
+    {BCLog::RPC, "rpc"},
+    {BCLog::ESTIMATEFEE, "estimatefee"},
+    {BCLog::ADDRMAN, "addrman"},
+    {BCLog::SELECTCOINS, "selectcoins"},
+    {BCLog::REINDEX, "reindex"},
+    {BCLog::CMPCTBLOCK, "cmpctblock"},
+    {BCLog::RAND, "rand"},
+    {BCLog::PRUNE, "prune"},
+    {BCLog::PROXY, "proxy"},
+    {BCLog::MEMPOOLREJ, "mempoolrej"},
+    {BCLog::LIBEVENT, "libevent"},
+    {BCLog::COINDB, "coindb"},
+    {BCLog::QT, "qt"},
+    {BCLog::LEVELDB, "leveldb"},
+    {BCLog::ALERT, "alert"},
+    {BCLog::HTTPPOLL, "http-poll"},
+    {BCLog::DARKSEND, "darksend"},
+    {BCLog::LDEBUG, "debug"},
+    {BCLog::LUX, "lux"},
+    {BCLog::ALL, "1"},
+    {BCLog::ALL, "all"},
+};
+
+bool GetLogCategory(uint32_t *f, const std::string *str)
+{
+    if (f && str) {
+        if (*str == "") {
+            *f = BCLog::ALL;
+            return true;
+        }
+        for (unsigned int i = 0; i < ARRAYLEN(LogCategories); i++) {
+            if (LogCategories[i].category == *str) {
+                *f = LogCategories[i].flag;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+std::string ListLogCategories()
+{
+    std::string ret;
+    int outcount = 0;
+    for (unsigned int i = 0; i < ARRAYLEN(LogCategories); i++) {
+        // Omit the special cases.
+        if (LogCategories[i].flag != BCLog::NONE && LogCategories[i].flag != BCLog::ALL) {
+            if (outcount != 0) ret += ", ";
+            ret += LogCategories[i].category;
+            outcount++;
+        }
+    }
+    return ret;
+}
+
 int LogPrintStr(const std::string& str, bool useVMLog)
 {
 //////////////////////////////// // lux
@@ -284,7 +333,7 @@ int LogPrintStr(const std::string& str, bool useVMLog)
         int size = ftell(fileout);
         if (size >= MAX_FILE_SIZE && nLogFile > 1) {
             fclose(fileout);
-            boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
+            fs::path pathDebug = GetDataDir() / "debug.log";
             std::string pathDebugStr = pathDebug.string();
             int debugNum = 1;
             while (true) {
@@ -334,7 +383,7 @@ int LogPrintStr(const std::string& str, bool useVMLog)
         // reopen the log file, if requested
         if (fReopenDebugLog) {
             fReopenDebugLog = false;
-            boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
+            fs::path pathDebug = GetDataDir() / "debug.log";
             if (freopen(pathDebug.string().c_str(), "a", file) != nullptr)
                 setbuf(file, nullptr); // unbuffered
         }
@@ -464,6 +513,12 @@ bool SoftSetBoolArg(const std::string& strArg, bool fValue)
         return SoftSetArg(strArg, std::string("0"));
 }
 
+void ForceSetArg(const std::string& strArg, const std::string& strValue)
+{
+    //LOCK(cs_args);
+    mapArgs[strArg] = strValue;
+}
+
 static std::string FormatException(std::exception* pex, const char* pszThread)
 {
 #ifdef WIN32
@@ -485,12 +540,11 @@ void PrintExceptionContinue(std::exception* pex, const char* pszThread)
     std::string message = FormatException(pex, pszThread);
     LogPrintf("\n\n************************\n%s\n", message);
     fprintf(stderr, "\n\n************************\n%s\n", message.c_str());
-    strMiscWarning = message;
 }
 
-boost::filesystem::path GetDefaultDataDir()
+fs::path GetDefaultDataDir()
 {
-    namespace fs = boost::filesystem;
+    namespace fs = fs;
 // Windows < Vista: C:\Documents and Settings\Username\Application Data\LUX
 // Windows >= Vista: C:\Users\Username\AppData\Roaming\LUX
 // Mac: ~/Library/Application Support/LUX
@@ -517,13 +571,13 @@ boost::filesystem::path GetDefaultDataDir()
 #endif
 }
 
-static boost::filesystem::path pathCached;
-static boost::filesystem::path pathCachedNetSpecific;
+static fs::path pathCached;
+static fs::path pathCachedNetSpecific;
 static CCriticalSection csPathCached;
 
-const boost::filesystem::path& GetDataDir(bool fNetSpecific)
+const fs::path& GetDataDir(bool fNetSpecific)
 {
-    namespace fs = boost::filesystem;
+    namespace fs = fs;
 
     LOCK(csPathCached);
 
@@ -553,22 +607,22 @@ const boost::filesystem::path& GetDataDir(bool fNetSpecific)
 
 void ClearDatadirCache()
 {
-    pathCached = boost::filesystem::path();
-    pathCachedNetSpecific = boost::filesystem::path();
+    pathCached = fs::path();
+    pathCachedNetSpecific = fs::path();
 }
 
-boost::filesystem::path GetConfigFile()
+fs::path GetConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-conf", "lux.conf"));
+    fs::path pathConfigFile(GetArg("-conf", "lux.conf"));
     if (!pathConfigFile.is_complete())
         pathConfigFile = GetDataDir(false) / pathConfigFile;
 
     return pathConfigFile;
 }
 
-boost::filesystem::path GetMasternodeConfigFile()
+fs::path GetMasternodeConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
+    fs::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
     if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
     return pathConfigFile;
 }
@@ -576,7 +630,7 @@ boost::filesystem::path GetMasternodeConfigFile()
 void ReadConfigFile(map<string, string>& mapSettingsRet,
     map<string, vector<string> >& mapMultiSettingsRet)
 {
-    boost::filesystem::ifstream streamConfig(GetConfigFile());
+    fs::ifstream streamConfig(GetConfigFile());
     if (!streamConfig.good()) {
         // Create empty lux.conf if it does not exist
         FILE* configFile = fopen(GetConfigFile().string().c_str(), "a");
@@ -620,14 +674,14 @@ void WriteConfigToFile(std::string strKey, std::string strValue)
     ss.clear();
 }
 #ifndef WIN32
-boost::filesystem::path GetPidFile()
+fs::path GetPidFile()
 {
-    boost::filesystem::path pathPidFile(GetArg("-pid", "luxd.pid"));
+    fs::path pathPidFile(GetArg("-pid", "luxd.pid"));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
 
-void CreatePidFile(const boost::filesystem::path& path, pid_t pid)
+void CreatePidFile(const fs::path& path, pid_t pid)
 {
     FILE* file = fopen(path.string().c_str(), "w");
     if (file) {
@@ -637,7 +691,7 @@ void CreatePidFile(const boost::filesystem::path& path, pid_t pid)
 }
 #endif
 
-bool RenameOver(boost::filesystem::path src, boost::filesystem::path dest)
+bool RenameOver(fs::path src, fs::path dest)
 {
 #ifdef WIN32
     return MoveFileExA(src.string().c_str(), dest.string().c_str(),
@@ -653,12 +707,12 @@ bool RenameOver(boost::filesystem::path src, boost::filesystem::path dest)
  * Specifically handles case where path p exists, but it wasn't possible for the user to
  * write to the parent directory.
  */
-bool TryCreateDirectory(const boost::filesystem::path& p)
+bool TryCreateDirectory(const fs::path& p)
 {
     try {
-        return boost::filesystem::create_directory(p);
-    } catch (boost::filesystem::filesystem_error) {
-        if (!boost::filesystem::exists(p) || !boost::filesystem::is_directory(p))
+        return fs::create_directory(p);
+    } catch (fs::filesystem_error) {
+        if (!fs::exists(p) || !fs::is_directory(p))
             throw;
     }
 
@@ -766,9 +820,9 @@ void AllocateFileRange(FILE* file, unsigned int offset, unsigned int length)
 void ShrinkDebugFile()
 {
     // Scroll debug.log if it's getting too big
-    boost::filesystem::path pathLog = GetDataDir() / "debug.log";
+    fs::path pathLog = GetDataDir() / "debug.log";
     FILE* file = fopen(pathLog.string().c_str(), "r");
-    if (file && boost::filesystem::file_size(pathLog) > 10 * 1000000) {
+    if (file && fs::file_size(pathLog) > 10 * 1000000) {
         // Restart the file with some of the end
         std::vector<char> vch(200000, 0);
         fseek(file, -((long)vch.size()), SEEK_END);
@@ -785,9 +839,9 @@ void ShrinkDebugFile()
 }
 
 #ifdef WIN32
-boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate)
+fs::path GetSpecialFolderPath(int nFolder, bool fCreate)
 {
-    namespace fs = boost::filesystem;
+    namespace fs = fs;
 
     char pszPath[MAX_PATH] = "";
 
@@ -800,24 +854,24 @@ boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate)
 }
 #endif
 
-boost::filesystem::path GetTempPath()
+fs::path GetTempPath()
 {
 #if BOOST_FILESYSTEM_VERSION == 3
-    return boost::filesystem::temp_directory_path();
+    return fs::temp_directory_path();
 #else
     // TODO: remove when we don't support filesystem v2 anymore
-    boost::filesystem::path path;
+    fs::path path;
 #ifdef WIN32
     char pszPath[MAX_PATH] = "";
 
     if (GetTempPathA(MAX_PATH, pszPath))
-        path = boost::filesystem::path(pszPath);
+        path = fs::path(pszPath);
 #else
-    path = boost::filesystem::path("/tmp");
+    path = fs::path("/tmp");
 #endif
-    if (path.empty() || !boost::filesystem::is_directory(path)) {
+    if (path.empty() || !fs::is_directory(path)) {
         LogPrintf("GetTempPath(): failed to find temp path\n");
-        return boost::filesystem::path("");
+        return fs::path("");
     }
     return path;
 #endif
@@ -835,10 +889,7 @@ void RenameThread(const char* name)
 #if defined(PR_SET_NAME)
     // Only the first 15 characters are used (16 - NUL terminator)
     ::prctl(PR_SET_NAME, name, 0, 0, 0);
-#elif 0 && (defined(__FreeBSD__) || defined(__OpenBSD__))
-    // TODO: This is currently disabled because it needs to be verified to work
-    //       on FreeBSD or OpenBSD first. When verified the '0 &&' part can be
-    //       removed.
+#elif (defined(__FreeBSD__) || defined(__OpenBSD__))
     pthread_set_name_np(pthread_self(), name);
 
 #elif defined(MAC_OSX) && defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
@@ -856,8 +907,18 @@ void RenameThread(const char* name)
 
 void SetupEnvironment()
 {
-// On most POSIX systems (e.g. Linux, but not BSD) the environment's locale
-// may be invalid, in which case the "C" locale is used as fallback.
+#ifdef HAVE_MALLOPT_ARENA_MAX
+    // glibc-specific: On 32-bit systems set the number of arenas to 1.
+    // By default, since glibc 2.10, the C library will create up to two heap
+    // arenas per core. This is known to cause excessive virtual address space
+    // usage in our usage. Work around it by setting the maximum number of
+    // arenas to 1.
+    if (sizeof(void*) == 4) {
+        mallopt(M_ARENA_MAX, 1);
+    }
+#endif
+    // On most POSIX systems (e.g. Linux, but not BSD) the environment's locale
+    // may be invalid, in which case the "C" locale is used as fallback.
 #if !defined(WIN32) && !defined(MAC_OSX) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
     try {
         std::locale(""); // Raises a runtime error if current locale is invalid
@@ -868,9 +929,21 @@ void SetupEnvironment()
     // The path locale is lazy initialized and to avoid deinitialization errors
     // in multithreading environments, it is set explicitly by the main thread.
     // A dummy locale is used to extract the internal default locale, used by
-    // boost::filesystem::path, which is then used to explicitly imbue the path.
-    std::locale loc = boost::filesystem::path::imbue(std::locale::classic());
-    boost::filesystem::path::imbue(loc);
+    // fs::path, which is then used to explicitly imbue the path.
+    std::locale loc = fs::path::imbue(std::locale::classic());
+    fs::path::imbue(loc);
+}
+
+bool SetupNetworking()
+{
+#ifdef WIN32
+    // Initialize Windows Sockets
+    WSADATA wsadata;
+    int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
+    if (ret != NO_ERROR || LOBYTE(wsadata.wVersion ) != 2 || HIBYTE(wsadata.wVersion) != 2)
+        return false;
+#endif
+    return true;
 }
 
 void SetThreadPriority(int nPriority)

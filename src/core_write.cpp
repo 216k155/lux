@@ -28,14 +28,14 @@ UniValue ValueFromAmount(const CAmount& amount)
 }
 
 
-string FormatScript(const CScript& script)
+std::string FormatScript(const CScript& script)
 {
-    string ret;
+    std::string ret;
     CScript::const_iterator it = script.begin();
     opcodetype op;
     while (it != script.end()) {
         CScript::const_iterator it2 = it;
-        vector<unsigned char> vch;
+        std::vector<unsigned char> vch;
         if (script.GetOp2(it, op, &vch)) {
             if (op == OP_0) {
                 ret += "0 ";
@@ -44,9 +44,9 @@ string FormatScript(const CScript& script)
                 ret += strprintf("%i ", op - OP_1NEGATE - 1);
                 continue;
             } else if (op >= OP_NOP && op <= OP_CHECKMULTISIGVERIFY) {
-                string str(GetOpName(op));
-                if (str.substr(0, 3) == string("OP_")) {
-                    ret += str.substr(3, string::npos) + " ";
+                std::string str(GetOpName(op));
+                if (str.substr(0, 3) == std::string("OP_")) {
+                    ret += str.substr(3, std::string::npos) + " ";
                     continue;
                 }
             }
@@ -63,7 +63,55 @@ string FormatScript(const CScript& script)
     return ret.substr(0, ret.size() - 1);
 }
 
-string EncodeHexTx(const CTransaction& tx)
+std::string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDecode)
+{
+    std::string str;
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    CScript::const_iterator pc = script.begin();
+    while (pc < script.end()) {
+        if (!str.empty()) {
+            str += " ";
+        }
+        if (!script.GetOp(pc, opcode, vch)) {
+            str += "[error]";
+            return str;
+        }
+        if (0 <= opcode && opcode <= OP_PUSHDATA4) {
+            if (vch.size() <= static_cast<std::vector<unsigned char>::size_type>(4)) {
+                str += strprintf("%d", CScriptNum(vch, false).getint());
+            } else {
+                // the IsUnspendable check makes sure not to try to decode OP_RETURN data that may match the format of a signature
+                if (fAttemptSighashDecode && !script.IsUnspendable()) {
+                    std::string strSigHashDecode;
+                    // goal: only attempt to decode a defined sighash type from data that looks like a signature within a scriptSig.
+                    // this won't decode correctly formatted public keys in Pubkey or Multisig scripts due to
+                    // the restrictions on the pubkey formats (see IsCompressedOrUncompressedPubKey) being incongruous with the
+                    // checks in CheckSignatureEncoding.
+                    if (CheckSignatureEncoding(vch, SCRIPT_VERIFY_STRICTENC, nullptr)) {
+#if 0 //TODO: mapSigHashTypes
+                        const unsigned char chSigHashType = vch.back();
+                        if (mapSigHashTypes.count(chSigHashType)) {
+                            strSigHashDecode = "[" + mapSigHashTypes.find(chSigHashType)->second + "]";
+                            vch.pop_back(); // remove the sighash type byte. it will be replaced by the decode.
+                        }
+#else
+                        LogPrintf("%s: mapSigHashTypes to implement\n", __func__);
+#endif
+                    }
+                    str += HexStr(vch) + strSigHashDecode;
+                } else {
+                    str += HexStr(vch);
+                }
+            }
+        } else {
+            str += GetOpName(opcode);
+        }
+    }
+    return str;
+}
+
+std::string EncodeHexTx(const CTransaction& tx)
 {
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     ssTx << tx;
@@ -75,7 +123,7 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
     bool fIncludeHex)
 {
     txnouttype type;
-    vector<CTxDestination> addresses;
+    std::vector<CTxDestination> addresses;
     int nRequired;
 
     out.pushKV("asm", scriptPubKey.ToString());
@@ -99,11 +147,13 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
 void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 {
     entry.pushKV("txid", tx.GetHash().GetHex());
+    entry.pushKV("hash", tx.GetWitnessHash().GetHex());
     entry.pushKV("version", tx.nVersion);
     entry.pushKV("locktime", (int64_t)tx.nLockTime);
 
     UniValue vin(UniValue::VARR);
-    for (const CTxIn& txin : tx.vin) {
+    for (unsigned int i = 0; i < tx.vin.size(); i++) {
+        const CTxIn& txin = tx.vin[i];
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
@@ -114,6 +164,13 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
             o.pushKV("asm", txin.scriptSig.ToString());
             o.pushKV("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
             in.pushKV("scriptSig", o);
+            if (!tx.wit.IsNull() && i < tx.wit.vtxinwit.size() && !tx.wit.vtxinwit[i].IsNull()) {
+                UniValue txinwitness(UniValue::VARR);
+                for (const auto& item : tx.wit.vtxinwit[i].scriptWitness.stack) {
+                    txinwitness.push_back(HexStr(item.begin(), item.end()));
+                }
+                in.pushKV("txinwitness", txinwitness);
+            }
         }
         in.pushKV("sequence", (int64_t)txin.nSequence);
         vin.push_back(in);

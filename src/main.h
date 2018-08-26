@@ -24,12 +24,14 @@
 #include "script/script.h"
 #include "script/sigcache.h"
 #include "script/standard.h"
+#include "spentindex.h"
 #include "sync.h"
 #include "tinyformat.h"
 #include "txmempool.h"
 #include "uint256.h"
 #include "undo.h"
 #include "versionbits.h"
+#include "fs.h"
 
 #include <algorithm>
 #include <exception>
@@ -147,11 +149,14 @@ static const unsigned int RELAY_ADDRESS_INTERVAL = 30;
 static const unsigned int RELAY_INVENTORY_INTERVAL = 5;
 
 static const unsigned int DEFAULT_BYTES_PER_SIGOP = 20;
+static const bool DEFAULT_ADDRESSINDEX = false;
+static const bool DEFAULT_SPENTINDEX = false;
 
 static const int64_t STATIC_POS_REWARD = 1 * COIN; //Constant reward 8%
 
 static const bool DEFAULT_LOGEVENTS = false;
-
+/** Default for -mempoolexpiry, expiration time for mempool transactions in hours */
+static const unsigned int DEFAULT_MEMPOOL_EXPIRY = 336;
 ////////////////////////////////////////////////////// lux
 static const uint64_t DEFAULT_GAS_LIMIT_OP_CREATE=2500000;
 static const uint64_t DEFAULT_GAS_LIMIT_OP_SEND=250000;
@@ -245,6 +250,8 @@ extern bool fPruneMode;
 extern uint64_t nPruneTarget;
 /** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
 static const signed int MIN_BLOCKS_TO_KEEP = 288;
+/** Default checklevel if not using spentindex, addressindex etc */
+static const unsigned int DEFAULT_CHECKLEVEL = 3;
 
 // Require that user allocate at least 550MB for block & undo files (blk???.dat and rev???.dat)
 // At 1MB per block, 288 blocks = 288MB.
@@ -281,7 +288,7 @@ FILE* OpenBlockFile(const CDiskBlockPos& pos, bool fReadOnly = false);
 /** Open an undo file (rev?????.dat) */
 FILE* OpenUndoFile(const CDiskBlockPos& pos, bool fReadOnly = false);
 /** Translation to a filesystem path */
-boost::filesystem::path GetBlockPosFilename(const CDiskBlockPos& pos, const char* prefix);
+fs::path GetBlockPosFilename(const CDiskBlockPos& pos, const char* prefix);
 /** Import blocks from an external file */
 bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskBlockPos* dbp = nullptr);
 /** Initialize a new block tree database + block data on disk */
@@ -366,7 +373,6 @@ void FlushStateToDisk();
 void PruneAndFlush();
 
 /** (try to) add transaction to memory pool **/
-//TODO: Change CTransaction to CTransactionRef
 bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx, bool fLimitFree, bool* pfMissingInputs, bool fRejectInsaneFee = false, bool ignoreFees = false);
 
 bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransaction& tx, bool fLimitFree, bool* pfMissingInputs, bool fRejectInsaneFee = false, bool isDSTX = false);
@@ -533,7 +539,7 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
 int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params);
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCache& inputs, CTxUndo& txundo, int nHeight);
+void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCache& inputs, int nHeight);
 
 /** Context-independent validity checks */
 bool CheckTransaction(const CTransaction& tx, CValidationState& state);
@@ -563,8 +569,8 @@ public:
         READWRITE(vtxundo);
     }
 
-    bool WriteToDisk(CDiskBlockPos& pos, const uint256& hashBlock);
-    bool ReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock);
+   // bool WriteToDisk(CDiskBlockPos& pos, const uint256& hashBlock);
+   // bool ReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock);
 };
 
 
@@ -607,6 +613,12 @@ public:
     ScriptError GetScriptError() const { return error; }
 };
 
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+bool GetAddressIndex(uint160 addressHash, int type,
+                     std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex,
+                     int start = 0, int end = 0);
+bool GetAddressUnspent(uint160 addressHash, int type,
+                       std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &unspentOutputs);
 
 /** Functions for disk access for blocks */
 bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos);

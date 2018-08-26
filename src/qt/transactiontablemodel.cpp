@@ -345,6 +345,10 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
         return tr("Minted");
     case TransactionRecord::Generated:
         return tr("Mined");
+    case TransactionRecord::ContractRecv:
+        return tr("Contract receive");
+    case TransactionRecord::ContractSend:
+        return tr("Contract send");
     case TransactionRecord::DarksendDenominate:
         return tr("Darksend Denominate");
     case TransactionRecord::DarksendCollateralPayment:
@@ -375,6 +379,10 @@ QVariant TransactionTableModel::txAddressDecoration(const TransactionRecord* wtx
     case TransactionRecord::SendToAddress:
     case TransactionRecord::SendToOther:
         return QIcon(":/icons/tx_output");
+    case TransactionRecord::ContractSend:
+        return QIcon(":/icons/contract_output");
+    case TransactionRecord::ContractRecv:
+        return QIcon(":/icons/contract_input");
     default:
         return QIcon(":/icons/tx_inout");
     }
@@ -395,6 +403,8 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord* wtx, b
     case TransactionRecord::MNReward:
     case TransactionRecord::RecvWithDarksend:
     case TransactionRecord::SendToAddress:
+    case TransactionRecord::ContractRecv:
+    case TransactionRecord::ContractSend:
     case TransactionRecord::Generated:
     case TransactionRecord::StakeMint:
         return lookupAddress(wtx->address, tooltip);
@@ -416,6 +426,8 @@ QVariant TransactionTableModel::addressColor(const TransactionRecord* wtx) const
     // Show addresses without label in a less visible color
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::SendToAddress:
+    case TransactionRecord::ContractSend:
+    case TransactionRecord::ContractRecv:
     case TransactionRecord::Generated:
     case TransactionRecord::MNReward: {
         QString label = walletModel->getAddressTableModel()->labelForAddress(QString::fromStdString(wtx->address));
@@ -450,18 +462,10 @@ QVariant TransactionTableModel::txStatusDecoration(const TransactionRecord* wtx)
         return COLOR_TX_STATUS_OFFLINE;
     case TransactionStatus::Unconfirmed:
         return QIcon(":/icons/transaction_0");
-    case TransactionStatus::Confirming:
-        switch (wtx->status.depth) {
-        case 1:
-            return QIcon(":/icons/transaction_1");
-        case 2:
-            return QIcon(":/icons/transaction_2");
-        case 3:
-            return QIcon(":/icons/transaction_3");
-        case 4:
-            return QIcon(":/icons/transaction_4");
-        default:
-            return QIcon(":/icons/transaction_5");
+        case TransactionStatus::Confirming: {
+            int iconNum = ((wtx->status.depth - 1) * CONFIRM_ICONS) / TransactionRecord::RecommendedNumConfirmations + 1;
+            if(iconNum > CONFIRM_ICONS) iconNum = CONFIRM_ICONS;
+            return QIcon(QString(":/icons/transaction_%1").arg(iconNum));
         };
     case TransactionStatus::Confirmed:
         return QIcon(":/icons/transaction_confirmed");

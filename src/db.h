@@ -12,11 +12,12 @@
 #include "sync.h"
 #include "version.h"
 
+#include <atomic>
 #include <map>
 #include <string>
 #include <vector>
 
-#include <boost/filesystem/path.hpp>
+#include "fs.h"
 
 #include <db_cxx.h>
 
@@ -25,14 +26,12 @@ class COutPoint;
 
 struct CBlockLocator;
 
-extern unsigned int nWalletDBUpdated;
-
 class CDBEnv
 {
 private:
     bool fDbEnvInit;
     bool fMockDb;
-    // Don't change into boost::filesystem::path, as that can result in
+    // Don't change into fs::path, as that can result in
     // shutdown problems/crashes caused by a static initialized internal pointer.
     std::string strPath;
 
@@ -40,14 +39,15 @@ private:
 
 public:
     mutable CCriticalSection cs_db;
-    DbEnv dbenv;
+    DbEnv *dbenv;
     std::map<std::string, int> mapFileUseCount;
     std::map<std::string, Db*> mapDb;
 
     CDBEnv();
     ~CDBEnv();
+    void Reset();
     void MakeMock();
-    bool IsMock() { return fMockDb; }
+    bool IsMock() const { return fMockDb; }
 
     /**
      * Verify that database file strFile is OK. If it is not,
@@ -69,7 +69,7 @@ public:
     typedef std::pair<std::vector<unsigned char>, std::vector<unsigned char> > KeyValPair;
     bool Salvage(std::string strFile, bool fAggressive, std::vector<KeyValPair>& vResult);
 
-    bool Open(const boost::filesystem::path& path);
+    bool Open(const fs::path& path);
     void Close();
     void Flush(bool fShutdown);
     void CheckpointLSN(const std::string& strFile);
@@ -80,7 +80,7 @@ public:
     DbTxn* TxnBegin(int flags = DB_TXN_WRITE_NOSYNC)
     {
         DbTxn* ptxn = nullptr;
-        int ret = dbenv.txn_begin(nullptr, &ptxn, flags);
+        int ret = dbenv->txn_begin(nullptr, &ptxn, flags);
         if (!ptxn || ret != 0)
             return nullptr;
         return ptxn;

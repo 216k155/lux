@@ -28,7 +28,6 @@
 #endif
 
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
 #include <boost/thread.hpp>
 
 #if !defined(HAVE_MSG_NOSIGNAL) && !defined(MSG_NOSIGNAL)
@@ -191,7 +190,7 @@ bool LookupHost(const char* pszName, std::vector<CNetAddr>& vIP, unsigned int nM
     std::string strHost(pszName);
     if (strHost.empty())
         return false;
-    if (boost::algorithm::starts_with(strHost, "[") && boost::algorithm::ends_with(strHost, "]")) {
+    if (strHost.front() == '[' && strHost.back() == ']') {
         strHost = strHost.substr(1, strHost.size() - 2);
     }
 
@@ -432,7 +431,7 @@ bool static ConnectSocketDirectly(const CService& addrConnect, SOCKET& hSocketRe
             FD_SET(hSocket, &fdset);
             int nRet = select(hSocket + 1, nullptr, &fdset, nullptr, &timeout);
             if (nRet == 0) {
-                LogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
+                LogPrint(BCLog::NET, "connection to %s timeout\n", addrConnect.ToString());
                 CloseSocket(hSocket);
                 return false;
             }

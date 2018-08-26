@@ -154,8 +154,6 @@ public:
     //! Load private key and check that public key matches.
     bool Load(const CPrivKey& privkey, const CPubKey& vchPubKey, bool fSkipCheck);
 
-    //! Check whether an element of a signature (r or s) is valid.
-    static bool CheckSignatureElement(const unsigned char* vch, int len, bool half);
 };
 
 struct CExtKey {

@@ -332,7 +332,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
         // reject insane fee
         if (nFeeRequired > ::minRelayTxFee.GetFee(transaction.getTransactionSize()) * 10000)
-            return InsaneFee;
+            return AbsurdFee;
     }
 
     return SendCoinsReturn(OK);
@@ -354,6 +354,12 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
         // Store PaymentRequests in wtx.vOrderForm in wallet.
         foreach (const SendCoinsRecipient& rcp, recipients) {
             if (rcp.paymentRequest.IsInitialized()) {
+
+                // Make sure any payment requests involved are still valid.
+                if (PaymentServer::verifyExpired(rcp.paymentRequest.getDetails())) {
+                    return PaymentRequestExpired;
+                }
+
                 std::string key("PaymentRequest");
                 std::string value;
                 rcp.paymentRequest.SerializeToString(&value);
@@ -501,7 +507,7 @@ bool WalletModel::restoreWallet(const QString &filename, const QString &param)
 {
     if(QFile::exists(filename))
     {
-        boost::filesystem::path pathWalletBak = GetDataDir() / strprintf("wallet.%d.bak", GetTime());
+        fs::path pathWalletBak = GetDataDir() / strprintf("wallet.%d.bak", GetTime());
         QString walletBak = QString::fromStdString(pathWalletBak.string());
         if(backupWallet(walletBak))
         {
@@ -863,5 +869,10 @@ bool WalletModel::isMineAddress(const std::string &Address)
         return false;
     }
     return true;
+}
+
+bool WalletModel::hdEnabled() const
+{
+    return wallet->IsHDEnabled();
 }
 

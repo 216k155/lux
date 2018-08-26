@@ -8,6 +8,7 @@
 #define BITCOIN_QT_CLIENTMODEL_H
 
 #include <QObject>
+#include <QDateTime>
 
 class AddressTableModel;
 class OptionsModel;
@@ -17,7 +18,6 @@ class TransactionTableModel;
 class CWallet;
 
 QT_BEGIN_NAMESPACE
-class QDateTime;
 class QTimer;
 QT_END_NAMESPACE
 
@@ -82,6 +82,7 @@ private:
     PeerTableModel* peerTableModel;
 
     int cachedNumBlocks;
+    QDateTime cachedBlockDate;
     QString cachedMasternodeCountString;
     bool cachedReindexing;
     bool cachedImporting;
@@ -96,7 +97,7 @@ private:
 
 signals:
     void numConnectionsChanged(int count);
-    void numBlocksChanged(int count);
+    void numBlocksChanged(int count, const QDateTime& blockDate);
     void networkActiveChanged(bool networkActive);
     void strMasternodesChanged(const QString& strMasternodes);
     void alertsChanged(const QString& warnings);

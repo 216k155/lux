@@ -75,7 +75,7 @@ QString TransactionDesc::toHTML(CWallet* wallet, CWalletTx& wtx, TransactionReco
     //
     // From
     //
-    if (wtx.IsCoinBase()) {
+    if (wtx.IsCoinGenerated()) {
         strHTML += "<b>" + tr("Source") + ":</b> " + tr("Generated") + "<br>";
     } else if (wtx.mapValue.count("from") && !wtx.mapValue["from"].empty()) {
         // Online transaction
@@ -237,7 +237,7 @@ QString TransactionDesc::toHTML(CWallet* wallet, CWalletTx& wtx, TransactionReco
         }
     }
 
-    if (wtx.IsCoinBase()) {
+    if (wtx.IsCoinGenerated()) {
         quint32 numBlocksToMaturity = Params().COINBASE_MATURITY() + 1;
         strHTML += "<br>" + tr("Generated coins must mature %1 blocks before they can be spent. When you generated this block, it was broadcast to the network to be added to the block chain. If it fails to get into the chain, its state will change to \"not accepted\" and it won't be spendable. This may occasionally happen if another node generates a block within a few seconds of yours.").arg(QString::number(numBlocksToMaturity)) + "<br>";
     }
@@ -264,7 +264,7 @@ QString TransactionDesc::toHTML(CWallet* wallet, CWalletTx& wtx, TransactionReco
             COutPoint prevout = txin.prevout;
 
             CCoins prev;
-            if (pcoinsTip->GetCoins(prevout.hash, prev)) {
+            if (pcoinsTip->GetCoin(prevout.hash, prev)) {
                 if (prevout.n < prev.vout.size()) {
                     strHTML += "<li>";
                     const CTxOut& vout = prev.vout[prevout.n];
