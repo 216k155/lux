@@ -121,12 +121,23 @@ struct CompactTallyItem {
     }
 };
 
+enum WalletFlags : uint64_t {
+    // wallet flags in the upper section (> 1 << 31) will lead to not opening the wallet if flag is unknown
+    // unknown wallet flags in the lower section <= (1 << 31) will be tolerated
+
+    // will enforce the rule that the wallet can't contain any private keys (only watch-only/pubkeys)
+    WALLET_FLAG_DISABLE_PRIVATE_KEYS = (1ULL << 32),
+};
+
+static constexpr uint64_t g_known_wallet_flags = WALLET_FLAG_DISABLE_PRIVATE_KEYS;
+
 /** A key pool entry */
 class CKeyPool {
 public:
     int64_t nTime;
     CPubKey vchPubKey;
     bool fInternal; // for change outputs
+    bool m_pre_split; // For keys generated before keypool split upgrade
 
     CKeyPool();
 
@@ -145,7 +156,18 @@ public:
                 /* flag as external address if we can't read the internal boolean */
                 fInternal = false;
             }
-        } else { READWRITE(fInternal); }
+            try {
+                READWRITE(m_pre_split);
+            }
+            catch (std::ios_base::failure&) {
+                /* flag as postsplit address if we can't read the m_pre_split boolean
+                   (this will be the case for any wallet that upgrades to HD chain split)*/
+                m_pre_split = false;
+            }
+        } else {
+            READWRITE(fInternal);
+            READWRITE(m_pre_split);
+        }
     }
 };
 
@@ -397,8 +419,12 @@ public:
     //std::set<int64_t> setKeyPool;
     std::set<int64_t> setInternalKeyPool;
     std::set<int64_t> setExternalKeyPool;
-    int64_t m_max_keypool_index;
+    std::set<int64_t> set_pre_split_keypool;
+    int64_t m_max_keypool_index = 0;
     std::map<CKeyID, int64_t> m_pool_key_to_index;
+    std::atomic<uint64_t> m_wallet_flags{0};
+
+    void MarkPreSplitKeys();
     // Map from Key ID to key metadata.
     std::map<CKeyID, CKeyMetadata> mapKeyMetadata;
 
@@ -578,6 +604,8 @@ public:
     bool LoadDestData(const CTxDestination& dest, const std::string& key, const std::string& value);
     //! Look up a destination data tuple in the store, return true if found false otherwise
     bool GetDestData(const CTxDestination& dest, const std::string& key, std::string* value) const;
+
+    std::vector<std::string> GetDestValues(const std::string& prefix) const;
 
     //! Adds a watch-only address to the store, and saves it to disk.
     bool AddWatchOnly(const CScript& dest, int64_t nCreateTime);
@@ -893,9 +921,27 @@ public:
     static std::string GetWalletHelpString(bool showDebug);
 
     /* Initializes the wallet, returns a new CWallet instance or a null pointer in case of an error */
-    static CWallet* CreateWalletFromFile(const std::string walletFile);
+    static std::shared_ptr<CWallet> CreateWalletFromFile(const std::string& name, const fs::path& path, uint64_t wallet_creation_flags = 0);
     static bool InitLoadWallet();
+    /* Set the hd chain model (chain child index counters) */
+    bool SetHDChain(const CHDChain& chain, bool memonly);
+    const CHDChain& GetHDChain() const { return hdChain; }
 
+    /* Set the current hd master key (will reset the chain child index counters) */
+    const CHDChain& GetHDChain() { return hdChain; }
+    /* Returns true if HD is enabled */
+    bool IsHDEnabled() const;
+    /* Generates a new HD seed (will not be activated) */
+    CPubKey GenerateNewSeed();
+
+    /* Derives a new HD seed (will not be activated) */
+    CPubKey DeriveNewSeed(const CKey& key);
+
+    CPubKey GenerateNewHDMasterKey();
+
+    bool SetHDMasterKey(const CPubKey& key);
+
+    void SetHDSeed(const CPubKey& key);
     /**
      * Explicitly make the wallet learn the related scripts for outputs to the
      * given key. This is purely to make the wallet file compatible with older
@@ -910,23 +956,17 @@ public:
      */
     void LearnAllRelatedScripts(const CPubKey& key);
 
+    bool IsWalletFlagSet(uint64_t flag);
+
+    void SetWalletFlag(uint64_t flags);
+
+    bool SetWalletFlags(uint64_t overwriteFlags, bool memOnly);
+
     /**
      * Get a destination of the requested type (if possible) to the specified script.
      * This function will automatically add the necessary scripts to the wallet.
      */
     CTxDestination AddAndGetDestinationForScript(const CScript& script, OutputType);
-
-    /* Set the hd chain model (chain child index counters) */
-    bool SetHDChain(const CHDChain& chain, bool memonly);
-    const CHDChain& GetHDChain() const { return hdChain; }
-
-    /* Set the current hd master key (will reset the chain child index counters) */
-    const CHDChain& GetHDChain() { return hdChain; }
-    /* Returns true if HD is enabled */
-    bool IsHDEnabled() const;
-
-    CPubKey GenerateNewHDMasterKey();
-    bool SetHDMasterKey(const CPubKey& key);
 };
 
 /** A key allocated from the key pool. */

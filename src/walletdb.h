@@ -232,7 +232,7 @@ public:
     static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
     static bool Recover(CDBEnv& dbenv, std::string filename);
     bool WriteHDChain(const CHDChain& chain);
-
+    bool WriteWalletFlags(const uint64_t flags);
     static void IncrementUpdateCounter();
     static unsigned int GetUpdateCounter();
 private:
