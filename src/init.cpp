@@ -1674,7 +1674,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 throw std::runtime_error(std::string(__func__) + ": Storing master key failed");
         }
             CPubKey newDefaultKey;
-            if (pwalletMain->GetKeyFromPool(newDefaultKey)) {
+            if (pwalletMain->GetKeyFromPool(newDefaultKey, false)) {
                 pwalletMain->SetDefaultKey(newDefaultKey);
                 if (!pwalletMain->SetAddressBook(pwalletMain->vchDefaultKey.GetID(), "", "receive"))
                     strErrors << _("Cannot write default address") << "\n";
