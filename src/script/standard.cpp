@@ -120,6 +120,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
             vSolutionsRet.push_back(std::move(witnessprogram));
             return true;
         }
+        typeRet = TX_NONSTANDARD;
         return false;
     }
 
