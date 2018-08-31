@@ -87,7 +87,7 @@ bool CCoinsViewBacked::GetStats(CCoinsStats& stats) const
 
 CCoinsKeyHasher::CCoinsKeyHasher() : salt(GetRandHash()) {}
 
-CCoinsViewCache::CCoinsViewCache(CCoinsView* baseIn) : CCoinsViewBacked(baseIn), hasModifier(false), hashBlock(0) {}
+CCoinsViewCache::CCoinsViewCache(CCoinsView* baseIn) : CCoinsViewBacked(baseIn), hasModifier(false), hashBlock(0), cachedCoinsUsage(0) {}
 
 CCoinsViewCache::~CCoinsViewCache()
 {
@@ -131,6 +131,7 @@ CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256& txid)
 {
     assert(!hasModifier);
     std::pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(std::make_pair(txid, CCoinsCacheEntry()));
+    size_t cachedCoinUsage = 0;
     if (ret.second) {
         if (!base->GetCoin(txid, ret.first->second.coins)) {
             // The parent view does not have this entry; mark it as fresh.
@@ -147,10 +148,12 @@ CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256& txid)
                 ret.first->second.flags |= CCoinsCacheEntry::FRESH;
             }
         }
+    } else {
+        cachedCoinUsage = ret.first->second.coins.DynamicMemoryUsage();
     }
     // Assume that whenever ModifyCoins is called, the entry will be modified.
     ret.first->second.flags |= CCoinsCacheEntry::DIRTY;
-    return CCoinsModifier(*this, ret.first);
+    return CCoinsModifier(*this, ret.first, cachedCoinUsage);
 }
 void CCoinsViewCache::AddCoin(const COutPoint &outpoint, CCoins&& coin, bool possible_overwrite) {
     assert(!coin.IsSpent());
@@ -389,7 +392,7 @@ double CCoinsViewCache::GetPriority(const CTransaction& tx, int nHeight, CAmount
     return tx.ComputePriority(dResult);
 }
 
-CCoinsModifier::CCoinsModifier(CCoinsViewCache& cache_, CCoinsMap::iterator it_) : cache(cache_), it(it_)
+CCoinsModifier::CCoinsModifier(CCoinsViewCache& cache_, CCoinsMap::iterator it_, size_t usage) : cache(cache_), it(it_), cachedCoinUsage(usage)
 {
     assert(!cache.hasModifier);
     cache.hasModifier = true;
@@ -402,6 +405,9 @@ CCoinsModifier::~CCoinsModifier()
     it->second.coins.Cleanup();
     if ((it->second.flags & CCoinsCacheEntry::FRESH) && it->second.coins.IsSpent()) {
         cache.cacheCoins.erase(it);
+    } else {
+        // If the coin still exists after the modification, add the new usage
+        cache.cachedCoinsUsage += it->second.coins.DynamicMemoryUsage();
     }
 }
 
