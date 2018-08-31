@@ -2,26 +2,25 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <stake.h>
-
-#include <chainparams.h>
-#include <db.h>
-#include <init.h>
-#include <main.h>
-#include <masternode.h>
-#include <miner.h>
-#include <policy/policy.h>
-#include <script/interpreter.h>
-#include <script/sign.h>
-#include <timedata.h>
-#include <utilmoneystr.h>
-#include <wallet.h>
-
-#include <atomic>
-
 #include <boost/assign/list_of.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include "db.h"
+#include "stake.h"
+#include "init.h"
+#include "chainparams.h"
+#include "policy/policy.h"
+#include "pow.h"
+#include "main.h"
+#include "miner.h"
+#include "wallet.h"
+#include "masternode.h"
+#include "utilmoneystr.h"
+#include "script/sign.h"
+#include "script/interpreter.h"
+#include "timedata.h"
 #include <boost/thread.hpp>
+#include <atomic>
 
 #if defined(DEBUG_DUMP_STAKING_INFO)
 #  include "DEBUG_DUMP_STAKING_INFO.hpp"
@@ -40,7 +39,7 @@ using namespace std;
 static const unsigned int MODIFIER_INTERVAL = 10 * 60;
 static const unsigned int MODIFIER_INTERVAL_TESTNET = 60;
 
-bool CheckCoinStakeTimestamp(uint32_t nTimeBlock) { return (nTimeBlock & STAKE_TIMESTAMP_MASK) == 0; }
+bool CheckCoinStakeTimestamp(uint32_t nTimeBlock) { return (nTimeBlock & STAKE_TIMESTAMP_MASK) == 15; }
 
 // MODIFIER_INTERVAL_RATIO:
 // ratio of group interval length between the last group and the first group
@@ -667,6 +666,14 @@ double GetBlockDifficulty(unsigned int nBits) {
 }
 
 bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime) {
+
+    // The following split & combine thresholds are important to security
+    // Should not be adjusted if you don't understand the consequences
+    const CBlockIndex* pIndex0 = chainActive.Tip();
+    CAmount nCombineThreshold = 0;
+    if(pIndex0->pprev)
+        nCombineThreshold = GetProofOfWorkReward(MIN_TX_FEE, pIndex0->nHeight) / 3;
+
     txNew.vin.clear();
     txNew.vout.clear();
 
@@ -687,20 +694,28 @@ bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned
     // Choose coins to use
     int64_t nBalance = wallet->GetBalance();
 
-    if (mapArgs.count("-reservebalance") && !ParseMoney(mapArgs["-reservebalance"], nReserveBalance)) {
+    if (mapArgs.count("-reservebalance") && !ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
         return error("%s: invalid reserve balance amount", __func__);
-    }
 
-    if (nBalance <= nReserveBalance) {
+    if (nBalance <= nReserveBalance)
         return false;
-    }
 
     // presstab HyperStake - Initialize as static and don't update the set on every run of
     // CreateCoinStake() in order to lighten resource use
     static std::set< pair<const CWalletTx*, unsigned int> > stakeCoins;
-    if (!SelectStakeCoins(wallet, stakeCoins, nBalance - nReserveBalance)) {
-        return false;
+    int64_t nLastSelectTime = 0;
+    int64_t nStakingTime = 120;
+
+    if(GetTime() - nLastSelectTime > nStakingTime)
+    {
+        stakeCoins.clear();
+        if (!SelectStakeCoins(wallet, stakeCoins, nBalance - nReserveBalance))
+            return false;
+        nLastSelectTime = GetTime();
     }
+
+    if (stakeCoins.empty())
+        return false;
 
     int64_t nCredit = 0;
     uint256 bnCentSecond = 0; // coin age in the unit of cent-seconds
@@ -711,7 +726,6 @@ bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned
     if (GetAdjustedTime() <= chainActive.Tip()->nTime)
         MilliSleep(10000);
 
-    const CBlockIndex* pIndex0 = chainActive.Tip();
     for (PAIRTYPE(const CWalletTx*, unsigned int) pcoin : stakeCoins) {
         //make sure that enough time has elapsed between
         CBlockIndex* pindex = LookupBlockIndex(pcoin.first->hashBlock);
@@ -798,6 +812,9 @@ bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned
             if (nTotalSize / 2 > (uint64_t)(GetStakeCombineThreshold() * COIN))
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
 
+            if (fDebug || GetBoolArg("-printcoinstake", false))
+                LogPrintf("CreateCoinStake : added kernel type=%d\n", whichType);
+
             fKernelFound = true;
 
             LOCK(stakeMiner.lock);
@@ -809,8 +826,34 @@ bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned
         }
         if (fKernelFound) break; // if kernel is found stop searching
     }
-    if (nCredit == 0 || nCredit > nBalance - nReserveBalance) {
+    if (nCredit == 0 || nCredit > nBalance - nReserveBalance)
         return false;
+
+    for (const std::pair<const CWalletTx*,unsigned int> &pcoin : stakeCoins) {
+        // Attempt to add more inputs. Only add coins of the same key/address as kernel
+        if (txNew.vout.size() == 2 && ((pcoin.first->vout[pcoin.second].scriptPubKey == scriptPubKeyKernel || pcoin.first->vout[pcoin.second].scriptPubKey == txNew.vout[1].scriptPubKey))
+            && pcoin.first->GetHash() != txNew.vin[0].prevout.hash) {
+
+            // Stop adding more inputs if already too many inputs
+            if (txNew.vin.size() >= 100)
+                break;
+
+            // Stop adding more inputs if value is already pretty significant
+            if (nCredit > nCombineThreshold)
+                break;
+
+            // Stop adding inputs if reached reserve limit
+            if (nCredit + pcoin.first->vout[pcoin.second].nValue > nBalance - nReserveBalance)
+                break;
+
+            // Do not add additional significant input
+            if ((unsigned)pcoin.first->vout[pcoin.second].nValue >= GetStakeCombineThreshold())
+                continue;
+
+            txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
+            nCredit += pcoin.first->vout[pcoin.second].nValue;
+            vCoins.push_back(pcoin.first);
+        }
     }
 
     // Calculate reward
