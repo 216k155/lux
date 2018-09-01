@@ -18,8 +18,8 @@ class CDataStream;
 
 typedef enum BanReason
 {
-    BanReasonUnknown     = 0,
-    BanMisbehaving       = 1,
+    BanReasonUnknown          = 0,
+    BanMisbehaving  = 1,
     BanReasonManually    = 2
 } BanReason;
 
@@ -65,9 +65,9 @@ public:
     {
         switch (banReason) {
             case BanMisbehaving:
-                return "lux node misbehabing";
+                return "node misbehabing";
             case BanReasonManually:
-                return "manually";
+                return "manually added";
             default:
                 return "unknown";
         }
@@ -90,12 +90,12 @@ public:
 };
 
 /** Access to the banlist database (banlist.dat) */
-class CBanListDB
+class CBanDB
 {
 private:
     fs::path pathBanlist;
 public:
-    CBanListDB();
+    CBanDB();
     bool Write(const banmap_t& banSet);
     bool Read(banmap_t& banSet);
 };

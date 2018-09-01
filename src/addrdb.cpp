@@ -18,15 +18,15 @@
 #include <boost/filesystem.hpp>
 
 //
-// CBanListDB
+// CBanDB
 //
 
-CBanListDB::CBanListDB()
+CBanDB::CBanDB()
 {
     pathBanlist = GetDataDir() / "banlist.dat";
 }
 
-bool CBanListDB::Write(const banmap_t& banSet)
+bool CBanDB::Write(const banmap_t& banSet)
 {
     // Generate random temporary filename
     unsigned short randv = 0;
@@ -64,7 +64,7 @@ bool CBanListDB::Write(const banmap_t& banSet)
     return true;
 }
 
-bool CBanListDB::Read(banmap_t& banSet)
+bool CBanDB::Read(banmap_t& banSet)
 {
     // open input file, and associate with CAutoFile
     FILE *file = fopen(pathBanlist.string().c_str(), "rb");

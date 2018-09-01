@@ -490,7 +490,7 @@ void DumpBanlist()
 
     CNode::SweepBanned(); //clean unused entires (if bantime has expired)
 
-    CBanListDB bandb;
+    CBanDB bandb;
     banmap_t banmap;
     CNode::SetBannedSetDirty(false);
     CNode::GetBanned(banmap);
@@ -1620,7 +1620,7 @@ void CConnman::ThreadMessageHandler() {
 
         for (CNode* pnode : vNodesCopy) {
             pnode->AddRef();
-        }      
+        }
 #if 0
         // Poll the connected nodes for messages
         CNode* pnodeTrickle = nullptr;
@@ -1830,7 +1830,7 @@ bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& 
     }
 
     //try to read stored banlist
-    CBanListDB bandb;
+    CBanDB bandb;
     banmap_t banmap;
     if (!bandb.Read(banmap))
         LogPrintf("Invalid or missing banlist.dat; recreating\n");

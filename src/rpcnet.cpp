@@ -15,6 +15,7 @@
 #include "timedata.h"
 #include "util.h"
 #include "version.h"
+#include "ui_interface.h"
 
 #include "univalue/univalue.h"
 
@@ -470,14 +471,14 @@ UniValue setban(const JSONRPCRequest& request)
             banTime = request.params[2].get_int64();
 
         bool absolute = false;
-        if (request.params.size() == 4)
-            absolute = request.params[3].get_bool();
+        if (request.params.size() == 4 && request.params[3].isTrue())
+            absolute = true;
 
         isSubnet ? CNode::Ban(subNet, BanReasonManually, banTime, absolute) : CNode::Ban(netAddr, BanReasonManually, banTime, absolute);
 
         //disconnect possible nodes
         while(CNode *bannedNode = (isSubnet ? FindNode(subNet) : FindNode(netAddr)))
-            bannedNode->CloseSocketDisconnect();
+            bannedNode->fDisconnect = true;
     }
     else if(strCommand == "remove")
     {
@@ -486,6 +487,8 @@ UniValue setban(const JSONRPCRequest& request)
     }
 
     DumpBanlist(); //store banlist to disk
+    uiInterface.BannedListChanged();
+
     return NullUniValue;
 }
 
@@ -532,6 +535,8 @@ UniValue clearbanned(const JSONRPCRequest& request)
 
     CNode::ClearBanned();
     DumpBanlist(); //store banlist to disk
+    uiInterface.BannedListChanged();
+
 
     return NullUniValue;
 }
