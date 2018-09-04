@@ -1216,15 +1216,15 @@ UniValue waitforlogs(const JSONRPCRequest& request_) {
 
     LOCK(cs_main);
 
-    boost::filesystem::path stateDir = GetDataDir() / "stateLux";
-    StorageResults storageRes(stateDir.string());
+    if (pstorageresult == nullptr) {
+        fs::path stateDir = GetDataDir() / "stateLux";
+        pstorageresult = new StorageResults(stateDir.string());
+    }
 
     UniValue jsonLogs(UniValue::VARR);
-
     for (const auto& txHashes : hashesToBlock) {
         for (const auto& txHash : txHashes) {
-            std::vector<TransactionReceiptInfo> receipts = storageRes.getResult(
-                    uintToh256(txHash));
+            std::vector<TransactionReceiptInfo> receipts = pstorageresult->getResult(uintToh256(txHash));
 
             for (const auto& receipt : receipts) {
                 for (const auto& log : receipt.logs) {
@@ -2074,10 +2074,12 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
 
     uint256 hash(uint256S(hashTemp));
 
-    fs::path stateDir = GetDataDir() / "stateLux";
-    StorageResults storageRes(stateDir.string());
+    if (pstorageresult == nullptr) {
+        fs::path stateDir = GetDataDir() / "stateLux";
+        pstorageresult = new StorageResults(stateDir.string());
+    }
 
-    std::vector<TransactionReceiptInfo> transactionReceiptInfo = storageRes.getResult(uintToh256(hash));
+    std::vector<TransactionReceiptInfo> transactionReceiptInfo = pstorageresult->getResult(uintToh256(hash));
 
     UniValue result(UniValue::VARR);
     for(TransactionReceiptInfo& t : transactionReceiptInfo){
