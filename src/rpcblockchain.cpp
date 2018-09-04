@@ -1217,8 +1217,7 @@ UniValue waitforlogs(const JSONRPCRequest& request_) {
     LOCK(cs_main);
 
     if (pstorageresult == nullptr) {
-        fs::path stateDir = GetDataDir() / "stateLux";
-        pstorageresult = new StorageResults(stateDir.string());
+        return NullUniValue;
     }
 
     UniValue jsonLogs(UniValue::VARR);
@@ -2094,8 +2093,7 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
     uint256 hash(uint256S(hashTemp));
 
     if (pstorageresult == nullptr) {
-        fs::path stateDir = GetDataDir() / "stateLux";
-        pstorageresult = new StorageResults(stateDir.string());
+        return NullUniValue;
     }
 
     std::vector<TransactionReceiptInfo> transactionReceiptInfo = pstorageresult->getResult(uintToh256(hash));
