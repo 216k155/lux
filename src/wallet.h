@@ -50,6 +50,8 @@ extern bool bZeroBalanceAddressToken;
 extern bool fSendFreeTransactions;
 extern bool fPayAtLeastCustomFee;
 extern bool fNotUseChangeAddress;
+typedef CWallet* CWalletRef;
+extern std::vector<CWalletRef> vpwallets;
 //! -paytxfee default
 static const CAmount DEFAULT_TRANSACTION_FEE = 1000;
 //! -paytxfee will warn if called with a higher fee than this amount (in satoshis) per KB
@@ -942,6 +944,9 @@ public:
     bool SetHDMasterKey(const CPubKey& key);
 
     void SetHDSeed(const CPubKey& key);
+
+    bool GetStakeWeight(uint64_t& nWeight);
+
     /**
      * Explicitly make the wallet learn the related scripts for outputs to the
      * given key. This is purely to make the wallet file compatible with older
