@@ -2056,10 +2056,29 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1)
         throw std::runtime_error(
-                "gettransactionreceipt \"hash\"\n"
-                "requires -logevents to be enabled"
-                "\nArgument:\n"
-                "1. \"hash\"          (string, required) The transaction hash\n"
+            "gettransactionreceipt \"txid\"\n"
+            "\nNOTE: This function requires -logevents enabled.\n"
+
+            "\nReturn the smart contract transaction execution results.\n"
+            "Returns an Object with information about the 'txid'.\n"
+
+            "\nArgument:\n"
+            "1. \"txid\"      (string, required) The transaction id\n"
+
+            "\nResult:\n"
+            "{\n"
+            "  \"blockHash\": \"data\",      (string)  The block hash containing the 'txid'\n"
+            "  \"blockNumber\": n,         (numeric) The block height\n"
+            "  \"transactionHash\": \"id\",  (string)  The transaction id (same as provided)\n"
+            "  \"transactionIndex\": n,    (numeric) The transaction index in block\n"
+            "  \"from\": \"address\",        (string)  The hexadecimal address from\n"
+            "  \"to\": \"address\",          (string)  The hexadecimal address to\n"
+            "  \"cumulativeGasUsed\": n,   (numeric) The gas used during execution\n"
+            "  \"gasUsed\": n,             (numeric) The gas used during execution\n"
+            "  \"contractAddress\": \"hex\", (string)  The hexadecimal contract address\n"
+            "  \"excepted\": \"None\",       (string)\n"
+            "  \"log\": []                 (array)\n"
+            "}\n"
         );
 
     if(!fLogEvents)
