@@ -1528,34 +1528,6 @@ bool CWallet::IsHDEnabled() const
     return !hdChain.masterKeyID.IsNull();
 }
 
-void CWallet::SetWalletFlag(uint64_t flags)
-{
-    LOCK(cs_wallet);
-    m_wallet_flags |= flags;
-    if (!CWalletDB(strWalletFile).WriteWalletFlags(m_wallet_flags))
-        throw std::runtime_error(std::string(__func__) + ": writing wallet flags failed");
-}
-
-bool CWallet::IsWalletFlagSet(uint64_t flag)
-{
-    return (m_wallet_flags & flag);
-}
-
-bool CWallet::SetWalletFlags(uint64_t overwriteFlags, bool memonly)
-{
-    LOCK(cs_wallet);
-    m_wallet_flags = overwriteFlags;
-    if (((overwriteFlags & g_known_wallet_flags) >> 32) ^ (overwriteFlags >> 32)) {
-        // contains unknown non-tolerable wallet flags
-        return false;
-    }
-    if (!memonly && !CWalletDB(strWalletFile).WriteWalletFlags(m_wallet_flags)) {
-        throw std::runtime_error(std::string(__func__) + ": writing wallet flags failed");
-    }
-
-    return true;
-}
-
 int64_t CWalletTx::GetTxTime() const
 {
     int64_t n = nTimeSmart;
@@ -3060,10 +3032,6 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
                         //  post-backup change.
 
                         // Reserve a new key pair from key pool
-                        if (IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS)) {
-                            strFailReason = _("Can't generate a change-address key. Private keys are disabled for this wallet.");
-                            return false;
-                        }
                         CPubKey vchPubKey;
                         bool ret;
                         ret = reservekey.GetReservedKey(vchPubKey, true);
@@ -3568,9 +3536,6 @@ bool CWallet::SetDefaultKey(const CPubKey& vchPubKey)
  */
 bool CWallet::NewKeyPool()
 {
-    if (IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS)) {
-        return false;
-    }
     {
         LOCK(cs_wallet);
         CWalletDB walletdb(strWalletFile);
@@ -3585,11 +3550,6 @@ bool CWallet::NewKeyPool()
         }
         setExternalKeyPool.clear();
 
-        for (int64_t nIndex : set_pre_split_keypool) {
-            walletdb.ErasePool(nIndex);
-        }
-        set_pre_split_keypool.clear();
-
         m_pool_key_to_index.clear();
 
         if (!TopUpKeyPool()) {
@@ -3603,15 +3563,13 @@ bool CWallet::NewKeyPool()
 size_t CWallet::KeypoolCountExternalKeys()
 {
     AssertLockHeld(cs_wallet); // setExternalKeyPool
-    return setExternalKeyPool.size() + set_pre_split_keypool.size();
+    return setExternalKeyPool.size();
 }
 
 void CWallet::LoadKeyPool(int64_t nIndex, const CKeyPool &keypool)
 {
     AssertLockHeld(cs_wallet);
-    if (keypool.m_pre_split) {
-        set_pre_split_keypool.insert(nIndex);
-    } else if (keypool.fInternal) {
+    if (keypool.fInternal) {
         setInternalKeyPool.insert(nIndex);
     } else {
         setExternalKeyPool.insert(nIndex);
@@ -3629,9 +3587,6 @@ void CWallet::LoadKeyPool(int64_t nIndex, const CKeyPool &keypool)
 
 bool CWallet::TopUpKeyPool(unsigned int kpSize)
 {
-    if (IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS)) {
-        return false;
-    }
     {
         LOCK(cs_wallet);
 
@@ -3683,7 +3638,7 @@ bool CWallet::TopUpKeyPool(unsigned int kpSize)
             }
         }
         if (missingInternal + missingExternal > 0) {
-            LogPrintf("keypool added %d keys (%d internal), size=%u (%u internal)\n", missingInternal + missingExternal, missingInternal, setInternalKeyPool.size() + setExternalKeyPool.size() + set_pre_split_keypool.size(), setInternalKeyPool.size());
+            LogPrintf("keypool added %d keys (%d internal), size=%u (%u internal)\n", missingInternal + missingExternal, missingInternal, setInternalKeyPool.size() + setExternalKeyPool.size(), setInternalKeyPool.size());
         }
     }
     return true;
@@ -3700,7 +3655,7 @@ void CWallet::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool fRe
             TopUpKeyPool();
 
         bool fReturningInternal = IsHDEnabled() && CanSupportFeature(FEATURE_HD_SPLIT) && fRequestedInternal;
-        std::set<int64_t>& setKeyPool = set_pre_split_keypool.empty() ? (fReturningInternal ? setInternalKeyPool : setExternalKeyPool) : set_pre_split_keypool;
+        std::set <int64_t> &setKeyPool = fReturningInternal ? setInternalKeyPool : setExternalKeyPool;
 
         // Get the oldest key
         if (setKeyPool.empty())
@@ -3717,7 +3672,7 @@ void CWallet::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool fRe
         if (!HaveKey(keypool.vchPubKey.GetID())) {
             throw std::runtime_error(std::string(__func__) + ": unknown key in key pool");
         }
-        if (set_pre_split_keypool.size() == 0 && keypool.fInternal != fReturningInternal) {
+        if (keypool.fInternal != fReturningInternal) {
             throw std::runtime_error(std::string(__func__) + ": keypool entry misclassified");
         }
 
@@ -3744,8 +3699,6 @@ void CWallet::ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey)
         LOCK(cs_wallet);
         if (fInternal) {
             setInternalKeyPool.insert(nIndex);
-        } else if (!set_pre_split_keypool.empty()) {
-            set_pre_split_keypool.insert(nIndex);
         } else {
             setExternalKeyPool.insert(nIndex);
         }
@@ -3754,10 +3707,8 @@ void CWallet::ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey)
     LogPrintf("keypool return %d\n", nIndex);
 }
 
+
 bool CWallet::GetKeyFromPool(CPubKey& result, bool internal) {
-    if (IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS)) {
-        return false;
-    }
     CKeyPool keypool;{
         LOCK(cs_wallet);
         int64_t nIndex = 0;
@@ -3798,9 +3749,6 @@ int64_t CWallet::GetOldestKeyPoolTime() {
     int64_t oldestKey = GetOldestKeyTimeInPool(setExternalKeyPool, walletdb);
     if (IsHDEnabled() && CanSupportFeature(FEATURE_HD_SPLIT)) {
         oldestKey = std::max(GetOldestKeyTimeInPool(setInternalKeyPool, walletdb), oldestKey);
-        if (!set_pre_split_keypool.empty()) {
-            oldestKey = std::max(GetOldestKeyTimeInPool(set_pre_split_keypool, walletdb), oldestKey);
-        }
     }
     return oldestKey;
 }
@@ -3999,8 +3947,8 @@ void CWallet::MarkReserveKeysAsUsed(int64_t keypool_id)
 {
     AssertLockHeld(cs_wallet);
     bool internal = setInternalKeyPool.count(keypool_id);
-    if (!internal) assert(setExternalKeyPool.count(keypool_id) || set_pre_split_keypool.count(keypool_id));
-    std::set<int64_t> *setKeyPool = internal ? &setInternalKeyPool : (set_pre_split_keypool.empty() ? &setExternalKeyPool : &set_pre_split_keypool);
+    if (!internal) assert(setExternalKeyPool.count(keypool_id));
+    std::set<int64_t> *setKeyPool = internal ? &setInternalKeyPool : &setExternalKeyPool;
     auto it = setKeyPool->begin();
 
     CWalletDB walletdb(strWalletFile);
@@ -4237,38 +4185,6 @@ bool CWallet::GetDestData(const CTxDestination& dest, const std::string& key, st
         }
     }
     return false;
-}
-
-std::vector<std::string> CWallet::GetDestValues(const std::string& prefix) const
-{
-    LOCK(cs_wallet);
-    std::vector<std::string> values;
-    for (const auto& address : mapAddressBook) {
-        for (const auto& data : address.second.destdata) {
-            if (!data.first.compare(0, prefix.size(), prefix)) {
-                values.emplace_back(data.second);
-            }
-        }
-    }
-    return values;
-}
-
-void CWallet::MarkPreSplitKeys()
-{
-    CWalletDB walletdb(strWalletFile);
-    for (auto it = setExternalKeyPool.begin(); it != setExternalKeyPool.end();) {
-        int64_t index = *it;
-        CKeyPool keypool;
-        if (!walletdb.ReadPool(index, keypool)) {
-            throw std::runtime_error(std::string(__func__) + ": read keypool entry failed");
-        }
-        keypool.m_pre_split = true;
-        if (!walletdb.WritePool(index, keypool)) {
-            throw std::runtime_error(std::string(__func__) + ": writing modified keypool entry failed");
-        }
-        set_pre_split_keypool.insert(index);
-        it = setExternalKeyPool.erase(it);
-    }
 }
 
 void CWallet::AutoCombineDust()
@@ -4580,14 +4496,12 @@ bool CWallet::AddTokenTxEntry(const CTokenTx &tokenTx, bool fFlushOnClose) {
 CKeyPool::CKeyPool() {
     nTime = GetTime();
     fInternal = false;
-    m_pre_split = false;
 }
 
 CKeyPool::CKeyPool(const CPubKey& vchPubKeyIn, bool internalIn) {
     nTime = GetTime();
     vchPubKey = vchPubKeyIn;
     fInternal = internalIn;
-    m_pre_split = false;
 }
 
 CWalletKey::CWalletKey(int64_t nExpires) {
