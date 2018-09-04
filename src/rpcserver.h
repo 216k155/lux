@@ -376,6 +376,7 @@ extern UniValue listcontracts(const JSONRPCRequest& request);
 extern UniValue gettransactionreceipt(const JSONRPCRequest& request);
 extern UniValue searchlogs(const JSONRPCRequest& request);
 extern UniValue pruneblockchain(const JSONRPCRequest& request);
+extern UniValue waitforlogs(const JSONRPCRequest& request);
 
 bool StartRPC();
 void InterruptRPC();
