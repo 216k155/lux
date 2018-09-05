@@ -83,6 +83,10 @@
 #include <sys/prctl.h>
 #endif
 
+#ifdef HAVE_MALLOPT_ARENA_MAX
+#include <malloc.h>
+#endif
+
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
@@ -99,10 +103,10 @@
 //           http://clang.debian.net/status.php?version=3.0&key=CANNOT_FIND_FUNCTION
 namespace boost
 {
-namespace program_options
-{
-std::string to_internal(const std::string&);
-}
+    namespace program_options
+    {
+        std::string to_internal(const std::string&);
+    }
 
 } // namespace boost
 
@@ -137,11 +141,14 @@ bool fPrintToDebugLog = true;
 bool fDaemon = false;
 bool fServer = false;
 string strMiscWarning;
-bool fLogTimestamps = false;
-bool fLogIPs = false;
-volatile bool fReopenDebugLog = false;
 
-/** Log categories bitfield. Leveldb/libevent need special handling if their flags are changed at runtime. */
+bool fLogTimestamps = DEFAULT_LOGTIMESTAMPS;
+bool fLogTimeMicros = DEFAULT_LOGTIMEMICROS;
+bool fLogIPs = DEFAULT_LOGIPS;
+std::atomic<bool> fReopenDebugLog(false);
+CTranslationInterface translationInterface;
+
+/** Log categories bitfield. */
 std::atomic<uint32_t> logCategories(0);
 
 /** Init OpenSSL library multithreading support */
@@ -215,25 +222,57 @@ static FILE* fileout = nullptr;
 #define MAX_FILE_SIZE 10485760  //10MB
 
 static boost::mutex* mutexDebugLog = nullptr;
+static std::list<std::string>* vMsgsBeforeOpenLog;
 
 /////////////////////////////////////////////////////////////////////// // lux
 static FILE* fileoutVM = nullptr;
 ///////////////////////////////////////////////////////////////////////
 
-static void DebugPrintInit()
-{
-    assert(fileout == nullptr);
-    assert(fileoutVM == nullptr); // lux
+static int FileWriteStr(const std::string &str, FILE *fp) {
+    return fwrite(str.data(), 1, str.size(), fp);
+}
+
+static void DebugPrintInit() {
     assert(mutexDebugLog == nullptr);
-
-    fs::path pathDebug = GetDataDir() / "debug.log";
-    fs::path pathDebugVM = GetDataDir() / "vm.log"; // lux
-    fileout = fopen(pathDebug.string().c_str(), "a");
-    fileoutVM = fopen(pathDebugVM.string().c_str(), "a"); // lux
-    if (fileout) setbuf(fileout, nullptr); // unbuffered
-    if (fileoutVM) setbuf(fileoutVM, nullptr); // unbuffered // lux
-
     mutexDebugLog = new boost::mutex();
+    vMsgsBeforeOpenLog = new std::list<std::string>;
+}
+
+void OpenDebugLog()
+{
+    boost::call_once(&DebugPrintInit, debugPrintInitFlag);
+    boost::mutex::scoped_lock scoped_lock(*mutexDebugLog);
+
+    assert(fileout == nullptr);
+    assert(fileoutVM == nullptr);
+    assert(vMsgsBeforeOpenLog);
+    fs::path pathDebug = GetDataDir() / "debug.log";
+    fs::path pathDebugVM = GetDataDir() / "vm.log";
+    fileout = fsbridge::fopen(pathDebug, "a");
+    fileoutVM = fsbridge::fopen(pathDebugVM, "a");
+    if (fileout) {
+        setbuf(fileout, nullptr); // unbuffered
+        // dump buffered messages from before we opened the log
+        while (!vMsgsBeforeOpenLog->empty()) {
+            FileWriteStr(vMsgsBeforeOpenLog->front(), fileout);
+            vMsgsBeforeOpenLog->pop_front();
+        }
+    }
+
+    ///////////////////////////////////////////// // lux
+    if (fileoutVM) {
+        setbuf(fileoutVM, NULL); // unbuffered
+        // dump buffered messages from before we opened the log
+        while (!vMsgsBeforeOpenLog->empty()) {
+            FileWriteStr(vMsgsBeforeOpenLog->front(), fileoutVM);
+            vMsgsBeforeOpenLog->pop_front();
+        }
+    }
+    /////////////////////////////////////////////
+
+    delete vMsgsBeforeOpenLog;
+    vMsgsBeforeOpenLog = nullptr;
+
 }
 
 void pushDebugLog(std::string pathDebugStr, int debugNum)
@@ -326,6 +365,51 @@ std::string ListLogCategories()
     return ret;
 }
 
+std::vector<CLogCategoryActive> ListActiveLogCategories() {
+    std::vector<CLogCategoryActive> ret;
+    for (unsigned int i = 0; i < ARRAYLEN(LogCategories); i++) {
+        // Omit the special cases.
+        if (LogCategories[i].flag != BCLog::NONE && LogCategories[i].flag != BCLog::ALL) {
+            CLogCategoryActive catActive;
+            catActive.category = LogCategories[i].category;
+            catActive.active = LogAcceptCategory(LogCategories[i].flag);
+            ret.push_back(catActive);
+        }
+    }
+    return ret;
+}
+
+/**
+ * fStartedNewLine is a state variable held by the calling context that will
+ * suppress printing of the timestamp when multiple calls are made that don't
+ * end in a newline. Initialize it to true, and hold it, in the calling context.
+ */
+static std::string LogTimestampStr(const std::string &str, std::atomic_bool *fStartedNewLine) {
+    std::string strStamped;
+
+    if (!fLogTimestamps) return str;
+
+    if (*fStartedNewLine) {
+        int64_t nTimeMicros = GetTimeMicros();
+        strStamped = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTimeMicros/1000000);
+        if (fLogTimeMicros)
+            strStamped += strprintf(".%06d", nTimeMicros%1000000);
+        int64_t mocktime = GetMockTime();
+        if (mocktime) {
+            strStamped += " (mocktime: " + DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mocktime) + ")";
+        }
+        strStamped += ' ' + str;
+    } else
+        strStamped = str;
+
+    if (!str.empty() && str[str.size()-1] == '\n')
+        *fStartedNewLine = true;
+    else
+        *fStartedNewLine = false;
+
+    return strStamped;
+}
+
 int LogPrintStr(const std::string& str, bool useVMLog)
 {
 //////////////////////////////// // lux
@@ -352,7 +436,7 @@ int LogPrintStr(const std::string& str, bool useVMLog)
                 }
             }
             std::string nextPathDebugStr = pathDebugStr + ".01";
-            if (access( nextPathDebugStr.c_str(), F_OK ) != -1)
+            if (access(nextPathDebugStr.c_str(), F_OK ) != -1)
                 remove(nextPathDebugStr.c_str());
             rename(pathDebugStr.c_str(), nextPathDebugStr.c_str());
             fileout = fopen(pathDebugStr.c_str(), "wa");
@@ -367,38 +451,40 @@ int LogPrintStr(const std::string& str, bool useVMLog)
 ////////////////////////////////
 
     int ret = 0; // Returns total number of characters written
-    if (fPrintToConsole) {
+    static std::atomic_bool fStartedNewLine(true);
+
+    std::string strTimestamped = LogTimestampStr(str, &fStartedNewLine);
+
+    if (fPrintToConsole)
+    {
         // print to console
-        ret = fwrite(str.data(), 1, str.size(), stdout);
+        ret = fwrite(strTimestamped.data(), 1, strTimestamped.size(), stdout);
         fflush(stdout);
-    } else if (fPrintToDebugLog && AreBaseParamsConfigured()) {
-        static bool fStartedNewLine = true;
+    }
+    else if (fPrintToDebugLog)
+    {
         boost::call_once(&DebugPrintInit, debugPrintInitFlag);
-
-        if (file == nullptr)
-            return ret;
-
         boost::mutex::scoped_lock scoped_lock(*mutexDebugLog);
 
-        // reopen the log file, if requested
-        if (fReopenDebugLog) {
-            fReopenDebugLog = false;
-            fs::path pathDebug = GetDataDir() / "debug.log";
-            if (freopen(pathDebug.string().c_str(), "a", file) != nullptr)
-                setbuf(file, nullptr); // unbuffered
+        // buffer if we haven't opened the log yet
+        if (file == nullptr) {
+            assert(vMsgsBeforeOpenLog);
+            ret = strTimestamped.length();
+            vMsgsBeforeOpenLog->push_back(strTimestamped);
         }
-
-        // Debug print useful for profiling
-        if (fLogTimestamps && fStartedNewLine)
-            ret += fprintf(file, "%s ", DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()).c_str());
-        if (!str.empty() && str[str.size() - 1] == '\n')
-            fStartedNewLine = true;
         else
-            fStartedNewLine = false;
+        {
+            // reopen the log file, if requested
+            if (fReopenDebugLog) {
+                fReopenDebugLog = false;
+                fs::path pathDebug = GetDataDir() / "debug.log";
+                if (fsbridge::freopen(pathDebug,"a",file) != nullptr)
+                    setbuf(file, nullptr); // unbuffered
+            }
 
-        ret = fwrite(str.data(), 1, str.size(), file);
+            ret = FileWriteStr(strTimestamped, file);
+        }
     }
-
     return ret;
 }
 

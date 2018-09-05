@@ -7,7 +7,7 @@
 #include "util.h"
 #include "random.h"
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 
 #include <leveldb/cache.h>
 #include <leveldb/env.h>

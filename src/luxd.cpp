@@ -5,7 +5,10 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "compat.h"
 #include "clientversion.h"
+#include "httpserver.h"
+#include "httprpc.h"
 #include "init.h"
 #include "main.h"
 #include "masternodeconfig.h"
@@ -17,9 +20,10 @@
 #include "httpserver.h"
 #include "httprpc.h"
 #include "rpcserver.h"
+#include "utilstrencodings.h"
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/thread.hpp>
 #include <stdio.h>
 /* Introduction text for doxygen: */
@@ -147,7 +151,7 @@ bool AppInit(int argc, char* argv[])
         }
 #endif
         SoftSetBoolArg("-server", true);
-
+        InitLogging();
         fRet = AppInit2(threadGroup, scheduler);
     } catch (std::exception& e) {
         PrintExceptionContinue(&e, "AppInit()");

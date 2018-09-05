@@ -480,9 +480,10 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += "  -genproclimit=<n>      " + strprintf(_("Set the number of threads for coin generation if enabled (-1 = all cores, default: %d)"), 1) + "\n";
 #endif
     strUsage += "  -help-debug            " + _("Show all debugging options (usage: --help -help-debug)") + "\n";
-    strUsage += "  -logips                " + strprintf(_("Include IP addresses in debug output (default: %u)"), 0) + "\n";
-    strUsage += "  -logtimestamps         " + strprintf(_("Prepend debug output with timestamp (default: %u)"), 1) + "\n";
+    strUsage += "  -logips                " + strprintf(_("Include IP addresses in debug output (default: %u)"), DEFAULT_LOGIPS) + "\n";
+    strUsage += "  -logtimestamps         " + strprintf(_("Prepend debug output with timestamp (default: %u)"), DEFAULT_LOGTIMESTAMPS) + "\n";
     if (GetBoolArg("-help-debug", false)) {
+        strUsage += "  -logtimemicros         " + strprintf(_("Add microsecond precision to debug timestamps (default: %u)"), DEFAULT_LOGTIMEMICROS) + "\n";
         strUsage += "  -limitfreerelay=<n>    " + strprintf(_("Continuously rate-limit free transactions to <n>*1000 bytes per minute (default:%u)"), 15) + "\n";
         strUsage += "  -relaypriority         " + strprintf(_("Require high priority for relaying free or low-fee transactions (default:%u)"), 1) + "\n";
         strUsage += "  -maxsigcachesize=<n>   " + strprintf(_("Limit size of signature cache to <n> entries (default: %u)"), 50000) + "\n";
@@ -629,12 +630,12 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     }
 
     // hardcoded $DATADIR/bootstrap.dat
-    filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
-    if (filesystem::exists(pathBootstrap)) {
-        FILE* file = fopen(pathBootstrap.string().c_str(), "rb");
+    fs::path pathBootstrap = GetDataDir() / "bootstrap.dat";
+    if (fs::exists(pathBootstrap)) {
+        FILE *file = fsbridge::fopen(pathBootstrap, "rb");
         if (file) {
             CImportingNow imp;
-            filesystem::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
+            fs::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
             LogPrintf("Importing bootstrap.dat...\n");
             LoadExternalBlockFile(chainparams, file);
             RenameOver(pathBootstrap, pathBootstrapOld);
@@ -792,8 +793,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Set this early so that parameter interactions go to console
     nMinerSleep = GetArg("-minersleep", 500);
     fPrintToConsole = GetBoolArg("-printtoconsole", false);
-    fLogTimestamps = GetBoolArg("-logtimestamps", true);
-    fLogIPs = GetBoolArg("-logips", false);
+    fLogTimestamps = GetBoolArg("-logtimestamps", DEFAULT_LOGTIMESTAMPS);
+    fLogIPs = GetBoolArg("-logips", DEFAULT_LOGIPS);
 
     if (mapArgs.count("-bind") || mapArgs.count("-whitebind")) {
         // when specifying an explicit binding address, you want to listen on it
@@ -1063,8 +1064,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());
 #endif
-    if (GetBoolArg("-shrinkdebugfile", logCategories != BCLog::NONE))
+    if (GetBoolArg("-shrinkdebugfile", logCategories != BCLog::NONE)) {
         ShrinkDebugFile();
+    }
+
+    if (fPrintToDebugLog)
+        OpenDebugLog();
+
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     LogPrintf("LUX version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
     LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
@@ -1175,7 +1181,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 return false;
         }
 
-        if (filesystem::exists(GetDataDir() / strWalletFile)) {
+        if (fs::exists(GetDataDir() / strWalletFile)) {
             CDBEnv::VerifyResult r = bitdb.Verify(strWalletFile, CWalletDB::Recover);
             if (r == CDBEnv::RECOVER_OK) {
                 string msg = strprintf(_("Warning: wallet.dat corrupt, data salvaged!"
@@ -1189,16 +1195,16 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 return InitError(_("wallet.dat corrupt, salvage failed"));
         }
 
-        filesystem::path backupDir = GetDataDir() / "backups";
-        if (!filesystem::exists(backupDir)) {
+        fs::path backupDir = GetDataDir() / "backups";
+        if (!fs::exists(backupDir)) {
             // Always create backup folder to not confuse the operating system's file browser
-            filesystem::create_directories(backupDir);
+            fs::create_directories(backupDir);
         }
 
         nWalletBackups = GetArg("-createwalletbackups", 10);
         nWalletBackups = std::max(0, std::min(10, nWalletBackups));
 
-        if (nWalletBackups > 0 && filesystem::exists(backupDir)) {
+        if (nWalletBackups > 0 && fs::exists(backupDir)) {
             // Keep only the last 10 backups, including the new one of course
             typedef std::multimap<std::time_t, fs::path> folder_set_t;
             folder_set_t folder_set;
@@ -1379,19 +1385,19 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     bool fReindexChainState = GetBoolArg("-reindex-chainstate", false);
 
     // Upgrading to 0.8; hard-link the old blknnnn.dat files into /blocks/
-    filesystem::path blocksDir = GetDataDir() / "blocks";
-    if (!filesystem::exists(blocksDir)) {
-        filesystem::create_directories(blocksDir);
+    fs::path blocksDir = GetDataDir() / "blocks";
+    if (!fs::exists(blocksDir)) {
+        fs::create_directories(blocksDir);
         bool linked = false;
         for (unsigned int i = 1; i < 10000; i++) {
-            filesystem::path source = GetDataDir() / strprintf("blk%04u.dat", i);
-            if (!filesystem::exists(source)) break;
-            filesystem::path dest = blocksDir / strprintf("blk%05u.dat", i - 1);
+            fs::path source = GetDataDir() / strprintf("blk%04u.dat", i);
+            if (!fs::exists(source)) break;
+            fs::path dest = blocksDir / strprintf("blk%05u.dat", i - 1);
             try {
-                filesystem::create_hard_link(source, dest);
+                fs::create_hard_link(source, dest);
                 LogPrintf("Hardlinked %s -> %s\n", source.string(), dest.string());
                 linked = true;
-            } catch (filesystem::filesystem_error& e) {
+            } catch (fs::filesystem_error& e) {
                 // Note: hardlink creation failing is not a disaster, it just means
                 // blocks will get re-downloaded from peers.
                 LogPrintf("Error hardlinking blk%04u.dat : %s\n", i, e.what());
@@ -1919,4 +1925,13 @@ void UnlockDataDirectory()
 {
     // Try lock and unlock
     LockDataDirectory(true, false);
+}
+
+void InitLogging() {
+    fPrintToConsole = GetBoolArg("-printtoconsole", false);
+    fLogTimestamps = GetBoolArg("-logtimestamps", DEFAULT_LOGTIMESTAMPS);
+    fLogTimeMicros = GetBoolArg("-logtimemicros", DEFAULT_LOGTIMEMICROS);
+    fLogIPs = GetBoolArg("-logips", DEFAULT_LOGIPS);
+    LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+    LogPrintf("Lux version %s\n", FormatFullVersion());
 }

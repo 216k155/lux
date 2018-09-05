@@ -14,7 +14,7 @@
 #include "wallet.h"
 #endif
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>
 

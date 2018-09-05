@@ -13,7 +13,6 @@
 #include <map>
 #include <stdint.h>
 #include <string>
-#include <boost/filesystem.hpp>
 
 #include "univalue/univalue.h"
 

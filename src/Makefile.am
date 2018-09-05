@@ -137,6 +137,7 @@ BITCOIN_CORE_H = \
   rpcclient.h \
   rpcprotocol.h \
   httprpc.h \
+  fs.h \
   httpserver.h \
   luxcontrol.h \
   rpcserver.h \
@@ -224,6 +225,7 @@ libbitcoin_server_a_SOURCES = \
   rpcrawtransaction.cpp \
   httprpc.cpp \
   httpserver.cpp \
+  fs.cpp \
   luxcontrol.cpp \
   rpcserver.cpp \
   script/sigcache.cpp \

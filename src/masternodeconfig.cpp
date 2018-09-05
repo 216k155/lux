@@ -2,6 +2,7 @@
 #include "masternodeconfig.h"
 #include "util.h"
 #include "chainparams.h"
+#include "fs.h"
 
 CMasternodeConfig masternodeConfig;
 
@@ -17,7 +18,7 @@ bool CMasternodeConfig::read(std::string& strErr) {
     fs::ifstream streamConfig(pathMasternodeConfigFile);
 
     if (!streamConfig.good()) {
-        FILE* configFile = fopen(pathMasternodeConfigFile.string().c_str(), "a");
+        FILE* configFile = fsbridge::fopen(pathMasternodeConfigFile, "a");
         if (configFile != nullptr) {
             std::string strHeader = "# Masternode config file\n"
                                     "# Format: alias IP:port masternodeprivkey collateral_output_txid collateral_output_index\n"

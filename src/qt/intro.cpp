@@ -11,7 +11,7 @@
 #include "fs.h"
 #include "util.h"
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -62,7 +62,7 @@ FreespaceChecker::FreespaceChecker(Intro* intro)
 
 void FreespaceChecker::check()
 {
-    namespace fs = boost::filesystem;
+    namespace fs = fs;
     QString dataDirStr = intro->getPathToCheck();
     fs::path dataDir = GUIUtil::qstringToBoostPath(dataDirStr);
     uint64_t freeBytesAvailable = 0;

@@ -36,7 +36,7 @@
 #include <QTimer>
 #include <QFile>
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 
 WalletModel::WalletModel(CWallet* wallet, OptionsModel* optionsModel, QObject* parent) : QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
                                                                                          contractTableModel(0),

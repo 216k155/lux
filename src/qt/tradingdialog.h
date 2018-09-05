@@ -13,7 +13,7 @@
 #include "clientmodel.h"
 #include "walletmodel.h"
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/filesystem/fstream.hpp>
 #include "qcustomplot.h"
 

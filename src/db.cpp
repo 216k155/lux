@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 #endif
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/thread.hpp>
 #include <boost/version.hpp>
 

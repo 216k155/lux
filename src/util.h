@@ -30,41 +30,67 @@
 #include <vector>
 
 #include <boost/thread/exceptions.hpp>
+#include <boost/signals2/signal.hpp>
+
+#ifndef WIN32
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
+int64_t GetStartupTime();
+
+static const bool DEFAULT_LOGTIMEMICROS = false;
+static const bool DEFAULT_LOGIPS        = false;
+static const bool DEFAULT_LOGTIMESTAMPS = true;
+
+/** Translate a message to the native language of the user. */
+class CTranslationInterface {
+public:
+    boost::signals2::signal<std::string (const char* psz)> Translate;
+};
 
 //LUX only features
+extern CTranslationInterface translationInterface;
+extern int64_t enforceMasternodePaymentsTime;
 extern std::atomic<bool> hideLogMessage;
+extern std::string strMasterNodeAddr;
+extern std::vector<int64_t> darkSendDenominations;
+extern std::string strBudgetMode;
+extern std::map<std::string, std::string> mapArgs;
+extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+extern std::string strMiscWarning;
+extern std::atomic<bool> fReopenDebugLog;
+extern std::atomic<uint32_t> logCategories;
 
 extern int nLogFile;
-extern bool fMasterNode;
-extern bool fEnableInstanTX;
 extern int nInstanTXDepth;
 extern int nDarksendRounds;
 extern int nWalletBackups;
 extern int nAnonymizeLuxAmount;
 extern int nLiquidityProvider;
-extern bool fEnableDarksend;
-extern int64_t enforceMasternodePaymentsTime;
-extern std::string strMasterNodeAddr;
 extern int keysLoaded;
-extern bool fSucessfullyLoaded;
-extern std::vector<int64_t> darkSendDenominations;
-extern std::string strBudgetMode;
 
-extern std::map<std::string, std::string> mapArgs;
-extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
 extern bool fDebug;
 extern bool fDebugMnSecurity;
 extern bool fPrintToConsole;
 extern bool fPrintToDebugLog;
-extern bool fServer;
-extern std::string strMiscWarning;
 extern bool fLogTimestamps;
+extern bool fLogTimeMicros;
 extern bool fLogIPs;
-extern volatile bool fReopenDebugLog;
-extern std::atomic<uint32_t> logCategories;
+extern bool fServer;
+extern bool fSucessfullyLoaded;
+extern bool fEnableDarksend;
+extern bool fMasterNode;
+extern bool fEnableInstanTX;
 
 void SetupEnvironment();
 bool SetupNetworking();
+
+struct CLogCategoryActive {
+    std::string category;
+    bool active;
+};
 
 namespace BCLog {
     enum LogFlags : uint32_t {
@@ -99,24 +125,36 @@ namespace BCLog {
     };
 }
 /** Return true if log accepts specified category */
-static inline bool LogAcceptCategory(uint32_t category)
-{
+static inline bool LogAcceptCategory(uint32_t category) {
     return (logCategories.load(std::memory_order_relaxed) & category) != 0;
 }
 
 /** Returns a string with the supported log categories */
 std::string ListLogCategories();
 
+/** Returns a vector of the active log categories. */
+std::vector<CLogCategoryActive> ListActiveLogCategories();
+
 /** Return true if str parses as a log category and set the flags in f */
 bool GetLogCategory(uint32_t *f, const std::string *str);
 
 /** Send a string to the log output */
 int LogPrintStr(const std::string& str, bool useVMLog = false);
+
 /** Push debug files */
 void pushDebugLog(std::string pathDebugStr, int debugNum);
 
 /** Get format string from VA_ARGS for error reporting */
 template<typename... Args> std::string FormatStringFromLogArgs(const char *fmt, const Args&... args) { return fmt; }
+
+static inline void MarkUsed() {}
+template<typename T, typename... Args> static inline void MarkUsed(const T& t, const Args&... args) { (void)t; MarkUsed(args...); }
+
+#ifdef USE_COVERAG
+#define LogPrintf(...) do { MarkUsed(__VA_ARGS__); } while(0)
+#define LogPrint(category, ...) do { MarkUsed(__VA_ARGS__); } while(0)
+
+#else
 
 #define LogPrintf(...) do { \
     std::string _log_msg_; /* Unlikely name to avoid shadowing variables */ \
@@ -135,36 +173,48 @@ template<typename... Args> std::string FormatStringFromLogArgs(const char *fmt, 
     } \
 } while(0)
 
+#endif
+
 template<typename... Args>
-bool error(const char* fmt, const Args&... args)
-{
+bool error(const char* fmt, const Args&... args) {
     LogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
+void AllocateFileRange(FILE* file, unsigned int offset, unsigned int length);
 void PrintExceptionContinue(std::exception* pex, const char* pszThread);
 void ParseParameters(int argc, const char* const argv[]);
 void FileCommit(FILE* fileout);
+void ClearDatadirCache();
+
 bool TruncateFile(FILE* file, unsigned int length);
-int RaiseFileDescriptorLimit(int nMinFD);
-void AllocateFileRange(FILE* file, unsigned int offset, unsigned int length);
 bool RenameOver(fs::path src, fs::path dest);
 bool TryCreateDirectory(const fs::path& p);
-fs::path GetDefaultDataDir();
+
+int RaiseFileDescriptorLimit(int nMinFD);
+
 const fs::path& GetDataDir(bool fNetSpecific = true);
-void ClearDatadirCache();
+
 fs::path GetConfigFile();
 fs::path GetMasternodeConfigFile();
+fs::path GetDefaultDataDir();
+
 #ifndef WIN32
+
 fs::path GetPidFile();
 void CreatePidFile(const fs::path& path, pid_t pid);
+
 #endif
+
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 void WriteConfigToFile(std::string strKey, std::string strValue);
+
 #ifdef WIN32
+
 fs::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
 #endif
 fs::path GetTempPath();
+void OpenDebugLog();
 void ShrinkDebugFile();
 void runCommand(std::string strCommand);
 
@@ -240,7 +290,6 @@ bool SoftSetBoolArg(const std::string& strArg, bool fValue);
 
 // Forces a arg setting
 void ForceSetArg(const std::string& strArg, const std::string& strValue);
-
 void SetThreadPriority(int nPriority);
 void RenameThread(const char* name);
 

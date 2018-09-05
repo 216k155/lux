@@ -21,7 +21,7 @@
 #include <atomic>
 
 #include <boost/version.hpp>
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <fstream>
@@ -953,14 +953,14 @@ bool BackupWallet(const CWallet& wallet, const string& strDest)
                 bitdb.mapFileUseCount.erase(wallet.strWalletFile);
 
                 // Copy wallet.dat
-                filesystem::path pathSrc = GetDataDir() / wallet.strWalletFile;
-                filesystem::path pathDest(strDest);
-                if (filesystem::is_directory(pathDest))
+                fs::path pathSrc = GetDataDir() / wallet.strWalletFile;
+                fs::path pathDest(strDest);
+                if (fs::is_directory(pathDest))
                     pathDest /= wallet.strWalletFile;
 
                 try {
 #if BOOST_VERSION >= 158000
-                    filesystem::copy_file(pathSrc, pathDest, filesystem::copy_option::overwrite_if_exists);
+                    fs::copy_file(pathSrc, pathDest, fs::copy_option::overwrite_if_exists);
 #else
                     std::ifstream src(pathSrc.string(), std::ios::binary);
                     std::ofstream dst(pathDest.string(), std::ios::binary);
@@ -968,7 +968,7 @@ bool BackupWallet(const CWallet& wallet, const string& strDest)
 #endif
                     LogPrintf("copied wallet.dat to %s\n", pathDest.string());
                     return true;
-                } catch (const filesystem::filesystem_error& e) {
+                } catch (const fs::filesystem_error& e) {
                     LogPrintf("error copying wallet.dat to %s - %s\n", pathDest.string(), e.what());
                     return false;
                 }

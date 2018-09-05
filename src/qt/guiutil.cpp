@@ -10,7 +10,7 @@
 #include "bitcoinunits.h"
 #include "qvalidatedlineedit.h"
 #include "walletmodel.h"
-#include "fs.h"
+
 #include "init.h"
 #include "main.h"
 #include "primitives/transaction.h"
@@ -38,7 +38,8 @@
 #include "shlwapi.h"
 #endif
 
-
+#include <fs.h>
+#include <boost/filesystem/fstream.hpp>
 #if BOOST_FILESYSTEM_VERSION >= 3
 #include <boost/filesystem/detail/utf8_codecvt_facet.hpp>
 #endif
@@ -66,7 +67,9 @@
 #include <QUrlQuery>
 #endif
 
+#if BOOST_FILESYSTEM_VERSION >= 3
 static fs::detail::utf8_codecvt_facet utf8;
+#endif
 
 #if defined(Q_OS_MAC)
 extern double NSAppKitVersionNumber;

@@ -16,7 +16,7 @@
 #include <QTableView>
 #include <QTableWidget>
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 
 class QValidatedLineEdit;
 class SendCoinsRecipient;

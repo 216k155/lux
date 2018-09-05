@@ -2077,6 +2077,8 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
 
     uint256 hash(uint256S(hashTemp));
 
+    fs::path stateDir = GetDataDir() / "stateLux";
+    StorageResults storageRes(stateDir.string());
     if (pstorageresult == nullptr) {
         return NullUniValue;
     }

@@ -15,6 +15,7 @@
 #include "main.h"
 #include "timedata.h"
 #include "script/script.h"
+#include "fs.h"
 
 class CMasterNode;
 class CMasternodePayments;

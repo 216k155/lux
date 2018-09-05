@@ -15,14 +15,25 @@
 #include "core_io.h"
 #include "chainparams.h"
 #include "clientversion.h"
+#include "consensus/consensus.h"
+#include "crypto/common.h"
+#include "crypto/sha256.h"
+#include "hash.h"
+#include "random.h"
 #include "miner.h"
 #include "darksend.h"
 #include "primitives/transaction.h"
+#include "netbase.h"
 #include "scheduler.h"
+#include "streams.h"
+#include "tinyformat.h"
 #include "ui_interface.h"
 #include "wallet.h"
 #include "miner.h"
 #include "stake.h"
+#include "utilstrencodings.h"
+#include "util.h"
+
 #include "crypto/common.h"
 #ifdef WIN32
 #include <string.h>
@@ -37,7 +48,7 @@
 #include <miniupnpc/upnperrors.h>
 #endif
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/thread.hpp>
 #include <math.h>
 
@@ -59,7 +70,6 @@
 #endif
 #endif
 
-using namespace boost;
 using namespace std;
 
 namespace

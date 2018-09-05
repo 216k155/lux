@@ -437,6 +437,7 @@ void BitcoinApplication::startThread()
 
 void BitcoinApplication::requestInitialize()
 {
+    InitLogging();
     qDebug() << __func__ << ": Requesting initialize";
     startThread();
     emit requestedInitialize();

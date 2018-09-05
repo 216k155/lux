@@ -29,7 +29,7 @@
 #include <assert.h>
 
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/thread.hpp>
 
 #define SELECT_COINS_FROM_ACCOUNT true

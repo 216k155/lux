@@ -18,7 +18,7 @@
 #include <openssl/rand.h>
 
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/lexical_cast.hpp>
 

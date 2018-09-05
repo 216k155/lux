@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <boost/filesystem.hpp>
+#include <fs.h>
 #include <boost/filesystem/fstream.hpp>
 
 class CMasternodeConfig;

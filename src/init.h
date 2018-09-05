@@ -24,6 +24,7 @@ void Interrupt(boost::thread_group& threadGroup);
 void Shutdown();
 void PrepareShutdown();
 bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler);
+void InitLogging();
 
 /** The help message mode determines what help message to show */
 enum HelpMessageMode {

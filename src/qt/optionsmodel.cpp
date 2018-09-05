@@ -427,7 +427,7 @@ bool OptionsModel::setData(const QModelIndex& index, const QVariant& value, int 
                 settings.setValue("nLogFile", value);
 
                 //Delete existing debug log files before restart
-                boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
+                fs::path pathDebug = GetDataDir() / "debug.log";
                 std::string pathDebugStr = pathDebug.string();
                 //remove(pathDebugStr.c_str());
                 int debugNum = 1;
