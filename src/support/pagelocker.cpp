@@ -1,8 +1,12 @@
-// Copyright (c) 2009-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
+// Copyright (c) 2009-2013 The Bitcoin Core developers
+// Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "allocators.h"
+#include "support/pagelocker.h"
+
+#if defined(HAVE_CONFIG_H)
+#include "config/lux-config.h"
+#endif
 
 #ifdef WIN32
 #ifdef _WIN32_WINNT
@@ -19,12 +23,12 @@
 // but, in practice, memory that has been VirtualLock'd almost never gets written to
 // the pagefile except in rare circumstances where memory is extremely low.
 #else
-#include <limits.h> // for PAGESIZE
 #include <sys/mman.h>
+#include <limits.h> // for PAGESIZE
 #include <unistd.h> // for sysconf
 #endif
 
-LockedPageManager* LockedPageManager::_instance = NULL;
+LockedPageManager* LockedPageManager::_instance = nullptr;
 boost::once_flag LockedPageManager::init_flag = BOOST_ONCE_INIT;
 
 /** Determine system page size in bytes */
@@ -64,3 +68,4 @@ bool MemoryPageLocker::Unlock(const void* addr, size_t len)
 LockedPageManager::LockedPageManager() : LockedPageManagerBase<MemoryPageLocker>(GetSystemPageSize())
 {
 }
+

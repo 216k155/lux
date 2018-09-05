@@ -71,9 +71,10 @@ endif
 # Luxcore #
 BITCOIN_CORE_H = \
   activemasternode.h \
+  addrdb.h \
   addrman.h \
+  addressindex.h \
   alert.h \
-  allocators.h \
   amount.h \
   base58.h \
   bech32.h \
@@ -97,7 +98,9 @@ BITCOIN_CORE_H = \
   consensus/params.h \
   core_io.h \
   core_memusage.h \
+  cuckoocache.h \
   crypter.h \
+  fs.h \
   darksend.h \
   db.h \
   hash.h \
@@ -130,12 +133,14 @@ BITCOIN_CORE_H = \
   random.h \
   reverse_iterator.h \
   reverselock.h \
+  rpcblockchain.h \
   rpcclient.h \
   rpcprotocol.h \
   httprpc.h \
   httpserver.h \
   luxcontrol.h \
   rpcserver.h \
+  rpcwallet.h \
   rpcutil.h \
   scheduler.h \
   script/interpreter.h \
@@ -145,11 +150,16 @@ BITCOIN_CORE_H = \
   script/standard.h \
   script/script_error.h \
   serialize.h \
+  spentindex.h \
   spork.h \
   stake.h \
   streams.h \
+  support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
+  support/pagelocker.h \
+  support/lockedpool.h \
+  support/events.h \
   sync.h \
   threadsafety.h \
   timedata.h \
@@ -189,6 +199,7 @@ libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(MINIUPNPC_CP
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
   addrman.cpp \
+  addrdb.cpp \
   alert.cpp \
   bloom.cpp \
   chain.cpp \
@@ -266,6 +277,7 @@ libbitcoin_wallet_a_SOURCES = \
 crypto_libbitcoin_crypto_a_CFLAGS = $(PIE_FLAGS)
 crypto_libbitcoin_crypto_a_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES) $(BITCOIN_INCLUDES) -DLUX_BUILD
 crypto_libbitcoin_crypto_a_SOURCES = \
+  crypto/aes.cpp \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
@@ -283,6 +295,7 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/fugue.c \
   crypto/lyra2/Lyra2.c \
   crypto/lyra2/Sponge.c  \
+  crypto/aes.h \
   crypto/common.h \
   crypto/sha256.h \
   crypto/sha512.h \
@@ -337,7 +350,6 @@ univalue_libbitcoin_univalue_a_SOURCES = \
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_consensus_a_SOURCES = \
-  allocators.cpp \
   amount.h \
   chainparamsbase.cpp \
   coins.cpp \
@@ -384,7 +396,6 @@ libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -DLUX_BUILD
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -std=c99
 libbitcoin_common_a_SOURCES = \
-  allocators.cpp \
   amount.cpp \
   base58.cpp \
   bech32.cpp \
@@ -594,10 +605,12 @@ endif
 # backward-compatibility objects and their sanity checks are linked.
 libbitcoin_util_a_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_util_a_SOURCES = \
-  allocators.cpp \
+  support/pagelocker.cpp \
+  support/lockedpool.cpp \
   compat/strnlen.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
+  fs.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
   random.cpp \
@@ -714,19 +727,26 @@ libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) $(BITCOIN_INCLUDES) -I$(build
 
 endif
 
-CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a
+CTAES_DIST = crypto/ctaes/ctaes.c crypto/ctaes/ctaes.h
+
+CLEANFILES = $(EXTRA_LIBRARIES)
+
+CLEANFILES += leveldb/libleveldb.a leveldb/libmemenv.a
 CLEANFILES += *.a *.la crypto/*.a cryptopp/*.a qt/*.a
 CLEANFILES += *.gcda *.gcno
 CLEANFILES += compat/*.gcda compat/*.gcno
+CLEANFILES += consensus/*.gcda consensus/*.gcno
 CLEANFILES += crypto/*.gcda crypto/*.gcno
+CLEANFILES += policy/*.gcda policy/*.gcno
 CLEANFILES += primitives/*.gcda primitives/*.gcno
 CLEANFILES += script/*.gcda script/*.gcno
+CLEANFILES += support/*.gcda support/*.gcno
 CLEANFILES += univalue/*.gcda univalue/*.gcno
 CLEANFILES += zmq/*.gcda zmq/*.gcno
 
 DISTCLEANFILES = obj/build.h
 
-EXTRA_DIST = leveldb
+EXTRA_DIST = leveldb $(CTAES_DIST)
 
 # workaround for travis builds
 dist_pkgdata_DATA = multipliers.hpp univalue/univalue_utffilter.h

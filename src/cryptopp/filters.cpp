@@ -35,14 +35,14 @@ BufferedTransformation * Filter::NewDefaultAttachment() const
 
 BufferedTransformation * Filter::AttachedTransformation()
 {
-	if (m_attachment.get() == NULL)
+	if (m_attachment.get() == nullptr)
 		m_attachment.reset(NewDefaultAttachment());
 	return m_attachment.get();
 }
 
 const BufferedTransformation *Filter::AttachedTransformation() const
 {
-	if (m_attachment.get() == NULL)
+	if (m_attachment.get() == nullptr)
 		const_cast<Filter *>(this)->m_attachment.reset(NewDefaultAttachment());
 	return m_attachment.get();
 }
@@ -270,7 +270,7 @@ byte *FilterWithBufferedInput::BlockQueue::GetBlock()
 		return ptr;
 	}
 	else
-		return NULL;
+		return nullptr;
 }
 
 byte *FilterWithBufferedInput::BlockQueue::GetContigousBlocks(size_t &numberOfBytes)
@@ -286,7 +286,7 @@ byte *FilterWithBufferedInput::BlockQueue::GetContigousBlocks(size_t &numberOfBy
 
 size_t FilterWithBufferedInput::BlockQueue::GetAll(byte *outString)
 {
-	// Avoid passing NULL pointer to memcpy
+	// Avoid passing nullptr pointer to memcpy
 	if (!outString) return 0;
 
 	size_t size = m_size;
@@ -300,7 +300,7 @@ size_t FilterWithBufferedInput::BlockQueue::GetAll(byte *outString)
 
 void FilterWithBufferedInput::BlockQueue::Put(const byte *inString, size_t length)
 {
-	// Avoid passing NULL pointer to memcpy
+	// Avoid passing nullptr pointer to memcpy
 	if (!inString || !length) return;
 
 	CRYPTOPP_ASSERT(m_size + length <= m_buffer.size());
@@ -423,7 +423,7 @@ size_t FilterWithBufferedInput::PutMaybeModifiable(byte *inString, size_t length
 	if (messageEnd)
 	{
 		if (!m_firstInputDone && m_firstSize==0)
-			FirstPut(NULL);
+			FirstPut(nullptr);
 
 		SecByteBlock temp(m_queue.CurrentSize());
 		m_queue.GetAll(temp);
@@ -433,7 +433,7 @@ size_t FilterWithBufferedInput::PutMaybeModifiable(byte *inString, size_t length
 		m_queue.ResetQueue(1, m_firstSize);
 
 		// Cast to void to suppress Coverity finding
-		(void)Output(1, NULL, 0, messageEnd, blocking);
+		(void)Output(1, nullptr, 0, messageEnd, blocking);
 	}
 	return 0;
 }
@@ -472,7 +472,7 @@ void FilterWithBufferedInput::NextPutMultiple(const byte *inString, size_t lengt
 
 void Redirector::Initialize(const NameValuePairs &parameters, int propagation)
 {
-	m_target = parameters.GetValueWithDefault("RedirectionTargetPointer", (BufferedTransformation*)NULL);
+	m_target = parameters.GetValueWithDefault("RedirectionTargetPointer", (BufferedTransformation*)nullptr);
 	m_behavior = parameters.GetIntValueWithDefault("RedirectionBehavior", PASS_EVERYTHING);
 
 	if (m_target && GetPassSignals())
@@ -535,7 +535,7 @@ size_t ArraySink::Put2(const byte *begin, size_t length, int messageEnd, bool bl
 {
 	CRYPTOPP_UNUSED(messageEnd); CRYPTOPP_UNUSED(blocking);
 
-	// Avoid passing NULL pointer to memcpy. Using memmove due to
+	// Avoid passing nullptr pointer to memcpy. Using memmove due to
 	//  Valgrind finding on overlapping buffers.
 	size_t copied = 0;
 	if (m_buf && begin)
@@ -566,7 +566,7 @@ size_t ArrayXorSink::Put2(const byte *begin, size_t length, int messageEnd, bool
 {
 	CRYPTOPP_UNUSED(messageEnd); CRYPTOPP_UNUSED(blocking);
 
-	// Avoid passing NULL pointer to xorbuf
+	// Avoid passing nullptr pointer to xorbuf
 	size_t copied = 0;
 	if (m_buf && begin)
 	{
@@ -661,7 +661,7 @@ void StreamTransformationFilter::NextPutModifiable(byte *inString, size_t length
 
 void StreamTransformationFilter::LastPut(const byte *inString, size_t length)
 {
-	byte *space = NULL;
+	byte *space = nullptr;
 
 	switch (m_padding)
 	{
@@ -754,7 +754,7 @@ void StreamTransformationFilter::LastPut(const byte *inString, size_t length)
 // *************************************************************
 
 HashFilter::HashFilter(HashTransformation &hm, BufferedTransformation *attachment, bool putMessage, int truncatedDigestSize, const std::string &messagePutChannel, const std::string &hashPutChannel)
-	: m_hashModule(hm), m_putMessage(putMessage), m_digestSize(0), m_space(NULL)
+	: m_hashModule(hm), m_putMessage(putMessage), m_digestSize(0), m_space(nullptr)
 	, m_messagePutChannel(messagePutChannel), m_hashPutChannel(hashPutChannel)
 {
 	m_digestSize = truncatedDigestSize < 0 ? m_hashModule.DigestSize() : truncatedDigestSize;

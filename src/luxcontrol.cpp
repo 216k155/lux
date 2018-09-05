@@ -140,8 +140,8 @@ void LuxControlConnection::readcb(struct bufferevent *bev, void *ctx)
     size_t n_read_out = 0;
     char *line;
     assert(input);
-    //  If there is not a whole line to read, evbuffer_readln returns NULL
-    while((line = evbuffer_readln(input, &n_read_out, EVBUFFER_EOL_CRLF)) != NULL)
+    //  If there is not a whole line to read, evbuffer_readln returns nullptr
+    while((line = evbuffer_readln(input, &n_read_out, EVBUFFER_EOL_CRLF)) != nullptr)
     {
         std::string s(line, n_read_out);
         free(line);
@@ -163,7 +163,7 @@ void LuxControlConnection::readcb(struct bufferevent *bev, void *ctx)
                     self->reply_handlers.front()(*self, self->message);
                     self->reply_handlers.pop_front();
                 } else {
-                    LogPrint("lux", "lux: Received unexpected sync reply %i\n", self->message.code);
+                    LogPrint(BCLog::LUX, "lux: Received unexpected sync reply %i\n", self->message.code);
                 }
             }
             self->message.Clear();
@@ -182,13 +182,13 @@ void LuxControlConnection::eventcb(struct bufferevent *bev, short what, void *ct
 {
     LuxControlConnection *self = (LuxControlConnection*)ctx;
     if (what & BEV_EVENT_CONNECTED) {
-        LogPrint("lux", "lux: Successfully connected!\n");
+        LogPrint(BCLog::LUX, "lux: Successfully connected!\n");
         self->connected(*self);
     } else if (what & (BEV_EVENT_EOF|BEV_EVENT_ERROR)) {
         if (what & BEV_EVENT_ERROR) {
-            LogPrint("lux", "lux: Error connecting to Lux control socket\n");
+            LogPrint(BCLog::LUX, "lux: Error connecting to Lux control socket\n");
         } else {
-            LogPrint("lux", "lux: End of stream\n");
+            LogPrint(BCLog::LUX, "lux: End of stream\n");
         }
         self->Disconnect();
         self->disconnected(*self);
@@ -212,7 +212,7 @@ bool LuxControlConnection::Connect(const std::string &target, const ConnectionCB
     b_conn = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
     if (!b_conn)
         return false;
-    bufferevent_setcb(b_conn, LuxControlConnection::readcb, NULL, LuxControlConnection::eventcb, this);
+    bufferevent_setcb(b_conn, LuxControlConnection::readcb, nullptr, LuxControlConnection::eventcb, this);
     bufferevent_enable(b_conn, EV_READ|EV_WRITE);
     this->connected = _connected;
     this->disconnected = _disconnected;
@@ -314,7 +314,7 @@ static std::map<std::string,std::string> ParseLuxReplyMapping(const std::string 
                         if (j == 3 && value[i] > '3') {
                             j--;
                         }
-                        escaped_value.push_back(strtol(value.substr(i, j).c_str(), NULL, 8));
+                        escaped_value.push_back(strtol(value.substr(i, j).c_str(), nullptr, 8));
                         // Account for automatic incrementing at loop end
                         i += j - 1;
                     } else {
@@ -348,7 +348,7 @@ static std::map<std::string,std::string> ParseLuxReplyMapping(const std::string 
 static std::pair<bool,std::string> ReadBinaryFile(const std::string &filename, size_t maxsize=std::numeric_limits<size_t>::max())
 {
     FILE *f = fopen(filename.c_str(), "rb");
-    if (f == NULL)
+    if (f == nullptr)
         return std::make_pair(false,"");
     std::string retval;
     char buffer[128];
@@ -372,7 +372,7 @@ static std::pair<bool,std::string> ReadBinaryFile(const std::string &filename, s
 static bool WriteBinaryFile(const std::string &filename, const std::string &data)
 {
     FILE *f = fopen(filename.c_str(), "wb");
-    if (f == NULL)
+    if (f == nullptr)
         return false;
     if (fwrite(data.data(), 1, data.size(), f) != data.size()) {
         fclose(f);
@@ -446,7 +446,7 @@ LuxController::LuxController(struct event_base* _base, const std::string& _targe
     // Read service private key if cached
     std::pair<bool,std::string> pkf = ReadBinaryFile(GetPrivateKeyFile());
     if (pkf.first) {
-        LogPrint("lux", "lux: Reading cached private key from %s\n", GetPrivateKeyFile());
+        LogPrint(BCLog::LUX, "lux: Reading cached private key from %s\n", GetPrivateKeyFile());
         private_key = pkf.second;
     }
 }
@@ -465,7 +465,7 @@ LuxController::~LuxController()
 void LuxController::add_onion_cb(LuxControlConnection& _conn, const LuxControlReply& reply)
 {
     if (reply.code == 250) {
-        LogPrint("lux", "lux: ADD_ONION successful\n");
+        LogPrint(BCLog::LUX, "lux: ADD_ONION successful\n");
         for (const std::string &s : reply.lines) {
             std::map<std::string,std::string> m = ParseLuxReplyMapping(s);
             std::map<std::string,std::string>::iterator i;
@@ -484,7 +484,7 @@ void LuxController::add_onion_cb(LuxControlConnection& _conn, const LuxControlRe
         LookupNumeric(std::string(service_id+".onion").c_str(), service, GetListenPort());
         LogPrintf("lux: Got service ID %s, advertising service %s\n", service_id, service.ToString());
         if (WriteBinaryFile(GetPrivateKeyFile(), private_key)) {
-            LogPrint("lux", "lux: Cached service private key to %s\n", GetPrivateKeyFile());
+            LogPrint(BCLog::LUX, "lux: Cached service private key to %s\n", GetPrivateKeyFile());
         } else {
             LogPrintf("lux: Error writing service private key to %s\n", GetPrivateKeyFile());
         }
@@ -500,7 +500,7 @@ void LuxController::add_onion_cb(LuxControlConnection& _conn, const LuxControlRe
 void LuxController::auth_cb(LuxControlConnection& _conn, const LuxControlReply& reply)
 {
     if (reply.code == 250) {
-        LogPrint("lux", "lux: Authentication successful\n");
+        LogPrint(BCLog::LUX, "lux: Authentication successful\n");
 
         // Now that we know Lux is running setup the proxy for onion addresses
         // if -onion isn't set to something else.
@@ -555,7 +555,7 @@ static std::vector<uint8_t> ComputeResponse(const std::string &key, const std::v
 void LuxController::authchallenge_cb(LuxControlConnection& _conn, const LuxControlReply& reply)
 {
     if (reply.code == 250) {
-        LogPrint("lux", "lux: SAFECOOKIE authentication challenge successful\n");
+        LogPrint(BCLog::LUX, "lux: SAFECOOKIE authentication challenge successful\n");
         std::pair<std::string,std::string> l = SplitLuxReplyLine(reply.lines[0]);
         if (l.first == "AUTHCHALLENGE") {
             std::map<std::string,std::string> m = ParseLuxReplyMapping(l.second);
@@ -565,7 +565,7 @@ void LuxController::authchallenge_cb(LuxControlConnection& _conn, const LuxContr
             }
             std::vector<uint8_t> serverHash = ParseHex(m["SERVERHASH"]);
             std::vector<uint8_t> serverNonce = ParseHex(m["SERVERNONCE"]);
-            LogPrint("lux", "lux: AUTHCHALLENGE ServerHash %s ServerNonce %s\n", HexStr(serverHash), HexStr(serverNonce));
+            LogPrint(BCLog::LUX, "lux: AUTHCHALLENGE ServerHash %s ServerNonce %s\n", HexStr(serverHash), HexStr(serverNonce));
             if (serverNonce.size() != 32) {
                 LogPrintf("lux: ServerNonce is not 32 bytes, as required by spec\n");
                 return;
@@ -610,12 +610,12 @@ void LuxController::protocolinfo_cb(LuxControlConnection& _conn, const LuxContro
                 std::map<std::string,std::string> m = ParseLuxReplyMapping(l.second);
                 std::map<std::string,std::string>::iterator i;
                 if ((i = m.find("Lux")) != m.end()) {
-                    LogPrint("lux", "lux: Connected to Lux version %s\n", i->second);
+                    LogPrint(BCLog::LUX, "lux: Connected to Lux version %s\n", i->second);
                 }
             }
         }
         for (const std::string &s : methods) {
-            LogPrint("lux", "lux: Supported authentication method: %s\n", s);
+            LogPrint(BCLog::LUX, "lux: Supported authentication method: %s\n", s);
         }
         // Prefer NULL, otherwise SAFECOOKIE. If a password is provided, use HASHEDPASSWORD
         /* Authentication:
@@ -625,18 +625,18 @@ void LuxController::protocolinfo_cb(LuxControlConnection& _conn, const LuxContro
         std::string luxpassword = GetArg("-luxpassword", "");
         if (!luxpassword.empty()) {
             if (methods.count("HASHEDPASSWORD")) {
-                LogPrint("lux", "lux: Using HASHEDPASSWORD authentication\n");
+                LogPrint(BCLog::LUX, "lux: Using HASHEDPASSWORD authentication\n");
                 boost::replace_all(luxpassword, "\"", "\\\"");
                 _conn.Command("AUTHENTICATE \"" + luxpassword + "\"", boost::bind(&LuxController::auth_cb, this, _1, _2));
             } else {
                 LogPrintf("lux: Password provided with -luxpassword, but HASHEDPASSWORD authentication is not available\n");
             }
-        } else if (methods.count("NULL")) {
-            LogPrint("lux", "lux: Using NULL authentication\n");
+        } else if (methods.count("nullptr")) {
+            LogPrint(BCLog::LUX, "lux: Using nullptr authentication\n");
             _conn.Command("AUTHENTICATE", boost::bind(&LuxController::auth_cb, this, _1, _2));
         } else if (methods.count("SAFECOOKIE")) {
             // Cookie: hexdump -e '32/1 "%02x""\n"'  ~/.lux/control_auth_cookie
-            LogPrint("lux", "lux: Using SAFECOOKIE authentication, reading cookie authentication from %s\n", cookiefile);
+            LogPrint(BCLog::LUX, "lux: Using SAFECOOKIE authentication, reading cookie authentication from %s\n", cookiefile);
             std::pair<bool,std::string> status_cookie = ReadBinaryFile(cookiefile, LUX_COOKIE_SIZE);
             if (status_cookie.first && status_cookie.second.size() == LUX_COOKIE_SIZE) {
                 // _conn.Command("AUTHENTICATE " + HexStr(status_cookie.second), boost::bind(&LuxController::auth_cb, this, _1, _2));
@@ -678,7 +678,7 @@ void LuxController::disconnected_cb(LuxControlConnection& _conn)
     if (!reconnect)
         return;
 
-    LogPrint("lux", "lux: Not connected to Lux control port %s, trying to reconnect\n", target);
+    LogPrint(BCLog::LUX, "lux: Not connected to Lux control port %s, trying to reconnect\n", target);
 
     // Single-shot timer for reconnect. Use exponential backoff.
     struct timeval time = MillisToTimeval(int64_t(reconnect_timeout * 1000.0));

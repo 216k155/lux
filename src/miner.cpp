@@ -231,14 +231,14 @@ void BlockAssembler::RebuildRefundTransaction(){
 
     //note, this will need changed for MPoS
 
-    pblock->vtx[refundtx] = std::move(CTransaction(contrTx));
+    pblock->vtx[refundtx] = MakeTransactionRef(std::move(CTransaction(contrTx)));
 }
 
 std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithKey(CReserveKey& reservekey, bool fMineWitnessTx, bool fProofOfStake, int64_t* pTotalFees, int32_t txProofTime, int32_t nTimeLimit)
 {
     CPubKey pubkey;
     if (!reservekey.GetReservedKey(pubkey))
-        return NULL;
+        return nullptr;
 
     CScript scriptPubKey = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
     return CreateNewBlock(scriptPubKey, fMineWitnessTx, fProofOfStake, pTotalFees, txProofTime, nTimeLimit);
@@ -265,7 +265,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
 
-    LOCK2(cs_main, mempool.cs);
+    //LOCK2(cs_main, mempool.cs);
+    LOCK(cs_main);
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return nullptr;
 
@@ -345,13 +346,13 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     originalRewardTx = coinbaseTx;
 
-    pblock->vtx[0] = std::move(coinbaseTx);
+    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 
     if (fProofOfStake && !stake->CreateBlockStake(pwalletMain, pblock))
         return nullptr;
 
     if (fProofOfStake)
-        originalRewardTx = CMutableTransaction(pblock->vtx[1]);
+        originalRewardTx = CMutableTransaction(*(pblock->vtx[1]));
 
     //////////////////////////////////////////////////////// lux
     LuxDGP luxDGP(globalState.get(), fGettingValuesDGP);
@@ -396,7 +397,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vTxFees[0] = -nFees;
 
     uint64_t nSerializeSize = GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION);
-    LogPrint("miner", "CreateNewBlock(): total size: %u block weight: %u txs: %u fees: %ld sigops %d\n", nSerializeSize, GetBlockCost(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
+    LogPrint(BCLog::LDEBUG, "CreateNewBlock(): total size: %u block weight: %u txs: %u fees: %ld sigops %d\n", nSerializeSize, GetBlockCost(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
 
     // The total fee is the Fees minus the Refund
     if (pTotalFees)
@@ -405,7 +406,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
     pblock->nNonce         = 0;
-    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(pblock->vtx[0]);
+    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*(pblock->vtx[0]));
 
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
@@ -556,7 +557,7 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     uint64_t nBlockSize = this->nBlockSize;
     uint64_t nBlockSigOpsCost = this->nBlockSigOpsCost;
 
-    LuxTxConverter convert(iter->GetTx(), NULL, &pblock->vtx);
+    LuxTxConverter convert(iter->GetTx(), nullptr, &pblock->vtx);
 
     ExtractLuxTX resultConverter;
     if(!convert.extractionLuxTransactions(resultConverter)){
@@ -625,10 +626,10 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     //calculate sigops from new refund/proof tx
 
     //first, subtract old proof tx
-    nBlockSigOpsCost -= GetLegacySigOpCount(pblock->vtx[proofTx]);
+    nBlockSigOpsCost -= GetLegacySigOpCount(*(pblock->vtx[proofTx]));
 
     // manually rebuild refundtx
-    CMutableTransaction contrTx(pblock->vtx[proofTx]);
+    CMutableTransaction contrTx(*(pblock->vtx[proofTx]));
     //note, this will need changed for MPoS
     int i=contrTx.vout.size();
     contrTx.vout.resize(contrTx.vout.size()+testExecResult.refundOutputs.size());
@@ -656,7 +657,7 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     bceResult.refundOutputs.insert(bceResult.refundOutputs.end(), testExecResult.refundOutputs.begin(), testExecResult.refundOutputs.end());
     bceResult.valueTransfers = std::move(testExecResult.valueTransfers);
 
-    pblock->vtx.emplace_back(iter->GetTx());
+    pblock->vtx.emplace_back(MakeTransactionRef(iter->GetTx()));
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
     if (fNeedSizeAccounting) {
@@ -669,7 +670,7 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
     inBlock.insert(iter);
 
     for (CTransaction &t : bceResult.valueTransfers) {
-        pblock->vtx.emplace_back(std::move(t));
+        pblock->vtx.emplace_back(MakeTransactionRef(t));
         if (fNeedSizeAccounting) {
             this->nBlockSize += ::GetSerializeSize(t, SER_NETWORK, PROTOCOL_VERSION);
         }
@@ -678,9 +679,9 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
         ++nBlockTx;
     }
     //calculate sigops from new refund/proof tx
-    this->nBlockSigOpsCost -= GetLegacySigOpCount(pblock->vtx[proofTx]);
+    this->nBlockSigOpsCost -= GetLegacySigOpCount(*(pblock->vtx[proofTx]));
     RebuildRefundTransaction();
-    this->nBlockSigOpsCost += GetLegacySigOpCount(pblock->vtx[proofTx]);
+    this->nBlockSigOpsCost += GetLegacySigOpCount(*(pblock->vtx[proofTx]));
 
     bceResult.valueTransfers.clear();
 
@@ -689,7 +690,7 @@ bool BlockAssembler::AttemptToAddContractToBlock(CTxMemPool::txiter iter, uint64
 
 void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
 {
-    pblock->vtx.emplace_back(iter->GetTx());
+    pblock->vtx.emplace_back(iter->GetSharedTx());
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
     if (fNeedSizeAccounting) {
@@ -1040,11 +1041,11 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
     }
     ++nExtraNonce;
     unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
-    CMutableTransaction txCoinbase(pblock->vtx[0]);
+    CMutableTransaction txCoinbase(*(pblock->vtx[0]));
     txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
-    pblock->vtx[0] = std::move(CTransaction(txCoinbase));
+    pblock->vtx[0] = MakeTransactionRef(std::move(txCoinbase));
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 }
 
@@ -1056,7 +1057,7 @@ bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
         if (pblock->hashPrevBlock != chainActive.Tip()->GetBlockHash())
             return error("LUXMiner : generated block is stale");
 
-        for(const CTxIn& vin : pblock->vtx[1].vin) {
+        for(const CTxIn& vin : pblock->vtx[1]->vin) {
             if (wallet.IsSpent(vin.prevout.hash, vin.prevout.n)) {
                 return error("LUXMiner : Gen block stake is invalid - UTXO spent");
             }
@@ -1086,8 +1087,13 @@ bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     // Process this block the same as if we had received it from another node
     const CChainParams& chainparams = Params();
     CValidationState state;
-    if (!ProcessNewBlock(state, chainparams, NULL, pblock)) {
+    if (!ProcessNewBlock(state, chainparams, nullptr, pblock)) {
         return error("LUXMiner : ProcessNewBlock, block not accepted");
+    }
+
+    {
+        LOCK(stake->stakeMiner.lock);
+        stake->stakeMiner.nBlocksAccepted++;
     }
 
     return true;

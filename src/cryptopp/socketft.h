@@ -70,14 +70,14 @@ public:
 	void CloseSocket();
 
 	void Create(int nType = SOCK_STREAM);
-	void Bind(unsigned int port, const char *addr=NULL);
+	void Bind(unsigned int port, const char *addr=nullptr);
 	void Bind(const sockaddr* psa, socklen_t saLen);
 	void Listen(int backlog = SOMAXCONN);
 	// the next three functions return false if the socket is in nonblocking mode
 	// and the operation cannot be completed immediately
 	bool Connect(const char *addr, unsigned int port);
 	bool Connect(const sockaddr* psa, socklen_t saLen);
-	bool Accept(Socket& s, sockaddr *psa=NULL, socklen_t *psaLen=NULL);
+	bool Accept(Socket& s, sockaddr *psa=nullptr, socklen_t *psaLen=nullptr);
 	void GetSockName(sockaddr *psa, socklen_t *psaLen);
 	void GetPeerName(sockaddr *psa, socklen_t *psaLen);
 	unsigned int Send(const byte* buf, size_t bufLen, int flags=0);
@@ -194,7 +194,7 @@ private:
 class SocketSource : public NetworkSource, public Socket
 {
 public:
-	SocketSource(socket_t s = INVALID_SOCKET, bool pumpAll = false, BufferedTransformation *attachment = NULL)
+	SocketSource(socket_t s = INVALID_SOCKET, bool pumpAll = false, BufferedTransformation *attachment = nullptr)
 		: NetworkSource(attachment), Socket(s), m_receiver(*this)
 	{
 		if (pumpAll)

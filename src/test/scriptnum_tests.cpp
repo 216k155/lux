@@ -2,7 +2,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "bignum.h"
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#include "test/bignum.h"
+#else
+#include "test/bignum.hpp"
+#endif
+
 #include "script/script.h"
 #include <boost/test/unit_test.hpp>
 #include <limits.h>

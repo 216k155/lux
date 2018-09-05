@@ -21,9 +21,9 @@
 
 using namespace std;
 
-UniValue getconnectioncount(const UniValue& params, bool fHelp)
+UniValue getconnectioncount(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getconnectioncount\n"
             "\nReturns the number of connections to other nodes.\n"
@@ -36,9 +36,9 @@ UniValue getconnectioncount(const UniValue& params, bool fHelp)
     return (int)vNodes.size();
 }
 
-UniValue ping(const UniValue& params, bool fHelp)
+UniValue ping(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "ping\n"
             "\nRequests that a ping be sent to all other nodes, to measure ping time.\n"
@@ -50,8 +50,7 @@ UniValue ping(const UniValue& params, bool fHelp)
     // Request that each node send a ping during next message processing pass
     LOCK2(cs_main, cs_vNodes);
     for (CNode* pNode : vNodes) {
-        if (pNode)
-            pNode->fPingQueued = true;
+        pNode->fPingQueued = true;
     }
 
     return NullUniValue;
@@ -64,16 +63,15 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
     LOCK(cs_vNodes);
     vstats.reserve(vNodes.size());
     for (CNode* pnode : vNodes) {
-        if (!pnode) continue;
         CNodeStats stats;
         pnode->copyStats(stats);
         vstats.push_back(stats);
     }
 }
 
-UniValue getpeerinfo(const UniValue& params, bool fHelp)
+UniValue getpeerinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getpeerinfo\n"
             "\nReturns data about each connected network node as a json array of objects.\n"
@@ -102,6 +100,14 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
             "       n,                        (numeric) The heights of blocks we're currently asking from this peer\n"
             "       ...\n"
             "    ]\n"
+            "    \"bytessent_per_msg\": {\n"
+            "       \"addr\": n,             (numeric) The total bytes sent aggregated by message type\n"
+            "       ...\n"
+            "    }\n"
+            "    \"bytesrecv_per_msg\": {\n"
+            "       \"addr\": n,             (numeric) The total bytes received aggregated by message type\n"
+            "       ...\n"
+            "    }\n"
             "  }\n"
             "  ,...\n"
             "]\n"
@@ -151,18 +157,32 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
         }
         obj.push_back(Pair("whitelisted", stats.fWhitelisted));
 
+        UniValue sendPerMsgCmd(UniValue::VOBJ);
+        for (const mapMsgCmdSize::value_type &i : stats.mapSendBytesPerMsgCmd) {
+            if (i.second > 0)
+                sendPerMsgCmd.push_back(Pair(i.first, i.second));
+        }
+        obj.push_back(Pair("bytessent_per_msg", sendPerMsgCmd));
+
+        UniValue recvPerMsgCmd(UniValue::VOBJ);
+        for (const mapMsgCmdSize::value_type &i : stats.mapRecvBytesPerMsgCmd) {
+            if (i.second > 0)
+                recvPerMsgCmd.push_back(Pair(i.first, i.second));
+        }
+        obj.push_back(Pair("bytesrecv_per_msg", recvPerMsgCmd));
+
         ret.push_back(obj);
     }
 
     return ret;
 }
 
-UniValue addnode(const UniValue& params, bool fHelp)
+UniValue addnode(const JSONRPCRequest& request)
 {
     string strCommand;
-    if (params.size() == 2)
-        strCommand = params[1].get_str();
-    if (fHelp || params.size() != 2 ||
+    if (request.params.size() == 2)
+        strCommand = request.params[1].get_str();
+    if (request.fHelp || request.params.size() != 2 ||
         (strCommand != "onetry" && strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
             "addnode \"node\" \"add|remove|onetry\"\n"
@@ -174,11 +194,11 @@ UniValue addnode(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("addnode", "\"192.168.0.6:51472\" \"onetry\"") + HelpExampleRpc("addnode", "\"192.168.0.6:51472\", \"onetry\""));
 
-    string strNode = params[0].get_str();
+    string strNode = request.params[0].get_str();
 
     if (strCommand == "onetry") {
         CAddress addr;
-        OpenNetworkConnection(addr, false, NULL, strNode.c_str());
+        OpenNetworkConnection(addr, false, nullptr, strNode.c_str());
         return NullUniValue;
     }
 
@@ -201,9 +221,9 @@ UniValue addnode(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue disconnectnode(const UniValue& params, bool fHelp)
+UniValue disconnectnode(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
                 "disconnectnode \"node\" \n"
                 "\nImmediately disconnects from the specified node.\n"
@@ -214,8 +234,8 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
                 + HelpExampleRpc("disconnectnode", "\"192.168.0.6:8333\"")
         );
 
-    CNode* pNode = FindNode(params[0].get_str());
-    if (pNode == NULL)
+    CNode* pNode = FindNode(request.params[0].get_str());
+    if (pNode == nullptr)
         throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
 
     pNode->CloseSocketDisconnect();
@@ -223,9 +243,9 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
+UniValue getaddednodeinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "getaddednodeinfo dns ( \"node\" )\n"
             "\nReturns information about the given added node, or all added nodes\n"
@@ -254,10 +274,10 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
 
     std::vector<AddedNodeInfo> vInfo = GetAddedNodeInfo();
 
-    if (params.size() == 2) {
+    if (request.params.size() == 2) {
         bool found = false;
         for (const AddedNodeInfo& info : vInfo) {
-            if (info.strAddedNode == params[1].get_str()) {
+            if (info.strAddedNode == request.params[1].get_str()) {
                 vInfo.assign(1, info);
                 found = true;
                 break;
@@ -288,9 +308,9 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue getnettotals(const UniValue& params, bool fHelp)
+UniValue getnettotals(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 0)
+    if (request.fHelp || request.params.size() > 0)
         throw runtime_error(
             "getnettotals\n"
             "\nReturns information about network traffic, including bytes in, bytes out,\n"
@@ -311,8 +331,8 @@ UniValue getnettotals(const UniValue& params, bool fHelp)
     return obj;
 }
 
-UniValue switchnetwork(const UniValue& params, bool fHelp) {
-    if (fHelp || params.size() != 0)
+UniValue switchnetwork(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "switchnetwork\n"
             "Toggle all network activity temporarily.");
@@ -341,9 +361,9 @@ static UniValue GetNetworksInfo()
     return networks;
 }
 
-UniValue getnetworkinfo(const UniValue& params, bool fHelp)
+UniValue getnetworkinfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getnetworkinfo\n"
             "Returns an object containing various state info regarding P2P networking.\n"
@@ -404,38 +424,39 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
     return obj;
 }
 
-UniValue setban(const UniValue& params, bool fHelp)
+UniValue setban(const JSONRPCRequest& request)
 {
     string strCommand;
-    if (params.size() >= 2)
-        strCommand = params[1].get_str();
-    if (fHelp || params.size() < 2 ||
+    if (request.params.size() >= 2)
+        strCommand = request.params[1].get_str();
+    if (request.fHelp || request.params.size() < 2 ||
         (strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
-                "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
-                "\nAttempts add or remove a IP/Subnet from the banned list.\n"
-                "\nArguments:\n"
-                "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
-                "2. \"command\"      (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list\n"
-                "3. \"bantime\"      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)\n"
-                "4. \"absolute\"     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
-                "\nExamples:\n"
-                + HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
-                + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
-                + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400")
-        );
+            "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
+            "\nAttempts add or remove a IP/Subnet from the banned list.\n"
+
+            "\nArguments:\n"
+            "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
+            "2. \"command\"      (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list\n"
+            "3. \"bantime\"      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)\n"
+            "4. \"absolute\"     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
+
+            "\nExamples:\n"
+            + HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
+            + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
+            + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400"));
 
     CSubNet subNet;
     CNetAddr netAddr;
     bool isSubnet = false;
 
-    if (params[0].get_str().find("/") != string::npos)
+    if (request.params[0].get_str().find("/") != string::npos)
         isSubnet = true;
 
     if (!isSubnet)
-        netAddr = CNetAddr(params[0].get_str());
+        netAddr = CNetAddr(request.params[0].get_str());
     else
-        subNet = CSubNet(params[0].get_str());
+        subNet = CSubNet(request.params[0].get_str());
 
     if (! (isSubnet ? subNet.IsValid() : netAddr.IsValid()) )
         throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: Invalid IP/Subnet");
@@ -446,14 +467,14 @@ UniValue setban(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: IP/Subnet already banned");
 
         int64_t banTime = 0; //use standard bantime if not specified
-        if (params.size() >= 3 && !params[2].isNull())
-            banTime = params[2].get_int64();
+        if (request.params.size() >= 3 && !request.params[2].isNull())
+            banTime = request.params[2].get_int64();
 
         bool absolute = false;
-        if (params.size() == 4 && params[3].isTrue())
+        if (request.params.size() == 4 && request.params[3].isTrue())
             absolute = true;
 
-        isSubnet ? CNode::Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : CNode::Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
+        isSubnet ? CNode::Ban(subNet, BanReasonManually, banTime, absolute) : CNode::Ban(netAddr, BanReasonManually, banTime, absolute);
 
         //disconnect possible nodes
         while(CNode *bannedNode = (isSubnet ? FindNode(subNet) : FindNode(netAddr)))
@@ -471,9 +492,9 @@ UniValue setban(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue listbanned(const UniValue& params, bool fHelp)
+UniValue listbanned(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
                 "listbanned\n"
                 "\nList all banned IPs/Subnets.\n"
@@ -501,9 +522,9 @@ UniValue listbanned(const UniValue& params, bool fHelp)
     return bannedAddresses;
 }
 
-UniValue clearbanned(const UniValue& params, bool fHelp)
+UniValue clearbanned(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "clearbanned\n"
             "\nClear all banned IPs.\n"

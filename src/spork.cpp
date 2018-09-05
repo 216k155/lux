@@ -141,7 +141,7 @@ void ExecuteSpork(int nSporkID, int nValue) {
                 ActivateBestChain(state, Params(), nullptr);
             }
 
-            if (pindex->pprev == NULL) {
+            if (pindex->pprev == nullptr) {
                 assert(pindex);
                 break;
             }
@@ -213,8 +213,7 @@ void CSporkManager::Relay(CSporkMessage& msg) {
     vInv.push_back(inv);
     LOCK(cs_vNodes);
     for (CNode* pnode : vNodes) {
-        if (pnode)
-            pnode->PushMessage("inv", vInv);
+        pnode->PushMessage("inv", vInv);
     }
 }
 

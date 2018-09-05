@@ -6,6 +6,7 @@
 #ifndef BITCOIN_NET_H
 #define BITCOIN_NET_H
 
+#include "addrdb.h"
 #include "bloom.h"
 #include "compat.h"
 #include "hash.h"
@@ -18,6 +19,7 @@
 #include "sync.h"
 #include "uint256.h"
 #include "utilstrencodings.h"
+#include "fs.h"
 
 #include <atomic>
 #include <deque>
@@ -30,7 +32,6 @@
 #include <arpa/inet.h>
 #endif
 
-#include <boost/filesystem/path.hpp>
 #include <boost/signals2/signal.hpp>
 
 class CAddrMan;
@@ -80,13 +81,39 @@ CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
-CNode* ConnectNode(CAddress addrConnect, const char* pszDest = NULL, bool darkSendMaster = false);
-bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false, bool fAddnode = false);
+CNode* ConnectNode(CAddress addrConnect, const char* pszDest = nullptr, bool darkSendMaster = false);
+bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false, bool fAddnode = false);
+
+struct ListenSocket {
+    SOCKET socket;
+    bool whitelisted;
+
+    ListenSocket(SOCKET socket_, bool whitelisted_) : socket(socket_), whitelisted(whitelisted_) {}
+};
+
+class CConnman
+{
+public:
+    CConnman();
+    ~CConnman();
+    bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
+    void Stop();
+private:
+    void ThreadOpenAddedConnections();
+    void ProcessOneShot();
+    void ThreadOpenConnections();
+    void ThreadMessageHandler();
+    void AcceptConnection(const ListenSocket& hListenSocket);
+    void ThreadSocketHandler();
+    void ThreadDNSAddressSeed();
+};
+extern std::unique_ptr<CConnman> g_connman;
+
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
 bool BindListenPort(const CService& bindAddr, std::string& strError, bool fWhitelisted = false);
-void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
-bool StopNode();
+bool StartNode(CConnman& connman, boost::thread_group& threadGroup, CScheduler& scheduler, std::string& strNodeError);
+bool StopNode(CConnman& connman);
 void SocketSendData(CNode* pnode);
 
 typedef int NodeId;
@@ -124,11 +151,11 @@ bool AddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 bool RemoveLocal(const CService& addr);
 bool SeenLocal(const CService& addr);
 bool IsLocal(const CService& addr);
-bool GetLocal(CService& addr, const CNetAddr* paddrPeer = NULL);
+bool GetLocal(CService& addr, const CNetAddr* paddrPeer = nullptr);
 bool IsReachable(enum Network net);
 bool IsReachable(const CNetAddr& addr);
 void SetReachable(enum Network net, bool fFlag = true);
-CAddress GetLocalAddress(const CNetAddr* paddrPeer = NULL);
+CAddress GetLocalAddress(const CNetAddr* paddrPeer = nullptr);
 
 
 extern bool fDiscover;
@@ -161,7 +188,7 @@ struct LocalServiceInfo {
 
 extern CCriticalSection cs_mapLocalHost;
 extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
-
+typedef std::map<std::string, uint64_t> mapMsgCmdSize; //command, total bytes
 class CNodeStats
 {
 public:
@@ -176,7 +203,9 @@ public:
     bool fInbound;
     int nStartingHeight;
     uint64_t nSendBytes;
+    mapMsgCmdSize mapSendBytesPerMsgCmd;
     uint64_t nRecvBytes;
+    mapMsgCmdSize mapRecvBytesPerMsgCmd;
     bool fWhitelisted;
     double dPingTime;
     double dPingWait;
@@ -223,69 +252,6 @@ public:
     int readHeader(const char* pch, unsigned int nBytes);
     int readData(const char* pch, unsigned int nBytes);
 };
-
-
-typedef enum BanReason
-{
-    BanReasonUnknown          = 0,
-    BanReasonNodeMisbehaving  = 1,
-    BanReasonManuallyAdded    = 2
-} BanReason;
-
-class CBanEntry
-{
-public:
-    static const int CURRENT_VERSION=1;
-    int nVersion;
-    int64_t nCreateTime;
-    int64_t nBanUntil;
-    uint8_t banReason;
-
-    CBanEntry()
-    {
-        SetNull();
-    }
-
-    CBanEntry(int64_t nCreateTimeIn)
-    {
-        SetNull();
-        nCreateTime = nCreateTimeIn;
-    }
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(this->nVersion);
-        nVersion = this->nVersion;
-        READWRITE(nCreateTime);
-        READWRITE(nBanUntil);
-        READWRITE(banReason);
-    }
-
-    void SetNull()
-    {
-        nVersion = CBanEntry::CURRENT_VERSION;
-        nCreateTime = 0;
-        nBanUntil = 0;
-        banReason = BanReasonUnknown;
-    }
-
-    std::string banReasonToString()
-    {
-        switch (banReason) {
-            case BanReasonNodeMisbehaving:
-                return "node misbehabing";
-            case BanReasonManuallyAdded:
-                return "manually added";
-            default:
-                return "unknown";
-        }
-    }
-};
-
-typedef std::map<CSubNet, CBanEntry> banmap_t;
-
 
 /** Information about a peer */
 class CNode
@@ -341,7 +307,7 @@ public:
      bool fMasternode;
     CSemaphoreGrant grantOutbound;
     CCriticalSection cs_filter;
-    CBloomFilter* pfilter;
+    std::unique_ptr<CBloomFilter> pfilter;
     std::atomic<int> nRefCount;
     NodeId id;
 
@@ -359,6 +325,9 @@ protected:
     static std::vector<CSubNet> vWhitelistedRange;
     static CCriticalSection cs_vWhitelistedRange;
 
+    mapMsgCmdSize mapSendBytesPerMsgCmd;
+    mapMsgCmdSize mapRecvBytesPerMsgCmd;
+
     // Basic fuzz-testing
     void Fuzz(int nChance); // modifies ssSend
 
@@ -375,7 +344,7 @@ public:
     int64_t nNextLocalAddrSend;
 
     // inventory based relay
-    mruset<CInv> setInventoryKnown;
+    CRollingBloomFilter setInventoryKnown;
     std::vector<CInv> vInventoryToSend;
     CCriticalSection cs_inventory;
     std::multimap<int64_t, CInv> mapAskFor;
@@ -413,7 +382,10 @@ public:
 
     int GetRefCount()
     {
-        assert(nRefCount >= 0);
+        if (nRefCount <= 0) {
+            nRefCount = 0;
+            return 0;
+        }
         return nRefCount;
     }
 
@@ -445,8 +417,12 @@ public:
 
     void Release()
     {
+        if (nRefCount <= 0) {
+            nRefCount = 0;
+            return;
+        }
+
         nRefCount--;
-        assert(nRefCount >= 0);
     }
 
 
@@ -474,7 +450,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            setInventoryKnown.insert(inv);
+            setInventoryKnown.insert(inv.GetHash());
         }
     }
 
@@ -482,7 +458,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            if (!setInventoryKnown.count(inv))
+            if (!setInventoryKnown.contains(inv.GetHash()))
                 vInventoryToSend.push_back(inv);
         }
     }
@@ -496,7 +472,7 @@ public:
     void AbortMessage() UNLOCK_FUNCTION(cs_vSend);
 
     // TODO: Document the precondition of this function.  Is cs_vSend locked?
-    void EndMessage() UNLOCK_FUNCTION(cs_vSend);
+    void EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend);
 
     void PushVersion();
 
@@ -505,7 +481,7 @@ public:
     {
         try {
             BeginMessage(pszCommand);
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -518,7 +494,21 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1;
-            EndMessage();
+            EndMessage(pszCommand);
+        } catch (...) {
+            AbortMessage();
+            throw;
+        }
+    }
+
+    /** Send a message containing a1, serialized with flag flag. */
+    template<typename T1>
+    void PushMessageWithFlag(int flag, const char* pszCommand, const T1& a1)
+    {
+        try {
+            BeginMessage(pszCommand);
+            WithOrVersion(&ssSend, flag) << a1;
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -531,7 +521,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -544,8 +534,10 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3;
-            EndMessage();
-        } catch (...) {
+            EndMessage(pszCommand);
+        }
+        catch (...)
+        {
             AbortMessage();
             throw;
         }
@@ -557,7 +549,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -570,7 +562,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -583,7 +575,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -596,7 +588,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -609,7 +601,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -622,7 +614,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -635,7 +627,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -648,7 +640,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10 << a11;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -661,7 +653,7 @@ public:
         try {
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10 << a11 << a12;
-            EndMessage();
+            EndMessage(pszCommand);
         } catch (...) {
             AbortMessage();
             throw;
@@ -742,13 +734,13 @@ public:
     static uint64_t GetTotalBytesRecv();
     static uint64_t GetTotalBytesSent();
 };
-
+/*
 class CExplicitNetCleanup
 {
 public:
     static void callCleanup();
 };
-
+*/
 class CTransaction;
 void RelayTransaction(const CTransaction& tx);
 void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
@@ -763,29 +755,6 @@ void SendDarkSendElectionEntry(const CTxIn &vin, const CService addr, const std:
 void RelayDarkSendElectionEntryPing(const CTxIn &vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
 void SendDarkSendElectionEntryPing(const CTxIn &vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
 void RelayDarkSendCompletedTransaction(const int sessionID, const bool error, const std::string errorMessage);
-
-/** Access to the (IP) address database (peers.dat) */
-class CAddrDB
-{
-private:
-    boost::filesystem::path pathAddr;
-
-public:
-    CAddrDB();
-    bool Write(const CAddrMan& addr);
-    bool Read(CAddrMan& addr);
-};
-
-/** Access to the banlist database (banlist.dat) */
-class CBanDB
-{
-private:
-    boost::filesystem::path pathBanlist;
-public:
-    CBanDB();
-    bool Write(const banmap_t& banSet);
-    bool Read(banmap_t& banSet);
-};
 
 void DumpBanlist();
 

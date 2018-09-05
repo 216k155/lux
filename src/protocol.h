@@ -38,7 +38,7 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(FLATDATA(pchMessageStart));
         READWRITE(FLATDATA(pchCommand));
@@ -63,6 +63,57 @@ public:
     unsigned int nChecksum;
 };
 
+namespace NetMsgType {
+
+    extern const char *VERSION;
+
+    extern const char *VERACK;
+
+    extern const char *ADDR;
+
+    extern const char *INV;
+
+    extern const char *GETDATA;
+
+    extern const char *MERKLEBLOCK;
+
+    extern const char *GETBLOCKS;
+
+    extern const char *GETHEADERS;
+
+    extern const char *TX;
+
+    extern const char *HEADERS;
+
+    extern const char *BLOCK;
+
+    extern const char *GETADDR;
+
+    extern const char *MEMPOOL;
+
+    extern const char *PING;
+
+    extern const char *PONG;
+
+    extern const char *ALERT;
+
+    extern const char *NOTFOUND;
+
+    extern const char *FILTERLOAD;
+
+    extern const char *FILTERADD;
+
+    extern const char *FILTERCLEAR;
+
+    extern const char *REJECT;
+
+    extern const char *SENDHEADERS;
+
+};
+
+/* Get a vector of all valid message types (see above) */
+const std::vector<std::string> &getAllNetMessageTypes();
+
 /** nServices flags */
 enum ServiceFlags : uint64_t {
     // Nothing
@@ -71,6 +122,10 @@ enum ServiceFlags : uint64_t {
     // set by all Bitcoin Core nodes, and is unset by SPV clients or other peers that just want
     // network services but don't provide them.
     NODE_NETWORK = (1 << 0),
+    // NODE_GETUTXO means the node is capable of responding to the getutxo protocol request.
+    // Bitcoin Core does not support this but a patch set called Bitcoin XT does.
+    // See BIP 64 for details on how this is implemented.
+    NODE_GETUTXO = (1 << 1),
     // NODE_BLOOM means the node is capable and willing to handle bloom-filtered connections.
     // Bitcoin Core nodes used to support this by default, without advertising this bit,
     // but no longer do as of protocol version 70011 (= NO_BLOOM_VERSION)
@@ -100,30 +155,34 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    inline void SerializationOp(Stream& s, Operation ser_action)
     {
         if (ser_action.ForRead())
             Init();
-        if (nType & SER_DISK)
+        int nVersion = s.GetVersion();
+        if (s.GetType() & SER_DISK)
             READWRITE(nVersion);
-        if ((nType & SER_DISK) ||
-            (nVersion >= CADDR_TIME_VERSION && !(nType & SER_GETHASH)))
+        if ((s.GetType() & SER_DISK) ||
+            (nVersion >= CADDR_TIME_VERSION && !(s.GetType() & SER_GETHASH)))
             READWRITE(nTime);
         uint64_t nServicesInt = nServices;
         READWRITE(nServicesInt);
         nServices = (ServiceFlags)nServicesInt;
-        READWRITE(*(CService*)this);
+        READWRITEAS(CService, *this);
     }
 
-    // TODO: make private (improves encapsulation)
-public:
+
+    void SetServices(ServiceFlags services) { nServices = services; }
+    void SetTime(unsigned int time)         { nTime = time; }
+
+    ServiceFlags GetServices()  const { return nServices; }
+    unsigned int GetTime()      const { return nTime; }
+
+private:
     ServiceFlags nServices;
 
     // disk and network only
     unsigned int nTime;
-
-    // memory only
-    int64_t nLastTry;
 };
 
 /** getdata message types */
@@ -153,12 +212,11 @@ class CInv
 public:
     CInv();
     CInv(int typeIn, const uint256& hashIn);
-    CInv(const std::string& strType, const uint256& hashIn);
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(type);
         READWRITE(hash);
@@ -166,12 +224,13 @@ public:
 
     friend bool operator<(const CInv& a, const CInv& b);
 
-    bool IsKnownType() const;
-    const char* GetCommand() const;
+    std::string GetCommand() const;
     std::string ToString() const;
 
-    // TODO: make private (improves encapsulation)
-public:
+    int GetType()       const { return type; }
+    uint256 GetHash()   const { return hash; }
+
+private:
     int type;
     uint256 hash;
 };

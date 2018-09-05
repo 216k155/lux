@@ -55,12 +55,12 @@ string ICAP::iban(std::string _c, std::string _d)
 std::pair<string, string> ICAP::fromIBAN(std::string _iban)
 {
 	if (_iban.size() < 4)
-		return std::make_pair(string(), string());
+		return std::make_pair(std::string(), string());
 	boost::to_upper(_iban);
 	std::string c = _iban.substr(0, 2);
 	std::string d = _iban.substr(4);
 	if (iban(c, d) != _iban)
-		return std::make_pair(string(), string());
+		return std::make_pair(std::string(), string());
 	return make_pair(c, d);
 }
 

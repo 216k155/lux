@@ -155,9 +155,9 @@ bool SignatureValidate(PK_Signer &priv, PK_Verifier &pub, bool thorough = false)
 
 	if (priv.MaxRecoverableLength() > 0)
 	{
-		signatureLength = priv.SignMessageWithRecovery(GlobalRNG(), message, messageLen, NULL, 0, signature);
+		signatureLength = priv.SignMessageWithRecovery(GlobalRNG(), message, messageLen, nullptr, 0, signature);
 		SecByteBlock recovered(priv.MaxRecoverableLengthFromSignatureLength(signatureLength));
-		DecodingResult result = pub.RecoverMessage(recovered, NULL, 0, signature, signatureLength);
+		DecodingResult result = pub.RecoverMessage(recovered, nullptr, 0, signature, signatureLength);
 		fail = !(result.isValidCoding && result.messageLength == messageLen && memcmp(recovered, message, messageLen) == 0);
 		pass = pass && !fail;
 
@@ -165,7 +165,7 @@ bool SignatureValidate(PK_Signer &priv, PK_Verifier &pub, bool thorough = false)
 		cout << "signature and verification with recovery" << endl;
 
 		++signature[0];
-		result = pub.RecoverMessage(recovered, NULL, 0, signature, signatureLength);
+		result = pub.RecoverMessage(recovered, nullptr, 0, signature, signatureLength);
 		fail = result.isValidCoding;
 		pass = pass && !fail;
 

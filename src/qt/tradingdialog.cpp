@@ -259,7 +259,7 @@ QString tradingDialog::Withdraw(double Amount, QString Address, QString Coin){
 
     char tmp_nonce[255];
     timeval curTime;
-    gettimeofday(&curTime, NULL);
+    gettimeofday(&curTime, nullptr);
     long nonce = curTime.tv_usec;
     sprintf(tmp_nonce, "%ld", nonce);
 
@@ -777,7 +777,7 @@ QString tradingDialog::sendRequest(QString url, QString method, QString body){
 
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    QNetworkReply *reply = NULL;
+    QNetworkReply *reply = nullptr;
     if(method == "GET") {
         reply = mgr.get(req);
     } else if(method == "POST") {
@@ -798,7 +798,7 @@ QString tradingDialog::sendRequest(QString url, QString method, QString body){
             sprintf(&mdString[i*2], "%02x", (unsigned int)digest[i]);
 
         timeval curTime;
-        gettimeofday(&curTime, NULL);
+        gettimeofday(&curTime, nullptr);
         long nonce = curTime.tv_usec;
 
 
@@ -860,7 +860,7 @@ void tradingDialog::sendRequest1(QString url, std::function<void (void)> funcFor
 
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    QNetworkReply *reply = NULL;
+    QNetworkReply *reply = nullptr;
     //reply = qmanager->get(req);
 
     //printf("REPLY STARTED %s\n",url.toStdString().c_str());
@@ -889,7 +889,7 @@ void tradingDialog::sendRequest1(QString url, std::function<void (void)> funcFor
             sprintf(&mdString[i*2], "%02x", (unsigned int)digest[i]);
 
         timeval curTime;
-        gettimeofday(&curTime, NULL);
+        gettimeofday(&curTime, nullptr);
         long nonce = curTime.tv_usec;
 
         char *requestContentBase64String = base64(digest, sizeof(digest));
@@ -1383,8 +1383,8 @@ string tradingDialog::encryptDecrypt(string toEncrypt, string password) {
 void tradingDialog::on_SaveKeys_clicked()
 {
     bool fSuccess = true;
-    boost::filesystem::path pathConfigFile = GetDataDir() / "APIcache.txt";
-    boost::filesystem::ofstream stream (pathConfigFile.string(), ios::out | ios::trunc);
+    fs::path pathConfigFile = GetDataDir() / "APIcache.txt";
+    fs::ofstream stream (pathConfigFile.string(), ios::out | ios::trunc);
 
     // Qstring to string
     string password = ui->PasswordInput->text().toStdString();
@@ -1419,8 +1419,8 @@ void tradingDialog::on_SaveKeys_clicked()
 void tradingDialog::on_LoadKeys_clicked()
 {
     bool fSuccess = true;
-    boost::filesystem::path pathConfigFile = GetDataDir() / "APIcache.txt";
-    boost::filesystem::ifstream stream (pathConfigFile.string());
+    fs::path pathConfigFile = GetDataDir() / "APIcache.txt";
+    fs::ifstream stream (pathConfigFile.string());
 
     // Qstring to string
     string password = ui->PasswordInput->text().toUtf8().constData();
@@ -1599,10 +1599,10 @@ unsigned char* tradingDialog::HMAC_SHA256_SIGNER(QString UrlToSign, QString Secr
     const char* URL = byteArray.constData();
 
     const EVP_MD *md = EVP_sha256();
-    unsigned char* digest = NULL;
+    unsigned char* digest = nullptr;
 
     // Using sha512 hash engine here.
-    digest = HMAC(md, (const void *)DecodeBase64(string(Secret.toStdString())).c_str(), strlen( DecodeBase64(string(Secret.toStdString())).c_str()), (unsigned char*) URL, strlen( URL), NULL, NULL);
+    digest = HMAC(md, (const void *)DecodeBase64(string(Secret.toStdString())).c_str(), strlen( DecodeBase64(string(Secret.toStdString())).c_str()), (unsigned char*) URL, strlen( URL), nullptr, nullptr);
 
     // Be careful of the length of string with the choosen hash engine. SHA1 produces a 20-byte hash value which rendered as 40 characters.
     // Change the length accordingly with your choosen hash engine

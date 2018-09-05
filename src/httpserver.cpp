@@ -217,7 +217,7 @@ static bool InitHTTPAllowList()
     std::string strAllowed;
     for (const CSubNet& subnet : rpc_allow_subnets)
         strAllowed += subnet.ToString() + " ";
-    LogPrint("http", "Allowing HTTP connections from: %s\n", strAllowed);
+    LogPrint(BCLog::HTTP, "Allowing HTTP connections from: %s\n", strAllowed);
     return true;
 }
 
@@ -245,19 +245,9 @@ static std::string RequestMethodString(HTTPRequest::RequestMethod m)
 /** HTTP request callback */
 static void http_request_cb(struct evhttp_request* req, void* arg)
 {
-    // Disable reading to work around a libevent bug, fixed in 2.2.0.
-    if (event_get_version_number() < 0x02020001) {
-        evhttp_connection* conn = evhttp_request_get_connection(req);
-        if (conn) {
-            bufferevent* bev = evhttp_connection_get_bufferevent(conn);
-            if (bev) {
-                bufferevent_disable(bev, EV_READ);
-            }
-        }
-    }
     std::unique_ptr<HTTPRequest> hreq(new HTTPRequest(req));
 
-    LogPrint("http", "Received a %s request for %s from %s\n",
+    LogPrint(BCLog::HTTP, "Received a %s request for %s from %s\n",
              RequestMethodString(hreq->GetRequestMethod()), hreq->GetURI(), hreq->GetPeer().ToString());
 
     // Early address-based allow check
@@ -307,17 +297,17 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
 /** Callback to reject HTTP requests after shutdown. */
 static void http_reject_request_cb(struct evhttp_request* req, void*)
 {
-    LogPrint("http", "Rejecting request while shutting down\n");
-    evhttp_send_error(req, HTTP_SERVUNAVAIL, NULL);
+    LogPrint(BCLog::HTTP, "Rejecting request while shutting down\n");
+    evhttp_send_error(req, HTTP_SERVUNAVAIL, nullptr);
 }
 /** Event dispatcher thread */
 static bool ThreadHTTP(struct event_base* base, struct evhttp* http)
 {
     RenameThread("bitcoin-http");
-    LogPrint("http", "Entering http event loop\n");
+    LogPrint(BCLog::HTTP, "Entering http event loop\n");
     event_base_dispatch(base);
     // Event loop will be interrupted by InterruptHTTPServer()
-    LogPrint("http", "Exited http event loop\n");
+    LogPrint(BCLog::HTTP, "Exited http event loop\n");
     return event_base_got_break(base) == 0;
 }
 
@@ -349,8 +339,8 @@ static bool HTTPBindAddresses(struct evhttp* http)
 
     // Bind addresses
     for (std::vector<std::pair<std::string, uint16_t> >::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-        LogPrint("http", "Binding RPC on address %s port %i\n", i->first, i->second);
-        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i->first.empty() ? NULL : i->first.c_str(), i->second);
+        LogPrint(BCLog::HTTP, "Binding RPC on address %s port %i\n", i->first, i->second);
+        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i->first.empty() ? nullptr : i->first.c_str(), i->second);
         if (bind_handle) {
             boundSockets.push_back(bind_handle);
         } else {
@@ -377,7 +367,7 @@ static void libevent_log_cb(int severity, const char *msg)
     if (severity >= EVENT_LOG_WARN) // Log warn messages and higher without debug category
         LogPrintf("libevent: %s\n", msg);
     else
-        LogPrint("libevent", "libevent: %s\n", msg);
+        LogPrint(BCLog::LIBEVENT, "libevent: %s\n", msg);
 }
 
 bool InitHTTPServer()
@@ -400,7 +390,7 @@ bool InitHTTPServer()
 #if LIBEVENT_VERSION_NUMBER >= 0x02010100
     // If -debug=libevent, set full libevent debugging.
     // Otherwise, disable all libevent debugging.
-    if (LogAcceptCategory("libevent"))
+    if (LogAcceptCategory(BCLog::LIBEVENT))
         event_enable_debug_logging(EVENT_DBG_ALL);
     else
         event_enable_debug_logging(EVENT_DBG_NONE);
@@ -428,7 +418,7 @@ bool InitHTTPServer()
     evhttp_set_timeout(http, GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT));
     evhttp_set_max_headers_size(http, MAX_HEADERS_SIZE);
     evhttp_set_max_body_size(http, MAX_SIZE);
-    evhttp_set_gencb(http, http_request_cb, NULL);
+    evhttp_set_gencb(http, http_request_cb, nullptr);
 
     if (!HTTPBindAddresses(http)) {
         LogPrintf("Unable to bind any endpoint for RPC server\n");
@@ -437,7 +427,7 @@ bool InitHTTPServer()
         return false;
     }
 
-    LogPrint("http", "Initialized HTTP server\n");
+    LogPrint(BCLog::HTTP, "Initialized HTTP server\n");
     int workQueueDepth = std::max((long)GetArg("-rpcworkqueue", DEFAULT_HTTP_WORKQUEUE), 1L);
     LogPrintf("HTTP: creating work queue of depth %d\n", workQueueDepth);
 
@@ -452,7 +442,7 @@ std::future<bool> threadResult;
 
 bool StartHTTPServer()
 {
-    LogPrint("http", "Starting HTTP server\n");
+    LogPrint(BCLog::HTTP, "Starting HTTP server\n");
     int rpcThreads = std::max((long)GetArg("-rpcthreads", DEFAULT_HTTP_THREADS), 1L);
     LogPrintf("HTTP: starting %d worker threads\n", rpcThreads);
     std::packaged_task<bool(event_base*, evhttp*)> task(ThreadHTTP);
@@ -468,13 +458,13 @@ bool StartHTTPServer()
 
 void InterruptHTTPServer()
 {
-    LogPrint("http", "Interrupting HTTP server\n");
+    LogPrint(BCLog::HTTP, "Interrupting HTTP server\n");
     if (eventHTTP) {
         // Unlisten sockets
         for (evhttp_bound_socket *socket : boundSockets) {
             evhttp_del_accept_socket(eventHTTP, socket);
         }
-        evhttp_set_gencb(eventHTTP, http_reject_request_cb, NULL);
+        evhttp_set_gencb(eventHTTP, http_reject_request_cb, nullptr);
     }
         // Force-exit after a predefined time
         if (eventBase) {
@@ -486,14 +476,14 @@ void InterruptHTTPServer()
 
 void StopHTTPServer()
 {
-    LogPrint("http", "Stopping HTTP server\n");
+    LogPrint(BCLog::HTTP, "Stopping HTTP server\n");
     if (workQueue) {
-        LogPrint("http", "Waiting for HTTP worker threads to exit\n");
+        LogPrint(BCLog::HTTP, "Waiting for HTTP worker threads to exit\n");
         workQueue->WaitExit();
         delete workQueue;
     }
     if (eventBase) {
-        LogPrint("http", "Waiting for HTTP event thread to exit\n");
+        LogPrint(BCLog::HTTP, "Waiting for HTTP event thread to exit\n");
         // Give event loop a few seconds to exit (to send back last RPC responses), then break it
         // Before this was solved with event_base_loopexit, but that didn't work as expected in
         // at least libevent 2.0.21 and always introduced a delay. In libevent
@@ -514,7 +504,7 @@ void StopHTTPServer()
         event_base_free(eventBase);
         eventBase = 0;
     }
-    LogPrint("http", "Stopped HTTP server\n");
+    LogPrint(BCLog::HTTP, "Stopped HTTP server\n");
 }
 
 struct event_base* EventBase()
@@ -531,32 +521,34 @@ static void httpevent_callback_fn(evutil_socket_t, short, void* data)
         delete self;
 }
 
-HTTPEvent::HTTPEvent(struct event_base* base, bool deleteWhenTriggered, struct evbuffer *databuf, const std::function<void(void)>& handler):
-    deleteWhenTriggered(deleteWhenTriggered), handler(handler), databuf(databuf)
+HTTPEvent::HTTPEvent(struct event_base* base, bool _deleteWhenTriggered, struct evbuffer *_databuf, const std::function<void(void)>& _handler):
+    deleteWhenTriggered(_deleteWhenTriggered), handler(_handler), databuf(_databuf)
 {
     ev = event_new(base, -1, 0, httpevent_callback_fn, this);
     assert(ev);
 }
 HTTPEvent::~HTTPEvent()
 {
-    if (databuf != NULL) {
+    if (databuf != nullptr) {
         evbuffer_free(databuf);
     }
     event_free(ev);
 }
 void HTTPEvent::trigger(struct timeval* tv)
 {
-    if (tv == NULL)
+    if (tv == nullptr)
         event_active(ev, 0, 0); // immediately trigger event in main thread
     else
         evtimer_add(ev, tv); // trigger after timeval passed
 }
-HTTPRequest::HTTPRequest(struct evhttp_request* req) : req(req),
+
+HTTPRequest::HTTPRequest(struct evhttp_request* pReq) : req(pReq),
                                                        replySent(false),
                                                        startedChunkTransfer(false),
                                                        connClosed(false)
 {
 }
+
 HTTPRequest::~HTTPRequest()
 {
     if (!replySent && !startedChunkTransfer) {
@@ -568,25 +560,11 @@ HTTPRequest::~HTTPRequest()
 }
 
 void HTTPRequest::waitClientClose() {
-    LogPrint("http-poll", "wait for connection close\n");
-
-    // wait at most 5 seconds for client to close
-    for (int i = 0; i < 10 && IsRPCRunning() && !isConnClosed(); i++) {
-        std::unique_lock<std::mutex> lock(cs);
-        closeCv.wait_for(lock, std::chrono::milliseconds(500));
-    }
-
-    if (isConnClosed()) {
-        LogPrint("http-poll", "wait for connection close, ok\n");
-    } else if (!IsRPCRunning()) {
-        LogPrint("http-poll", "wait for connection close, RPC stopped\n");
-    } else {
-        LogPrint("http-poll", "wait for connection close, timeout after 5 seconds\n");
-    }
+    std::unique_lock<std::mutex> lock(cs);
+    closeCv.wait(lock);
 }
 
 void HTTPRequest::startDetectClientClose() {
-    LogPrint("http-poll", "start detect http connection close\n");
     // will need to call evhttp_send_reply_end to clean this up
     auto conn = evhttp_request_get_connection(req);
 
@@ -596,19 +574,11 @@ void HTTPRequest::startDetectClientClose() {
     //
     // But we should just write to the socket to test liveness. This is useful for long-poll RPC calls to see
     // if they should terminate the request early.
-    //
-    // More weirdness: if process received SIGTERM, the http event loop (in HTTPThread) returns prematurely with 1.
-    // In which case evhttp_send_reply_end doesn't seem to get called, and evhttp_connection_set_closecb is
-    // not called. BUT when the event base is freed, this callback IS called, and HTTPRequest is already freed.
-    //
-    // So, waitClientClose and startDetectClientClose should just not do anything if RPC is shutting down.
     evhttp_connection_set_closecb(conn, [](struct evhttp_connection *conn, void *data) {
-        LogPrint("http-poll", "http connection close detected\n");
+        auto req = (HTTPRequest*) data;
+        req->setConnClosed();
 
-        if (IsRPCRunning()) {
-            auto req = (HTTPRequest*) data;
-            req->setConnClosed();
-        }
+        LogPrintf("http connection closed\n");
     }, (void *) this);
 }
 
@@ -651,7 +621,7 @@ std::string HTTPRequest::ReadBody()
      * abstraction to consume the evbuffer on the fly in the parsing algorithm.
      */
     const char* data = (const char*)evbuffer_pullup(buf, size);
-    if (!data) // returns NULL in case of empty buffer
+    if (!data) // returns nullptr in case of empty buffer
         return "";
     std::string rv(data, size);
     evbuffer_drain(buf, size);
@@ -664,6 +634,7 @@ bool HTTPRequest::ReplySent() {
 
 void HTTPRequest::WriteHeader(const std::string& hdr, const std::string& value)
 {
+    assert(req);
     struct evkeyvalq* headers = evhttp_request_get_output_headers(req);
     assert(headers);
     evhttp_add_header(headers, hdr.c_str(), value.c_str());
@@ -672,7 +643,7 @@ void HTTPRequest::WriteHeader(const std::string& hdr, const std::string& value)
 void HTTPRequest::ChunkEnd() {
     assert(startedChunkTransfer && !replySent);
 
-    HTTPEvent* ev = new HTTPEvent(eventBase, true, NULL,
+    HTTPEvent* ev = new HTTPEvent(eventBase, true, nullptr,
                                   std::bind(evhttp_send_reply_end, req));
 
     ev->trigger(0);
@@ -693,9 +664,9 @@ void HTTPRequest::Chunk(const std::string& chunk) {
     int status = 200;
 
     if (!startedChunkTransfer) {
-        HTTPEvent* ev = new HTTPEvent(eventBase, true, NULL,
+        HTTPEvent* ev = new HTTPEvent(eventBase, true, nullptr,
                                       std::bind(evhttp_send_reply_start, req, status,
-                                                (const char*) NULL));
+                                                (const char*) nullptr));
         ev->trigger(0);
 
         startDetectClientClose();
@@ -725,7 +696,7 @@ void HTTPRequest::WriteReply(int nStatus, const std::string& strReply)
     assert(evb);
     evbuffer_add(evb, strReply.data(), strReply.size());
     auto req_copy = req;
-    HTTPEvent* ev = new HTTPEvent(eventBase, true, NULL, [req_copy, nStatus]{
+    HTTPEvent* ev = new HTTPEvent(eventBase, true, nullptr, [req_copy, nStatus]{
         evhttp_send_reply(req_copy, nStatus, nullptr, nullptr);
         // Re-enable reading from the socket. This is the second part of the libevent
         // workaround above.
@@ -786,7 +757,7 @@ HTTPRequest::RequestMethod HTTPRequest::GetRequestMethod()
 
 void RegisterHTTPHandler(const std::string &prefix, bool exactMatch, const HTTPRequestHandler &handler)
 {
-    LogPrint("http", "Registering HTTP handler for %s (exactmatch %d)\n", prefix, exactMatch);
+    LogPrint(BCLog::HTTP, "Registering HTTP handler for %s (exactmatch %d)\n", prefix, exactMatch);
     pathHandlers.push_back(HTTPPathHandler(prefix, exactMatch, handler));
 }
 
@@ -799,8 +770,20 @@ void UnregisterHTTPHandler(const std::string &prefix, bool exactMatch)
             break;
     if (i != iend)
     {
-        LogPrint("http", "Unregistering HTTP handler for %s (exactmatch %d)\n", prefix, exactMatch);
+        LogPrint(BCLog::HTTP, "Unregistering HTTP handler for %s (exactmatch %d)\n", prefix, exactMatch);
         pathHandlers.erase(i);
     }
+}
+
+std::string urlDecode(const std::string &urlEncoded) {
+    std::string res;
+    if (!urlEncoded.empty()) {
+        char *decoded = evhttp_uridecode(urlEncoded.c_str(), false, nullptr);
+        if (decoded) {
+            res = std::string(decoded);
+            free(decoded);
+        }
+    }
+    return res;
 }
 

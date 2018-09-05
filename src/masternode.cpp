@@ -33,7 +33,6 @@ void ProcessMasternodeConnections() {
     //LOCK(cs_vNodes);
 
     for (CNode* pnode : vNodes) {
-        if (!pnode) continue;
         //if it's our masternode, let it be
         if (darkSendPool.submittedToMasternode == pnode->addr) continue;
 
@@ -344,7 +343,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
         int a = 0;
         vRecv >> winner >> a;
 
-        if (chainActive.Tip() == NULL) return;
+        if (chainActive.Tip() == nullptr) return;
 
         uint256 hash = winner.GetHash();
         if (mapSeenMasternodeVotes.count(hash)) {
@@ -514,7 +513,7 @@ int GetMasternodeRank(CTxIn& vin, int64_t nBlockHeight, int minProtocol) {
 
 //Get the last hash that matches the modulus given. Processed in reverse order
 bool GetBlockHash(uint256& hash, int nBlockHeight) {
-    if (chainActive.Tip() == NULL) return false;
+    if (chainActive.Tip() == nullptr) return false;
 
     if (nBlockHeight == 0)
         nBlockHeight = chainActive.Height();
@@ -527,7 +526,7 @@ bool GetBlockHash(uint256& hash, int nBlockHeight) {
     const CBlockIndex* BlockLastSolved = chainActive.Tip();
     const CBlockIndex* BlockReading = chainActive.Tip();
 
-    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || chainActive.Height() + 1 < nBlockHeight) return false;
+    if (BlockLastSolved == nullptr || BlockLastSolved->nHeight == 0 || chainActive.Height() + 1 < nBlockHeight) return false;
 
     int nBlocksAgo = 0;
     if (nBlockHeight > 0) nBlocksAgo = (chainActive.Height() + 1) - nBlockHeight;
@@ -542,7 +541,7 @@ bool GetBlockHash(uint256& hash, int nBlockHeight) {
         }
         n++;
 
-        if (BlockReading->pprev == NULL) {
+        if (BlockReading->pprev == nullptr) {
             assert(BlockReading);
             break;
         }
@@ -558,7 +557,7 @@ bool GetBlockHash(uint256& hash, int nBlockHeight) {
 // and get paid this block
 //
 uint256 CMasterNode::CalculateScore(int mod, int64_t nBlockHeight) {
-    if (chainActive.Tip() == NULL) return 0;
+    if (chainActive.Tip() == nullptr) return 0;
 
     uint256 hash = 0;
     uint256 aux = vin.prevout.hash + vin.prevout.n;
@@ -714,7 +713,7 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
 
 void CMasternodePayments::CleanPaymentList() {
     LOCK(cs_masternodes);
-    if (chainActive.Tip() == NULL) return;
+    if (chainActive.Tip() == nullptr) return;
 
     int nLimit = std::max(((int) vecMasternodes.size()) * 2, 1000);
 
@@ -787,8 +786,7 @@ void CMasternodePayments::Relay(CMasternodePaymentWinner& winner) {
     vInv.push_back(inv);
     //LOCK(cs_vNodes);
     for (CNode* pnode : vNodes) {
-        if (pnode)
-           pnode->PushMessage("inv", vInv);
+        pnode->PushMessage("inv", vInv);
     }
 }
 

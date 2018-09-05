@@ -102,7 +102,7 @@ void X917RNG::GenerateIntoBufferedTransformation(BufferedTransformation &target,
 		{
 			clock_t c = clock();
 			xorbuf(m_datetime, (byte *)&c, UnsignedMin(sizeof(c), m_size));
-			time_t t = time(NULL);
+			time_t t = time(nullptr);
 			xorbuf(m_datetime+m_size-UnsignedMin(sizeof(t), m_size), (byte *)&t, UnsignedMin(sizeof(t), m_size));
 			m_cipher->ProcessBlock(m_datetime);
 		}

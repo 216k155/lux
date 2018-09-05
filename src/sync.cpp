@@ -82,10 +82,10 @@ static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch,
 
 static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
 {
-    if (lockstack.get() == NULL)
+    if (lockstack.get() == nullptr)
         lockstack.reset(new LockStack);
 
-    LogPrint("lock", "Locking: %s\n", locklocation.ToString());
+    //LogPrint("lock", "Locking: %s\n", locklocation.ToString());
     dd_mutex.lock();
 
     (*lockstack).push_back(std::make_pair(c, locklocation));
@@ -114,7 +114,7 @@ static void pop_lock()
 {
     if (fDebug) {
         const CLockLocation& locklocation = (*lockstack).rbegin()->second;
-        LogPrint("lock", "Unlocked: %s\n", locklocation.ToString());
+        //LogPrint("lock", "Unlocked: %s\n", locklocation.ToString());
     }
     dd_mutex.lock();
     (*lockstack).pop_back();

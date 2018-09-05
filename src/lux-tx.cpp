@@ -31,8 +31,9 @@ using namespace std;
 static bool fCreateBlank;
 static map<string, UniValue> registers;
 //CClientUIInterface uiInterface;
+static const int CONTINUE_EXECUTION=-1;
 
-static bool AppInitRawTx(int argc, char* argv[])
+static int AppInitRawTx(int argc, char* argv[])
 {
     //
     // Parameters
@@ -42,7 +43,7 @@ static bool AppInitRawTx(int argc, char* argv[])
     // Check for -testnet or -regtest parameter (Params() calls are only valid after this clause)
     if (!SelectParamsFromCommandLine()) {
         fprintf(stderr, "Error: Invalid combination of -regtest and -testnet.\n");
-        return false;
+        return EXIT_FAILURE;
     }
 
     fCreateBlank = GetBoolArg("-create", false);
@@ -91,9 +92,13 @@ static bool AppInitRawTx(int argc, char* argv[])
         strUsage += "\n";
         fprintf(stdout, "%s", strUsage.c_str());
 
-        return false;
+        if (argc < 2) {
+            fprintf(stderr, "Error: too few parameters\n");
+            return EXIT_FAILURE;
+        }
+        return EXIT_SUCCESS;
     }
-    return true;
+    return CONTINUE_EXECUTION;
 }
 
 static void RegisterSetJson(const string& key, const string& rawJson)
@@ -432,7 +437,7 @@ static void MutateTxSign(CMutableTransaction& tx, const string& flagStr)
 
         txin.scriptSig.clear();
 
-        CTransaction txPrev;
+        CTransactionRef txPrev;
         uint256 prevBlockHash;
         //Find previous transaction with the same output as txNew input
         if (!GetTransaction(mergedTx.vin[i].prevout.hash, txPrev, Params().GetConsensus(), prevBlockHash)) {
@@ -440,7 +445,7 @@ static void MutateTxSign(CMutableTransaction& tx, const string& flagStr)
             //TODO: probably should raise exception here
             return;
         }
-        const CAmount& amount = txPrev.vout[txin.prevout.n].nValue;
+        const CAmount& amount = txPrev->vout[txin.prevout.n].nValue;
         SignatureData sigdata;
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
         if (!fHashSingle || (i < mergedTx.vout.size()))
@@ -448,7 +453,7 @@ static void MutateTxSign(CMutableTransaction& tx, const string& flagStr)
 
         // ... and merge in other signatures:
         for (const CTransaction& txv : txVariants) {
-            sigdata = CombineSignatures(prevPubKey, MutableTransactionSignatureChecker(&mergedTx, i, amount), sigdata, DataFromTransaction(txv, i));
+            sigdata = CombineSignatures(prevPubKey, MutableTransactionSignatureChecker(&mergedTx, i, amount), sigdata, DataFromTransaction(CMutableTransaction(txv), i));
         }
 
         UpdateTransaction(mergedTx, i, sigdata);
@@ -580,7 +585,7 @@ static int CommandLineRawTx(int argc, char* argv[])
             argv++;
         }
 
-        CTransaction txDecodeTmp;
+        CMutableTransaction tx;
         int startArg;
 
         if (!fCreateBlank) {
@@ -593,14 +598,12 @@ static int CommandLineRawTx(int argc, char* argv[])
             if (strHexTx == "-") // "-" implies standard input
                 strHexTx = readStdin();
 
-            if (!DecodeHexTx(txDecodeTmp, strHexTx, true))
+            if (!DecodeHexTx(tx, strHexTx, true))
                 throw runtime_error("invalid transaction encoding");
 
             startArg = 2;
         } else
             startArg = 1;
-
-        CMutableTransaction tx(txDecodeTmp);
 
         for (int i = startArg; i < argc; i++) {
             string arg = argv[i];
@@ -625,7 +628,7 @@ static int CommandLineRawTx(int argc, char* argv[])
         strPrint = string("error: ") + e.what();
         nRet = EXIT_FAILURE;
     } catch (...) {
-        PrintExceptionContinue(NULL, "CommandLineRawTx()");
+        PrintExceptionContinue(nullptr, "CommandLineRawTx()");
         throw;
     }
 
@@ -635,18 +638,18 @@ static int CommandLineRawTx(int argc, char* argv[])
     return nRet;
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     SetupEnvironment();
 
     try {
-        if (!AppInitRawTx(argc, argv))
-            return EXIT_FAILURE;
+        int ret = AppInitRawTx(argc, argv);
+        if (ret != CONTINUE_EXECUTION)
+            return ret;
     } catch (std::exception& e) {
         PrintExceptionContinue(&e, "AppInitRawTx()");
         return EXIT_FAILURE;
     } catch (...) {
-        PrintExceptionContinue(NULL, "AppInitRawTx()");
+        PrintExceptionContinue(nullptr, "AppInitRawTx()");
         return EXIT_FAILURE;
     }
 
@@ -656,7 +659,7 @@ int main(int argc, char* argv[])
     } catch (std::exception& e) {
         PrintExceptionContinue(&e, "CommandLineRawTx()");
     } catch (...) {
-        PrintExceptionContinue(NULL, "CommandLineRawTx()");
+        PrintExceptionContinue(nullptr, "CommandLineRawTx()");
     }
     return ret;
 }

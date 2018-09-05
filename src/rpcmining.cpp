@@ -18,6 +18,7 @@
 #include "masternode.h"
 #include "primitives/transaction.h"
 #include "rpcserver.h"
+#include "rpcserver.h"
 #include "util.h"
 #include "script/script.h"
 #include "script/script_error.h"
@@ -48,7 +49,7 @@ UniValue GetNetworkHashPS(int lookup, int height)
     if (height >= 0 && height < chainActive.Height())
         pb = chainActive[height];
 
-    if (pb == NULL || !pb->nHeight)
+    if (pb == nullptr || !pb->nHeight)
         return 0;
 
     // If lookup is -1, then use blocks since last difficulty change.
@@ -79,9 +80,9 @@ UniValue GetNetworkHashPS(int lookup, int height)
     return (int64_t)(workDiff.getdouble() / timeDiff);
 }
 
-UniValue getnetworkhashps(const UniValue& params, bool fHelp)
+UniValue getnetworkhashps(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 2)
+    if (request.fHelp || request.params.size() > 2)
         throw runtime_error(
             "getnetworkhashps ( blocks height )\n"
             "\nReturns the estimated network hashes per second based on the last n blocks.\n"
@@ -97,13 +98,13 @@ UniValue getnetworkhashps(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    return GetNetworkHashPS(params.size() > 0 ? params[0].get_int() : 120, params.size() > 1 ? params[1].get_int() : -1);
+    return GetNetworkHashPS(request.params.size() > 0 ? request.params[0].get_int() : 120, request.params.size() > 1 ? request.params[1].get_int() : -1);
 }
 
 #ifdef ENABLE_WALLET
-UniValue getgenerate(const UniValue& params, bool fHelp)
+UniValue getgenerate(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getgenerate\n"
             "\nReturn if the server is set to generate coins or not. The default is false.\n"
@@ -120,9 +121,9 @@ UniValue getgenerate(const UniValue& params, bool fHelp)
 }
 
 
-UniValue setgenerate(const UniValue& params, bool fHelp)
+UniValue setgenerate(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "setgenerate generate ( genproclimit )\n"
             "\nSet 'generate' true or false to turn generation on or off.\n"
@@ -141,16 +142,16 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
             "\nTurn off generation\n" + HelpExampleCli("setgenerate", "false") +
             "\nUsing json rpc\n" + HelpExampleRpc("setgenerate", "true, 1"));
 
-//    if (pwalletMain == NULL)
+//    if (pwalletMain == nullptr)
 //        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
 //
 //    bool fGenerate = true;
-//    if (params.size() > 0)
-//        fGenerate = params[0].get_bool();
+//    if (request.params.size() > 0)
+//        fGenerate = request.params[0].get_bool();
 //
 //    int nGenProcLimit = -1;
-//    if (params.size() > 1) {
-//        nGenProcLimit = params[1].get_int();
+//    if (request.params.size() > 1) {
+//        nGenProcLimit = request.params[1].get_int();
 //        if (nGenProcLimit == 0)
 //            fGenerate = false;
 //    }
@@ -187,7 +188,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
 //                ++pblock->nNonce;
 //            }
 //            CValidationState state;
-//            if (!ShutdownRequested() && !ProcessNewBlock(state, Params(), NULL, pblock))
+//            if (!ShutdownRequested() && !ProcessNewBlock(state, Params(), nullptr, pblock))
 //                throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
 //            ++nHeight;
 //            blockHashes.push_back(pblock->GetHash().GetHex());
@@ -202,9 +203,9 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue gethashespersec(const UniValue& params, bool fHelp)
+UniValue gethashespersec(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "gethashespersec\n"
             "\nReturns a recent hashes per second performance measurement while generating.\n"
@@ -221,9 +222,9 @@ UniValue gethashespersec(const UniValue& params, bool fHelp)
 #endif
 
 
-UniValue getmininginfo(const UniValue& params, bool fHelp)
+UniValue getmininginfo(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 0)
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getmininginfo\n"
             "\nReturns a json object containing mining-related information."
@@ -249,31 +250,34 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
             HelpExampleCli("getmininginfo", "") + HelpExampleRpc("getmininginfo", ""));
 
     UniValue obj(UniValue::VOBJ);
+    UniValue diff(UniValue::VOBJ);
     CBlockIndex* powTip = GetLastBlockOfType(0);
     obj.push_back(Pair("blocks", (int)chainActive.Height()));
     obj.push_back(Pair("currentblocksize", (uint64_t)nLastBlockSize));
     obj.push_back(Pair("currentblocktx", (uint64_t)nLastBlockTx));
-    obj.push_back(Pair("difficulty", (double)GetDifficulty(powTip)));
+    diff.push_back(Pair("difficulty", (double)GetDifficulty(powTip)));
+    obj.push_back(Pair("netmhashps", GetPoWMHashPS()));
+    obj.push_back(Pair("netstakeweight", GetPoSKernelPS()));
     obj.push_back(Pair("errors", GetWarnings("statusbar")));
-    obj.push_back(Pair("networkhashps", getnetworkhashps(params, false)));
+    obj.push_back(Pair("networkhashps", getnetworkhashps(request)));
     obj.push_back(Pair("pooledtx", (uint64_t)mempool.size()));
     obj.push_back(Pair("testnet", Params().NetworkIDString() != "main"));
     obj.push_back(Pair("chain", Params().NetworkIDString()));
     obj.push_back(Pair("algo", (chainActive.Height()+1) < Params().SwitchPhi2Block() ? "phi1612" : "phi2"));
     obj.push_back(Pair("segwit", IsWitnessEnabled(chainActive.Tip(), Params().GetConsensus()) ));
 #ifdef ENABLE_CPUMINER
-    obj.push_back(Pair("generate", getgenerate(params, false)));
+    obj.push_back(Pair("generate", getgenerate(request.params, false)));
     obj.push_back(Pair("genproclimit", (int)GetArg("-genproclimit", -1)));
-    obj.push_back(Pair("hashespersec", gethashespersec(params, false)));
+    obj.push_back(Pair("hashespersec", gethashespersec(request.params, false)));
 #endif
     return obj;
 }
 
 
 // NOTE: Unlike wallet RPC (which use BTC values), mining RPCs follow GBT (BIP 22) in using satoshi amounts
-UniValue prioritisetransaction(const UniValue& params, bool fHelp)
+UniValue prioritisetransaction(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 3)
+    if (request.fHelp || request.params.size() != 3)
         throw runtime_error(
             "prioritisetransaction <txid> <priority delta> <fee delta>\n"
             "Accepts the transaction into mined blocks at a higher (or lower) priority\n"
@@ -292,11 +296,11 @@ UniValue prioritisetransaction(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    uint256 hash = ParseHashStr(params[0].get_str(), "txid");
+    uint256 hash = ParseHashStr(request.params[0].get_str(), "txid");
 
-    CAmount nAmount = params[2].get_int64();
+    CAmount nAmount = request.params[2].get_int64();
 
-    mempool.PrioritiseTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount);
+    mempool.PrioritiseTransaction(hash, request.params[0].get_str(), request.params[1].get_real(), nAmount);
     return true;
 }
 
@@ -328,9 +332,9 @@ std::string gbt_vb_name(const Consensus::DeploymentPos pos) {
     return s;
 }
 
-UniValue getblocktemplate(const UniValue& params, bool fHelp)
+UniValue getblocktemplate(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() > 1)
+    if (request.fHelp || request.params.size() > 1)
         throw runtime_error(
             "getblocktemplate ( \"jsonrequestobject\" )\n"
             "\nIf the request parameters include a 'mode' key, that is used to explicitly select between the default 'template' request or a 'proposal'.\n"
@@ -425,9 +429,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     UniValue lpval = NullUniValue;
     std::set<std::string> setClientRules;
     int64_t nMaxVersionPreVB = -1;
-    if (params.size() > 0)
+    if (request.params.size() > 0)
     {
-        const UniValue& oparam = params[0].get_obj();
+        const UniValue& oparam = request.params[0].get_obj();
         const UniValue& modeval = find_value(oparam, "mode");
         if (modeval.isStr())
             strMode = modeval.get_str();
@@ -464,7 +468,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             if (block.hashPrevBlock != pindexPrev->GetBlockHash())
                 return "inconclusive-not-best-prevblk";
 
-            if (block.vtx[0].wit.vtxinwit.size() < 1) {
+            if (block.vtx[0]->wit.vtxinwit.size() < 1) {
                 UpdateUncommittedBlockStructures(block, pindexPrev, Params().GetConsensus());
             }
 
@@ -560,7 +564,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 5) ||
         fLastTemplateSupportsSegwit != fSupportsSegwit) {
         // Clear pindexPrev so future calls make a new block, despite any failures from here on
-        pindexPrev = NULL;
+        pindexPrev = nullptr;
 
         // Store the chainActive.Tip() used before CreateNewBlock, to avoid races
         nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
@@ -592,7 +596,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     UniValue transactions(UniValue::VARR);
     map<uint256, int64_t> setTxIndex;
     int i = 0;
-    for (CTransaction& tx : pblock->vtx) {
+    for (CTransactionRef& ptx : pblock->vtx) {
+        const CTransaction& tx = *ptx;
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
@@ -629,7 +634,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     UniValue coinbasetxn(UniValue::VARR);
     map<uint256, int64_t> setTxIndex1;
     int j = 0;
-    for (CTransaction& tx : pblock->vtx) {//Incase if multi coinbase
+    for (CTransactionRef& ptx : pblock->vtx) {//Incase if multi coinbase
+        const CTransaction& tx = *ptx;
         if (tx.IsCoinBase()) {
             uint256 txHash = tx.GetHash();
             setTxIndex1[txHash] = j++;
@@ -735,13 +741,13 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (nHeight >= Params().FirstSCBlock()) {
         // gas refund
         UniValue scrObjArray(UniValue::VARR);
-        for (size_t v=2; v < pblock->vtx[0].vout.size(); v++) {
+        for (size_t v=2; v < pblock->vtx[0]->vout.size(); v++) {
             UniValue aSCrefund(UniValue::VOBJ);
             CTxDestination scTxDest;
-            ExtractDestination(pblock->vtx[0].vout[v].scriptPubKey, scTxDest);
+            ExtractDestination(pblock->vtx[0]->vout[v].scriptPubKey, scTxDest);
             aSCrefund.push_back(Pair("payee", EncodeDestination(scTxDest)));
-            aSCrefund.push_back(Pair("script", HexStr(pblock->vtx[0].vout[v].scriptPubKey)));
-            aSCrefund.push_back(Pair("amount", (int64_t)pblock->vtx[0].vout[v].nValue));
+            aSCrefund.push_back(Pair("script", HexStr(pblock->vtx[0]->vout[v].scriptPubKey)));
+            aSCrefund.push_back(Pair("amount", (int64_t)pblock->vtx[0]->vout[v].nValue));
             scrObjArray.push_back(aSCrefund);
         }
         result.push_back(Pair("stateroot", pblock->hashStateRoot.GetHex()));
@@ -751,7 +757,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 
     result.push_back(Pair("transactions", transactions));
     result.push_back(Pair("coinbaseaux", aux));
-    result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0].GetValueOut()));
+    result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0]->GetValueOut()));
     result.push_back(Pair("coinbasetxn", coinbasetxn[0]));
     result.push_back(Pair("longpollid", chainActive.Tip()->GetBlockHash().GetHex() + i64tostr(nTransactionsUpdatedLast)));
     result.push_back(Pair("target", hashTarget.GetHex()));
@@ -778,13 +784,13 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 
     bool mnStarted = nHeight >= Params().FirstSplitRewardBlock();
     UniValue aMasternode(UniValue::VOBJ);
-    if (mnStarted && pblock->vtx[0].vout.size() > 1) {
+    if (mnStarted && pblock->vtx[0]->vout.size() > 1) {
         CTxDestination mnTxDest;
         // todo: check if vout offset is always correct (with segwit)
-        ExtractDestination(pblock->vtx[0].vout[1].scriptPubKey, mnTxDest);
+        ExtractDestination(pblock->vtx[0]->vout[1].scriptPubKey, mnTxDest);
         aMasternode.push_back(Pair("payee", EncodeDestination(mnTxDest)));
-        aMasternode.push_back(Pair("script", HexStr(pblock->vtx[0].vout[1].scriptPubKey)));
-        aMasternode.push_back(Pair("amount", (int64_t)pblock->vtx[0].vout[1].nValue));
+        aMasternode.push_back(Pair("script", HexStr(pblock->vtx[0]->vout[1].scriptPubKey)));
+        aMasternode.push_back(Pair("amount", (int64_t)pblock->vtx[0]->vout[1].nValue));
     }
 
     result.push_back(Pair("masternode", aMasternode));
@@ -794,8 +800,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue getwork(const UniValue& params, bool fHelp) {
-    if (fHelp || params.size() > 1)
+UniValue getwork(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() > 1)
         throw runtime_error(
                 "getwork [data]\n"
                 "If [data] is not specified, returns formatted hash data to work on:\n"
@@ -823,7 +829,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
     static mapNewBlock_t mapNewBlock;    // FIXME: thread safety
     static std::vector<CBlockTemplate*> vNewBlockTemplate;
 
-    if (params.size() == 0) {
+    if (request.params.size() == 0) {
         // Update block
         static unsigned int nTransactionsUpdatedLast;
         static CBlockIndex* pindexPrev;
@@ -874,7 +880,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
         IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
         // Save
-        mapNewBlock[pblock->hashMerkleRoot] = make_pair(pblock, pblock->vtx[0].vin[0].scriptSig);
+        mapNewBlock[pblock->hashMerkleRoot] = make_pair(pblock, pblock->vtx[0]->vin[0].scriptSig);
 
         char pmidstate[128] = { 0 };
         char pdata[144] = { 0 };
@@ -893,7 +899,7 @@ UniValue getwork(const UniValue& params, bool fHelp) {
         return result;
     } else {
         // Parse parameters
-        vector<unsigned char> vchData = ParseHex(params[0].get_str());
+        vector<unsigned char> vchData = ParseHex(request.params[0].get_str());
         if (vchData.size() != 80 && vchData.size() != 128 && vchData.size() != 144)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter");
 
@@ -914,14 +920,14 @@ UniValue getwork(const UniValue& params, bool fHelp) {
             pblock->hashUTXORoot = pdata->hashUTXORoot;
         }
 
-        CMutableTransaction newTx(pblock->vtx[0]);
+        CMutableTransaction newTx(*(pblock->vtx[0]));
         // Use CMutableTransaction when creating a new transaction instead of CTransaction.  CTransaction public variables are all const now.
         newTx.vin[0].scriptSig = mapNewBlock[pdata->hashMerkleRoot].second; // Oh, why? because vin is const in CTransaction now.
-        pblock->vtx[0] = newTx;
+        pblock->vtx[0] = MakeTransactionRef(std::move(newTx));
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
         CValidationState state;
-        return ProcessNewBlock(state, Params(), NULL, pblock);
+        return ProcessNewBlock(state, Params(), nullptr, pblock);
     }
 }
 
@@ -945,9 +951,9 @@ protected:
     };
 };
 
-UniValue submitblock(const UniValue& params, bool fHelp)
+UniValue submitblock(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
         throw runtime_error(
             "submitblock \"hexdata\" ( \"jsonparametersobject\" )\n"
             "\nAttempts to submit new block to network.\n"
@@ -965,7 +971,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
             HelpExampleCli("submitblock", "\"mydata\"") + HelpExampleRpc("submitblock", "\"mydata\""));
 
     CBlock block;
-    if (!DecodeHexBlk(block, params[0].get_str()))
+    if (!DecodeHexBlk(block, request.params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
     bool usePhi2, fBlockPresent = false;
@@ -990,7 +996,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash(usePhi2), usePhi2);
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, Params(), NULL, &block);
+    bool fAccepted = ProcessNewBlock(state, Params(), nullptr, &block);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found)
@@ -1005,9 +1011,9 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     return BIP22ValidationResult(state);
 }
 
-UniValue estimatefee(const UniValue& params, bool fHelp)
+UniValue estimatefee(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "estimatefee nblocks\n"
             "\nEstimates the approximate fee per kilobyte\n"
@@ -1023,9 +1029,9 @@ UniValue estimatefee(const UniValue& params, bool fHelp)
             "\nExample:\n" +
             HelpExampleCli("estimatefee", "6"));
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VSTR));
 
-    int nBlocks = params[0].get_int();
+    int nBlocks = request.params[0].get_int();
     if (nBlocks < 1)
         nBlocks = 1;
 
@@ -1036,9 +1042,9 @@ UniValue estimatefee(const UniValue& params, bool fHelp)
     return ValueFromAmount(feeRate.GetFeePerK());
 }
 
-UniValue estimatepriority(const UniValue& params, bool fHelp)
+UniValue estimatepriority(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "estimatepriority nblocks\n"
             "\nEstimates the approximate priority\n"
@@ -1054,18 +1060,18 @@ UniValue estimatepriority(const UniValue& params, bool fHelp)
             "\nExample:\n" +
             HelpExampleCli("estimatepriority", "6"));
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VSTR));
 
-    int nBlocks = params[0].get_int();
+    int nBlocks = request.params[0].get_int();
     if (nBlocks < 1)
         nBlocks = 1;
 
     return mempool.estimatePriority(nBlocks);
 }
 
-UniValue estimatesmartfee(const UniValue& params, bool fHelp)
+UniValue estimatesmartfee(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "estimatesmartfee nblocks\n"
             "\nWARNING: This interface is unstable and may disappear or change!\n"
@@ -1087,9 +1093,9 @@ UniValue estimatesmartfee(const UniValue& params, bool fHelp)
             + HelpExampleCli("estimatesmartfee", "6")
             );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VSTR));
 
-    int nBlocks = params[0].get_int();
+    int nBlocks = request.params[0].get_int();
 
     UniValue result(UniValue::VOBJ);
     int answerFound;
@@ -1099,9 +1105,9 @@ UniValue estimatesmartfee(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue estimatesmartpriority(const UniValue& params, bool fHelp)
+UniValue estimatesmartpriority(const JSONRPCRequest& request)
 {
-    if (fHelp || params.size() != 1)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "estimatesmartpriority nblocks\n"
             "\nWARNING: This interface is unstable and may disappear or change!\n"
@@ -1123,9 +1129,9 @@ UniValue estimatesmartpriority(const UniValue& params, bool fHelp)
             + HelpExampleCli("estimatesmartpriority", "6")
             );
 
-    RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VSTR));
 
-    int nBlocks = params[0].get_int();
+    int nBlocks = request.params[0].get_int();
 
     UniValue result(UniValue::VOBJ);
     int answerFound;

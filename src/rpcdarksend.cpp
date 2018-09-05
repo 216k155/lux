@@ -43,7 +43,7 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
-    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, coin_type)) {
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, nullptr, coin_type)) {
         if (nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         LogPrintf("SendMoney() : %s\n", strError);
@@ -54,8 +54,8 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
                            "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 }
 
-UniValue darksend(const UniValue& params, bool fHelp) {
-    if (fHelp || params.size() == 0)
+UniValue darksend(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() == 0)
         throw runtime_error(
             "darksend <Luxaddress> <amount>\n"
             "Luxaddress, reset, or auto (AutoDenominate)"
@@ -65,7 +65,7 @@ UniValue darksend(const UniValue& params, bool fHelp) {
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-    if (params[0].get_str() == "auto") {
+    if (request.params[0].get_str() == "auto") {
         if (fMasterNode)
             return "DarkSend is not supported from masternodes";
 
@@ -73,25 +73,25 @@ UniValue darksend(const UniValue& params, bool fHelp) {
         return "DoAutomaticDenominating";
     }
 
-    if (params[0].get_str() == "reset") {
+    if (request.params[0].get_str() == "reset") {
         darkSendPool.SetNull(true);
         darkSendPool.UnlockCoins();
         return "successfully reset darksend";
     }
 
-    if (params.size() != 2)
+    if (request.params.size() != 2)
         throw runtime_error(
             "darksend <Luxaddress> <amount>\n"
             "Luxaddress, denominate, or auto (AutoDenominate)"
             "<amount> is a real and is rounded to the nearest 0.00000001"
             + HelpRequiringPassphrase());
 
-    CTxDestination dest = DecodeDestination(params[0].get_str());
+    CTxDestination dest = DecodeDestination(request.params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Lux address");
 
     // Amount
-    int64_t nAmount = AmountFromValue(params[1]);
+    int64_t nAmount = AmountFromValue(request.params[1]);
 
     // Wallet comments
     CWalletTx wtx;
@@ -101,8 +101,8 @@ UniValue darksend(const UniValue& params, bool fHelp) {
 }
 
 
-UniValue getpoolinfo(const UniValue& params, bool fHelp) {
-    if (fHelp || params.size() != 0)
+UniValue getpoolinfo(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() != 0)
         throw runtime_error(
             "getpoolinfo\n"
             "Returns an object containing anonymous pool-related information.");
@@ -116,12 +116,12 @@ UniValue getpoolinfo(const UniValue& params, bool fHelp) {
 }
 
 
-UniValue masternode(const UniValue& params, bool fHelp) {
+UniValue masternode(const JSONRPCRequest& request) {
     string strCommand;
-    if (params.size() >= 1)
-        strCommand = params[0].get_str();
+    if (request.params.size() >= 1)
+        strCommand = request.params[0].get_str();
 
-    if (fHelp ||
+    if (request.fHelp ||
         (strCommand != "start" && strCommand != "start-alias" && strCommand != "start-many" && strCommand != "stop" && strCommand != "stop-alias" && strCommand != "stop-many" &&
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" && strCommand != "enforce"
          && strCommand != "debug" && strCommand != "current" && strCommand != "winners" && strCommand != "genkey" && strCommand != "connect" && strCommand != "outputs"))
@@ -135,8 +135,8 @@ UniValue masternode(const UniValue& params, bool fHelp) {
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if (params.size() == 2) {
-                strWalletPass = params[1].get_str().c_str();
+            if (request.params.size() == 2) {
+                strWalletPass = request.params[1].get_str().c_str();
             } else {
                 throw runtime_error(
                     "Your wallet is locked, passphrase is required\n");
@@ -160,19 +160,19 @@ UniValue masternode(const UniValue& params, bool fHelp) {
     }
 
     if (strCommand == "stop-alias") {
-        if (params.size() < 2) {
+        if (request.params.size() < 2) {
             throw runtime_error(
                 "command needs at least 2 parameters\n");
         }
 
-        std::string alias = params[1].get_str().c_str();
+        std::string alias = request.params[1].get_str().c_str();
 
         if (pwalletMain->IsLocked()) {
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if (params.size() == 3) {
-                strWalletPass = params[2].get_str().c_str();
+            if (request.params.size() == 3) {
+                strWalletPass = request.params[2].get_str().c_str();
             } else {
                 throw runtime_error(
                     "Your wallet is locked, passphrase is required\n");
@@ -216,8 +216,8 @@ UniValue masternode(const UniValue& params, bool fHelp) {
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if (params.size() == 2) {
-                strWalletPass = params[1].get_str().c_str();
+            if (request.params.size() == 2) {
+                strWalletPass = request.params[1].get_str().c_str();
             } else {
                 throw runtime_error(
                     "Your wallet is locked, passphrase is required\n");
@@ -267,8 +267,8 @@ UniValue masternode(const UniValue& params, bool fHelp) {
     if (strCommand == "list") {
         std::string strCommand = "active";
 
-        if (params.size() == 2) {
-            strCommand = params[1].get_str().c_str();
+        if (request.params.size() == 2) {
+            strCommand = request.params[1].get_str().c_str();
         }
 
         if (strCommand != "active" && strCommand != "vin" && strCommand != "pubkey" && strCommand != "lastseen" && strCommand != "activeseconds" && strCommand != "rank" && strCommand != "protocol") {
@@ -313,8 +313,8 @@ UniValue masternode(const UniValue& params, bool fHelp) {
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if (params.size() == 2) {
-                strWalletPass = params[1].get_str().c_str();
+            if (request.params.size() == 2) {
+                strWalletPass = request.params[1].get_str().c_str();
             } else {
                 throw runtime_error(
                     "Your wallet is locked, passphrase is required\n");
@@ -343,19 +343,19 @@ UniValue masternode(const UniValue& params, bool fHelp) {
     }
 
     if (strCommand == "start-alias") {
-        if (params.size() < 2) {
+        if (request.params.size() < 2) {
             throw runtime_error(
                 "command needs at least 2 parameters\n");
         }
 
-        std::string alias = params[1].get_str().c_str();
+        std::string alias = request.params[1].get_str().c_str();
 
         if (pwalletMain->IsLocked()) {
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if (params.size() == 3) {
-                strWalletPass = params[2].get_str().c_str();
+            if (request.params.size() == 3) {
+                strWalletPass = request.params[2].get_str().c_str();
             } else {
                 throw runtime_error(
                     "Your wallet is locked, passphrase is required\n");
@@ -401,8 +401,8 @@ UniValue masternode(const UniValue& params, bool fHelp) {
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if (params.size() == 2) {
-                strWalletPass = params[1].get_str().c_str();
+            if (request.params.size() == 2) {
+                strWalletPass = request.params[1].get_str().c_str();
             } else {
                 throw runtime_error(
                     "Your wallet is locked, passphrase is required\n");
@@ -526,8 +526,8 @@ UniValue masternode(const UniValue& params, bool fHelp) {
 
     if (strCommand == "connect") {
         std::string strAddress = "";
-        if (params.size() == 2) {
-            strAddress = params[1].get_str().c_str();
+        if (request.params.size() == 2) {
+            strAddress = request.params[1].get_str().c_str();
         } else {
             throw runtime_error(
                 "Masternode address required\n");
@@ -535,7 +535,7 @@ UniValue masternode(const UniValue& params, bool fHelp) {
 
         CService addr = CService(strAddress);
 
-        if (ConnectNode(CAddress(addr, NODE_NETWORK), NULL, true)) {
+        if (ConnectNode(CAddress(addr, NODE_NETWORK), nullptr, true)) {
             return "successfully connected";
         } else {
             return "error connecting";

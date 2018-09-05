@@ -19,24 +19,24 @@ class CCoinsViewTest : public CCoinsView
     std::map<uint256, CCoins> map_;
 
 public:
-    bool GetCoins(const uint256& txid, CCoins& coins) const
+    bool GetCoin(const uint256& txid, CCoins& coins) const
     {
         std::map<uint256, CCoins>::const_iterator it = map_.find(txid);
         if (it == map_.end()) {
             return false;
         }
         coins = it->second;
-        if (coins.IsPruned() && insecure_rand() % 2 == 0) {
+        if (coins.IsSpent() && insecure_rand() % 2 == 0) {
             // Randomly return false in case of an empty entry.
             return false;
         }
         return true;
     }
 
-    bool HaveCoins(const uint256& txid) const
+    bool HaveCoin(const uint256& txid) const
     {
         CCoins coins;
-        return GetCoins(txid, coins);
+        return GetCoin(txid, coins);
     }
 
     uint256 GetBestBlock() const { return hashBestBlock_; }
@@ -45,7 +45,7 @@ public:
     {
         for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ) {
             map_[it->first] = it->second.coins;
-            if (it->second.coins.IsPruned() && insecure_rand() % 3 == 0) {
+            if (it->second.coins.IsSpent() && insecure_rand() % 3 == 0) {
                 // Randomly delete empty entries on write.
                 map_.erase(it->first);
             }
@@ -106,8 +106,8 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             CCoins& coins = result[txid];
             CCoinsModifier entry = stack.back()->ModifyCoins(txid);
             BOOST_CHECK(coins == *entry);
-            if (insecure_rand() % 5 == 0 || coins.IsPruned()) {
-                if (coins.IsPruned()) {
+            if (insecure_rand() % 5 == 0 || coins.IsSpent()) {
+                if (coins.IsSpent()) {
                     added_an_entry = true;
                 } else {
                     updated_an_entry = true;
@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
                     BOOST_CHECK(*coins == it->second);
                     found_an_entry = true;
                 } else {
-                    BOOST_CHECK(it->second.IsPruned());
+                    BOOST_CHECK(it->second.IsSpent());
                     missed_an_entry = true;
                 }
             }

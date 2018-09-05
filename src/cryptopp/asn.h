@@ -95,11 +95,11 @@ CRYPTOPP_DLL size_t CRYPTOPP_API DERLengthEncode(BufferedTransformation &bt, lwo
 //! \details BERLengthDecode() returns false if the encoding is indefinite length.
 CRYPTOPP_DLL bool CRYPTOPP_API BERLengthDecode(BufferedTransformation &bt, size_t &length);
 
-//! \brief DER encode NULL
+//! \brief DER encode nullptr
 //! \param bt BufferedTransformation object for writing
 CRYPTOPP_DLL void CRYPTOPP_API DEREncodeNull(BufferedTransformation &bt);
 
-//! \brief BER decode NULL
+//! \brief BER decode nullptr
 //! \param bt BufferedTransformation object for reading
 CRYPTOPP_DLL void CRYPTOPP_API BERDecodeNull(BufferedTransformation &bt);
 
@@ -220,7 +220,7 @@ public:
 	//! \param attachment a BufferedTrasformation to attach to this object
 	//! \param nObjects
 	//! \param flags bitwise OR of EncodedObjectFilter::Flag
-	EncodedObjectFilter(BufferedTransformation *attachment = NULL, unsigned int nObjects = 1, word32 flags = 0);
+	EncodedObjectFilter(BufferedTransformation *attachment = nullptr, unsigned int nObjects = 1, word32 flags = 0);
 
 	//! \brief Input a byte buffer for processing
 	//! \param inString the byte buffer to process
@@ -361,7 +361,7 @@ public:
 	//! \param out BufferedTransformation object
 	void DEREncode(BufferedTransformation &out)
 	{
-		if (this->get() != NULL)
+		if (this->get() != nullptr)
 			this->get()->DEREncode(out);
 	}
 };

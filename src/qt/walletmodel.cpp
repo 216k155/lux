@@ -78,7 +78,7 @@ CAmount WalletModel::getBalance(const CCoinControl* coinControl) const
         wallet->AvailableCoins(vCoins, true, coinControl);
         for (const COutput& out : vCoins)
             if (out.fSpendable)
-                nBalance += out.tx->vout[out.i].nValue;
+                nBalance += out.tx->tx->vout[out.i].nValue;
 
         return nBalance;
     }
@@ -332,7 +332,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
         // reject insane fee
         if (nFeeRequired > ::minRelayTxFee.GetFee(transaction.getTransactionSize()) * 10000)
-            return InsaneFee;
+            return AbsurdFee;
     }
 
     return SendCoinsReturn(OK);
@@ -354,6 +354,12 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
         // Store PaymentRequests in wtx.vOrderForm in wallet.
         foreach (const SendCoinsRecipient& rcp, recipients) {
             if (rcp.paymentRequest.IsInitialized()) {
+
+                // Make sure any payment requests involved are still valid.
+                if (PaymentServer::verifyExpired(rcp.paymentRequest.getDetails())) {
+                    return PaymentRequestExpired;
+                }
+
                 std::string key("PaymentRequest");
                 std::string value;
                 rcp.paymentRequest.SerializeToString(&value);
@@ -501,7 +507,7 @@ bool WalletModel::restoreWallet(const QString &filename, const QString &param)
 {
     if(QFile::exists(filename))
     {
-        boost::filesystem::path pathWalletBak = GetDataDir() / strprintf("wallet.%d.bak", GetTime());
+        fs::path pathWalletBak = GetDataDir() / strprintf("wallet.%d.bak", GetTime());
         QString walletBak = QString::fromStdString(pathWalletBak.string());
         if(backupWallet(walletBak))
         {
@@ -702,10 +708,10 @@ bool WalletModel::isUnspentAddress(const std::string &luxAddress) const
     for (const COutput& out : vecOutputs)
     {
         CTxDestination address;
-        const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;
+        const CScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
         bool fValidAddress = ExtractDestination(scriptPubKey, address);
 
-        if(fValidAddress && EncodeDestination(address) == luxAddress && out.tx->vout[out.i].nValue)
+        if(fValidAddress && EncodeDestination(address) == luxAddress && out.tx->tx->vout[out.i].nValue)
         {
             return true;
         }
@@ -729,20 +735,20 @@ void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) 
         int nDepth = wallet->mapWallet[outpoint.hash].GetDepthInMainChain();
         if (nDepth < 0) continue;
         COutput out(&wallet->mapWallet[outpoint.hash], outpoint.n, nDepth, true);
-        if (outpoint.n < out.tx->vout.size() && wallet->IsMine(out.tx->vout[outpoint.n]) == ISMINE_SPENDABLE)
+        if (outpoint.n < out.tx->tx->vout.size() && wallet->IsMine(out.tx->tx->vout[outpoint.n]) == ISMINE_SPENDABLE)
             vCoins.push_back(out);
     }
 
     for (const COutput& out : vCoins) {
         COutput cout = out;
 
-        while (wallet->IsChange(cout.tx->vout[cout.i]) && cout.tx->vin.size() > 0 && wallet->IsMine(cout.tx->vin[0])) {
-            if (!wallet->mapWallet.count(cout.tx->vin[0].prevout.hash)) break;
-            cout = COutput(&wallet->mapWallet[cout.tx->vin[0].prevout.hash], cout.tx->vin[0].prevout.n, 0, true);
+        while (wallet->IsChange(cout.tx->tx->vout[cout.i]) && cout.tx->tx->vin.size() > 0 && wallet->IsMine(cout.tx->tx->vin[0])) {
+            if (!wallet->mapWallet.count(cout.tx->tx->vin[0].prevout.hash)) break;
+            cout = COutput(&wallet->mapWallet[cout.tx->tx->vin[0].prevout.hash], cout.tx->tx->vin[0].prevout.n, 0, true);
         }
 
         CTxDestination address;
-        if (!out.fSpendable || !ExtractDestination(cout.tx->vout[cout.i].scriptPubKey, address))
+        if (!out.fSpendable || !ExtractDestination(cout.tx->tx->vout[cout.i].scriptPubKey, address))
             continue;
         mapCoins[QString::fromStdString(EncodeDestination(address))].push_back(out);
     }
@@ -873,5 +879,10 @@ bool WalletModel::isMineAddress(const std::string &Address)
         return false;
     }
     return true;
+}
+
+bool WalletModel::hdEnabled() const
+{
+    return wallet->IsHDEnabled();
 }
 

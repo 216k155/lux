@@ -287,8 +287,8 @@ bool TestSecBlock()
 	//********** Zeroized block **********//
 
 	{
-		// NULL ptr with a size means to create a new SecBlock with all elements zero'd
-		SecByteBlock z1(NULL, 256);
+		// nullptr ptr with a size means to create a new SecBlock with all elements zero'd
+		SecByteBlock z1(nullptr, 256);
 		temp = true;
 
 		for (size_t i = 0; i < z1.size(); i++)
@@ -301,7 +301,7 @@ bool TestSecBlock()
 			std::cout << "passed:";
 		std::cout << "  Zeroized byte array" << std::endl;
 
-		SecBlock<word32> z2(NULL, 256);
+		SecBlock<word32> z2(nullptr, 256);
 		temp = true;
 
 		for (size_t i = 0; i < z2.size(); i++)
@@ -314,7 +314,7 @@ bool TestSecBlock()
 			std::cout << "passed:";
 		std::cout << "  Zeroized word32 array" << std::endl;
 
-		SecBlock<word64> z3(NULL, 256);
+		SecBlock<word64> z3(nullptr, 256);
 		temp = true;
 
 		for (size_t i = 0; i < z3.size(); i++)
@@ -328,7 +328,7 @@ bool TestSecBlock()
 		std::cout << "  Zeroized word64 array" << std::endl;
 
 #if defined(CRYPTOPP_WORD128_AVAILABLE)
-		SecBlock<word128> z4(NULL, 256);
+		SecBlock<word128> z4(nullptr, 256);
 		temp = true;
 
 		for (size_t i = 0; i < z4.size(); i++)

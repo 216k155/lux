@@ -66,9 +66,6 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
     bool fOverflow;
     uint256 bnTarget;
 
-    if (Params().SkipProofOfWorkCheck())
-        return true;
-
     bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
 
     // Check range

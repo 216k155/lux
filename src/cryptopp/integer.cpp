@@ -410,7 +410,7 @@ private:
 
 // do a 3 word by 2 word divide, returns quotient and leaves remainder in A
 template <class S, class D>
-S DivideThreeWordsByTwo(S *A, S B0, S B1, D *dummy=NULL)
+S DivideThreeWordsByTwo(S *A, S B0, S B1, D *dummy=nullptr)
 {
 	CRYPTOPP_UNUSED(dummy);
 
@@ -3500,7 +3500,7 @@ public:
 	{
 		PutWord(false, BIG_ENDIAN_ORDER, m_counterAndSeed, m_counter);
 		++m_counter;
-		P1363_KDF2<SHA1>::DeriveKey(output, size, m_counterAndSeed, m_counterAndSeed.size(), NULL, 0);
+		P1363_KDF2<SHA1>::DeriveKey(output, size, m_counterAndSeed, m_counterAndSeed.size(), nullptr, 0);
 	}
 
 private:
@@ -3569,7 +3569,7 @@ bool Integer::GenerateRandomNoThrow(RandomNumberGenerator &i_rng, const NameValu
 
 		case PRIME:
 		{
-			const PrimeSelector *pSelector = params.GetValueWithDefault(Name::PointerToPrimeSelector(), (const PrimeSelector *)NULL);
+			const PrimeSelector *pSelector = params.GetValueWithDefault(Name::PointerToPrimeSelector(), (const PrimeSelector *)nullptr);
 
 			int i;
 			i = 0;

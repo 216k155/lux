@@ -5,14 +5,12 @@
 
 #include "chain.h"
 
-using namespace std;
-
 /**
  * CChain implementation
  */
 void CChain::SetTip(CBlockIndex* pindex)
 {
-    if (pindex == NULL) {
+    if (pindex == nullptr) {
         vChain.clear();
         return;
     }

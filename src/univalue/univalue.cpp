@@ -213,7 +213,7 @@ const char *uvTypeName(UniValue::VType t)
     }
 
     // not reached
-    return NULL;
+    return nullptr;
 }
 
 const UniValue& find_value(const UniValue& obj, const std::string& name)
@@ -225,14 +225,14 @@ const UniValue& find_value(const UniValue& obj, const std::string& name)
     return NullUniValue;
 }
 
-std::vector<std::string> UniValue::getKeys() const
+const std::vector<std::string>& UniValue::getKeys() const
 {
     if (typ != VOBJ)
         throw std::runtime_error("JSON value is not an object as expected");
     return keys;
 }
 
-std::vector<UniValue> UniValue::getValues() const
+const std::vector<UniValue>& UniValue::getValues() const
 {
     if (typ != VOBJ && typ != VARR)
         throw std::runtime_error("JSON value is not an object or array as expected");
@@ -246,7 +246,7 @@ bool UniValue::get_bool() const
     return getBool();
 }
 
-std::string UniValue::get_str() const
+const std::string& UniValue::get_str() const
 {
     if (typ != VSTR)
         throw std::runtime_error("JSON value is not a string as expected");

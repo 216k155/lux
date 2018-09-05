@@ -42,10 +42,10 @@ bool CheckBlock(const CCheckpointData& data, int nHeight, const uint256& hash)
 //! Guess how far we are in the verification process at the given block index
 double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks)
 {
-    if (pindex == NULL)
+    if (pindex == nullptr)
         return 0.0;
 
-    int64_t nNow = time(NULL);
+    int64_t nNow = time(nullptr);
 
     double fSigcheckVerificationFactor = fSigchecks ? SIGCHECK_VERIFICATION_FACTOR : 1.0;
     double fWorkBefore = 0.0; // Amount of work done before pindex
@@ -85,7 +85,7 @@ int GetTotalBlocksEstimate(const CCheckpointData& data)
 CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
 {
     if (!fEnabled)
-        return NULL;
+        return nullptr;
 
     const MapCheckpoints& checkpoints = *data.mapCheckpoints;
 
@@ -94,7 +94,7 @@ CBlockIndex* GetLastCheckpoint(const CCheckpointData& data)
         CBlockIndex* pindex = LookupBlockIndex(hash);
         if (pindex) return pindex;
     }
-    return NULL;
+    return nullptr;
 }
 
 // Automatically select a suitable sync-checkpoint
@@ -103,7 +103,7 @@ const CBlockIndex* AutoSelectSyncCheckpoint()
     const CBlockIndex *pindexBest = chainActive.Tip();
     const CBlockIndex *pindex = pindexBest;
 
-    if (!pindex) return NULL;
+    if (!pindex) return nullptr;
 
     // Search backward for a block within max span and maturity window
     while (pindex->pprev && pindex->nHeight + nCheckpointSpan > pindexBest->nHeight)

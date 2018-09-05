@@ -63,7 +63,7 @@ void ProcessMasternode(CNode* pfrom, const std::string& strCommand, CDataStream&
 class CMasterNode
 {
 private:
-    boost::filesystem::path GetMasternodeConfigFile;
+    fs::path GetMasternodeConfigFile;
     std::string strMagicMessage;
 
 public:
@@ -143,7 +143,7 @@ public:
 
     int GetMasternodeInputAge()
     {
-        if(chainActive.Tip() == NULL) return 0;
+        if(chainActive.Tip() == nullptr) return 0;
 
         if(cacheInputAge == 0){
             cacheInputAge = GetInputAge(vin);
@@ -190,7 +190,7 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion){
+    inline void SerializationOp(Stream& s, Operation ser_action){
         READWRITE(nBlockHeight);
         READWRITE(payee);
         READWRITE(vin);

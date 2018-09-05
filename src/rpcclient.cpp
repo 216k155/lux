@@ -80,8 +80,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     ////////////////////////////////////////////////// // lux
     { "getaddresstxids", 0, "addresses"},
     { "getaddressmempool", 0, "addresses"},
-    { "getaddressdeltas", 0, "addresses"},
     { "getaddressbalance", 0, "addresses"},
+    { "getaddressdeltas", 0, "addresses"},
+    { "getaddressdeltas", 1, "start"},
+    { "getaddressdeltas", 2, "end"},
     { "getaddressutxos", 0, "addresses"},
     { "getblockhashes", 0, "high"},
     { "getblockhashes", 1, "low"},
@@ -106,6 +108,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "createrawtransaction", 2, "locktime" },
     { "signrawtransaction", 1, "prevtxs" },
     { "signrawtransaction", 2, "privkeys" },
+    { "signmessagewithprivkey", 1, "privkey" },
+    { "signmessagewithprivkey", 1, "message" },
     { "sendrawtransaction", 1, "allowhighfees" },
     { "fundrawtransaction", 1, "options" },
     { "gettxout", 1, "n" },
@@ -133,8 +137,11 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "setban", 2, "bantime" },
     { "setban", 3, "absolute" },
     { "setnetworkactive", 0, "state" },
-    { "getmempoolancestors", 1, "verbose" },
-    { "getmempooldescendants", 1, "verbose" },
+    { "getmempoolancestors", 1, "txid" },
+    { "getmempoolancestors", 2, "verbose" },
+    { "getmempooldescendants", 1, "txid" },
+    { "getmempooldescendants", 2, "verbose" },
+    { "getmempoolentry", 1, "txid" },
     { "bumpfee", 1, "options" },
     { "createcontract", 1, "gasLimit" },
     { "createcontract", 2, "gasPrice" },
@@ -149,7 +156,6 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "reservebalance", 1, "amount"},
     { "listcontracts", 0, "start" },
     { "listcontracts", 1, "maxDisplay" },
-    { "gettransactionreceipt", 0, "hash" },
     { "getstorage", 2, "index" },
     { "getstorage", 1, "blockNum" },
     // Echo with conversion (For testing only)
@@ -221,6 +227,15 @@ UniValue RPCConvertValues(const std::string &strMethod, const std::vector<std::s
         // insert string value directly
         if (!rpcCvtTable.convert(strMethod, idx)) {
             params.push_back(strVal);
+        } else if (strMethod.substr(0, 10) == "getaddress" && idx == 0) {
+            UniValue p;
+            try {
+                p = ParseNonRFCJSONValue(strVal);
+            } catch (...) {
+                // allow getaddressbalance "LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg" for convenience
+                p = strVal;
+            }
+            params.push_back(p);
         } else {
             // parse string as JSON, insert bool/number/object/etc. value
             params.push_back(ParseNonRFCJSONValue(strVal));

@@ -8,13 +8,25 @@
 
 #include "leveldbwrapper.h"
 #include "main.h"
+#include "spentindex.h"
 
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+class CBlockFileInfo;
+class CBlockIndex;
+struct CDiskTxPos;
+struct CAddressUnspentKey;
+struct CAddressUnspentValue;
+struct CAddressIndexKey;
+struct CAddressIndexIteratorKey;
+struct CAddressIndexIteratorHeightKey;
+struct CSpentIndexKey;
+struct CSpentIndexValue;
 class CCoins;
+class CCoinsViewDBCursor;
 class uint256;
 
 //! -dbcache default (MiB)
@@ -33,11 +45,39 @@ protected:
 public:
     CCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
-    bool GetCoins(const uint256& txid, CCoins& coins) const;
-    bool HaveCoins(const uint256& txid) const;
+    bool GetCoin(const uint256& txid, CCoins& coins) const;
+    bool HaveCoin(const uint256& txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
     bool GetStats(CCoinsStats& stats) const;
+    CCoinsViewCursor *Cursor() const;
+
+    //! Attempt to update from an older database format. Returns whether an error occurred.
+    bool Upgrade();
+    size_t EstimateSize() const;
+};
+
+/** Specialization of CCoinsViewCursor to iterate over a CCoinsViewDB */
+class CCoinsViewDBCursor: public CCoinsViewCursor
+{
+public:
+    ~CCoinsViewDBCursor() {}
+
+    bool GetKey(COutPoint &key) const;
+    bool GetValue(CCoins &coins) const;
+    unsigned int GetValueSize() const;
+
+    bool Valid() const;
+    void Next();
+
+private:
+    CCoinsViewDBCursor(leveldb::Iterator* pcursorIn, const uint256 &hashBlockIn):
+        CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
+    //std::unique_ptr<CDBIterator> pcursor;
+    boost::scoped_ptr<leveldb::Iterator> pcursor;
+    std::pair<char, COutPoint> keyTmp;
+
+    friend class CCoinsViewDB;
 };
 
 /** Access to the block database (blocks/index/) */
@@ -61,6 +101,13 @@ public:
     bool ReadReindexing(bool& fReindex);
     bool ReadTxIndex(const uint256& txid, CDiskTxPos& pos);
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> >& list);
+    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+    bool UpdateSpentIndex(const std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> >&vect);
+    bool UpdateAddressUnspentIndex(const std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue > >&vect);
+    bool ReadAddressUnspentIndex(uint160 addressHash, int type, std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &vect);
+    bool WriteAddressIndex(const std::vector<std::pair<CAddressIndexKey, CAmount> > &vect);
+    bool EraseAddressIndex(const std::vector<std::pair<CAddressIndexKey, CAmount> > &vect);
+    bool ReadAddressIndex(uint160 addressHash, int type, std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex, int start = 0, int end = 0);
     bool WriteFlag(const std::string& name, bool fValue);
     bool ReadFlag(const std::string& name, bool& fValue);
     bool LoadBlockIndexGuts();
@@ -81,7 +128,7 @@ public:
      */
     int ReadHeightIndex(int low, int high, int minconf,
                         std::vector<std::vector<uint256>> &blocksOfHashes,
-                        std::set<dev::h160> const &addresses);
+                        std::set<dev::h160> const &addresses, bool searchlogs);
     bool EraseHeightIndex(const unsigned int &height);
     bool WipeHeightIndex();
 

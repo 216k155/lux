@@ -80,7 +80,7 @@ void AddressField::on_refresh()
     QString currentAddress = currentText();
     m_stringList.clear();
     vector<COutput> vecOutputs;
-    assert(pwalletMain != NULL);
+    assert(pwalletMain != nullptr);
 
     // Fill the list with address
     if(m_addressType == AddressField::UTXO)
@@ -104,7 +104,7 @@ void AddressField::on_refresh()
             }
 
             // Include zero or unconfirmed coins too
-            pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
+            pwalletMain->AvailableCoins(vecOutputs, false, nullptr, true);
         }
         else
         {
@@ -114,7 +114,7 @@ void AddressField::on_refresh()
 
         for (const COutput& out : vecOutputs) {
             CTxDestination address;
-            const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;
+            const CScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
             bool fValidAddress = ExtractDestination(scriptPubKey, address);
 
             if (fValidAddress)

@@ -48,7 +48,7 @@ void ABIFunctionField::updateABIFunctionField()
     // Clear the content
     clear();
 
-    if(m_contractABI != NULL)
+    if(m_contractABI != nullptr)
     {
         // Populate the control with functions
         std::vector<FunctionABI> functions = m_contractABI->functions;

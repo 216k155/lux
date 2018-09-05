@@ -1,5 +1,5 @@
-// Copyright (c) 2009-2014 The Bitcoin developers               -*- c++ -*-
-// Distributed under the MIT/X11 software license, see the accompanying
+// Copyright (c) 2009-2017 The Bitcoin Core developers
+// Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_CORE_IO_H
@@ -12,12 +12,13 @@
 class CBlock;
 class CScript;
 class CTransaction;
+struct CMutableTransaction;
 class uint256;
 class UniValue;
 
 // core_read.cpp
 extern CScript ParseScript(std::string s);
-extern bool DecodeHexTx(CTransaction& tx, const std::string& strHexTx, bool fTryNoWitness = false);
+extern bool DecodeHexTx(CMutableTransaction& tx, const std::string& strHexTx, bool fTryNoWitness = false);
 extern bool DecodeHexBlk(CBlock&, const std::string& strHexBlk);
 extern uint256 ParseHashUV(const UniValue& v, const std::string& strName);
 extern uint256 ParseHashStr(const std::string&, const std::string& strName);
@@ -25,6 +26,7 @@ extern std::vector<unsigned char> ParseHexUV(const UniValue& v, const std::strin
 
 // core_write.cpp
 UniValue ValueFromAmount(const CAmount& amount);
+std::string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDecode = false);
 extern std::string FormatScript(const CScript& script);
 extern std::string EncodeHexTx(const CTransaction& tx);
 extern void ScriptPubKeyToUniv(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);

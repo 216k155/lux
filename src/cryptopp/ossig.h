@@ -40,9 +40,9 @@ extern "C" {
 //! \tparam S Signal number
 //! \tparam O Flag indicating exsting handler should be overwriiten
 //! \details SignalHandler() can be used to install a signal handler with the signature
-//!   <tt>void handler_fn(int)</tt>. If <tt>SignalHandlerFn</tt> is not <tt>NULL</tt>, then
+//!   <tt>void handler_fn(int)</tt>. If <tt>SignalHandlerFn</tt> is not <tt>nullptr</tt>, then
 //!   the sigaction is set to the function and the sigaction flags is set to the flags.
-//!   If <tt>SignalHandlerFn</tt> is <tt>NULL</tt>, then a default handler is installed
+//!   If <tt>SignalHandlerFn</tt> is <tt>nullptr</tt>, then a default handler is installed
 //!   using sigaction flags set to 0. The default handler only returns from the call.
 //! \details Upon destruction the previous signal handler is restored if the former signal handler
 //!   was replaced.
@@ -57,9 +57,9 @@ struct SignalHandler
     //! \param pfn Pointer to a signal handler function
     //! \param flags Flags to use with the signal handler
     //! \details SignalHandler() installs a signal handler with the signature
-    //!   <tt>void handler_fn(int)</tt>. If <tt>SignalHandlerFn</tt> is not <tt>NULL</tt>, then
+    //!   <tt>void handler_fn(int)</tt>. If <tt>SignalHandlerFn</tt> is not <tt>nullptr</tt>, then
     //!   the sigaction is set to the function and the sigaction flags is set to the flags.
-    //!   If <tt>SignalHandlerFn</tt> is <tt>NULL</tt>, then a default handler is installed
+    //!   If <tt>SignalHandlerFn</tt> is <tt>nullptr</tt>, then a default handler is installed
     //!   using sigaction flags set to 0. The default handler only returns from the call.
     //! \details Upon destruction the previous signal handler is restored if the former signal handler
     //!   was overwritten.
@@ -67,7 +67,7 @@ struct SignalHandler
     //!   because the destructor may not run. <tt>setjmp</tt> is why cpu.cpp does not use SignalHandler
     //!   during CPU feature testing.
     //! \since Crypto++ 5.6.5
-    SignalHandler(SignalHandlerFn pfn = NULL, int flags = 0) : m_installed(false)
+    SignalHandler(SignalHandlerFn pfn = nullptr, int flags = 0) : m_installed(false)
     {
         // http://pubs.opengroup.org/onlinepubs/007908799/xsh/sigaction.html
         struct sigaction new_handler;
