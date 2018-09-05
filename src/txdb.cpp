@@ -508,9 +508,11 @@ bool CBlockTreeDB::WriteHeightIndex(const CHeightTxIndexKey &heightIndex, const 
 
 int CBlockTreeDB::ReadHeightIndex(int low, int high, int minconf,
                                   std::vector<std::vector<uint256>> &blocksOfHashes,
-                                  std::set<dev::h160> const &addresses, bool searchlogs) {
+                                  std::set<dev::h160> const &addresses) {
 
-    if ((high < low && high > -1) || (high == 0 && low == 0) || (high < -1 || low < 0)) {
+    if ((high < low && high > -1) ||
+        (high == 0 && low == 0) ||
+        (high < -1 || low < 0)) {
         return -1;
     }
 
@@ -533,13 +535,7 @@ int CBlockTreeDB::ReadHeightIndex(int low, int high, int minconf,
 
             int nextHeight = heightTxIndex.height;
 
-            if (high <= low && high == 0 && searchlogs) {
-                break;
-            }
-
-            if (high > -1 && nextHeight > high) {
-                break;
-            }
+            if (high > -1 && nextHeight > high) { break; }
 
             if (minconf > 0) {
                 int conf = chainActive.Height() - nextHeight;

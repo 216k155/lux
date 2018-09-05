@@ -995,7 +995,7 @@ size_t parseUInt(const UniValue& val, size_t defaultVal) {
     }
 }
 
-size_t parseBlockHeight(const UniValue& val) {
+int parseBlockHeight(const UniValue& val) {
     if (val.isStr()) {
         auto blockKey = val.get_str();
 
@@ -1019,7 +1019,7 @@ size_t parseBlockHeight(const UniValue& val) {
     throw JSONRPCError(RPC_INVALID_PARAMS, "invalid block number");
 }
 
-size_t parseBlockHeight(const UniValue& val, size_t defaultVal) {
+int parseBlockHeight(const UniValue& val, int defaultVal) {
     if (val.isNull()) {
         return defaultVal;
     } else {
@@ -1102,10 +1102,10 @@ void parseParam(const UniValue& val, std::vector<boost::optional<dev::h256>> &h2
 
 class WaitForLogsParams {
 public:
-    size_t fromBlock;
-    size_t toBlock;
+    int fromBlock;
+    int toBlock;
 
-    size_t minconf;
+    int minconf;
 
     std::set<dev::h160> addresses;
     std::vector<boost::optional<dev::h256>> topics;
@@ -1116,7 +1116,7 @@ public:
         std::unique_lock<std::mutex> lock(cs_blockchange);
 
         fromBlock = parseBlockHeight(params[0], latestblock.height + 1);
-        toBlock = parseBlockHeight(params[1], 0);
+        toBlock = parseBlockHeight(params[1], -1);
 
         parseFilter(params[2]);
         minconf = parseUInt(params[3], 6);
@@ -1166,6 +1166,9 @@ UniValue waitforlogs(const JSONRPCRequest& request_) {
     if (!fLogEvents)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Events indexing disabled");
 
+    if(!request.req)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No HTTP connection");
+
     WaitForLogsParams params(request.params);
 
     request.PollStart();
@@ -1180,17 +1183,17 @@ UniValue waitforlogs(const JSONRPCRequest& request_) {
     while (curheight == 0) {
         {
             LOCK(cs_main);
-            curheight = pblocktree->ReadHeightIndex(params.fromBlock,
-                                                    params.toBlock,
-                                                    params.minconf,
+            curheight = pblocktree->ReadHeightIndex(params.
+                                                    fromBlock,
+                                                    params.
+                                                    toBlock,
+                                                    params.
+                                                    minconf,
                                                     hashesToBlock,
-                                                    addresses,
-                                                    false);
+                                                    addresses);
         }
-
-        if (curheight > 0) {
-            break;
-        }
+        if (curheight > 0) { break; }
+        if (curheight == -1) { break; }
 
         // wait for a new block to arrive
         {
@@ -1215,49 +1218,33 @@ UniValue waitforlogs(const JSONRPCRequest& request_) {
     }
 
     LOCK(cs_main);
-
-    if (pstorageresult == nullptr) {
-        return NullUniValue;
-    }
-
+    std::set<uint256> dupes;
+    if (pstorageresult == nullptr) { return NullUniValue; }
     UniValue jsonLogs(UniValue::VARR);
     for (const auto& txHashes : hashesToBlock) {
         for (const auto& txHash : txHashes) {
+            if(dupes.find(txHash) != dupes.end()) { continue; }
+            dupes.insert(txHash);
             std::vector<TransactionReceiptInfo> receipts = pstorageresult->getResult(uintToh256(txHash));
-
             for (const auto& receipt : receipts) {
                 for (const auto& log : receipt.logs) {
-
                     bool includeLog = true;
-
                     if (!filterTopics.empty()) {
                         for (size_t i = 0; i < filterTopics.size(); i++) {
                             auto filterTopic = filterTopics[i];
-
-                            if (!filterTopic) {
-                                continue;
-                            }
-
+                            if (!filterTopic) { continue; }
                             auto filterTopicContent = filterTopic.get();
                             auto topicContent = log.topics[i];
-
                             if (topicContent != filterTopicContent) {
                                 includeLog = false;
                                 break;
                             }
                         }
                     }
-
-
-                    if (!includeLog) {
-                        continue;
-                    }
-
+                    if (!includeLog) { continue; }
                     UniValue jsonLog(UniValue::VOBJ);
-
                     assignJSON(jsonLog, receipt);
                     assignJSON(jsonLog, log, false);
-
                     jsonLogs.push_back(jsonLog);
                 }
             }
@@ -1341,8 +1328,7 @@ UniValue searchlogs(const JSONRPCRequest& request)
                                             logsParams.toBlock,
                                             logsParams.minconf,
                                             hashesToBlock,
-                                            logsParams.addresses,
-                                            true);
+                                            logsParams.addresses);
 
     if (curheight == -1) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Incorrect params");
