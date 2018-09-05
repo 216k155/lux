@@ -382,7 +382,10 @@ public:
 
     int GetRefCount()
     {
-        assert(nRefCount >= 0);
+        if (nRefCount <= 0) {
+            nRefCount = 0;
+            return 0;
+        }
         return nRefCount;
     }
 
@@ -414,8 +417,12 @@ public:
 
     void Release()
     {
+        if (nRefCount <= 0) {
+            nRefCount = 0;
+            return;
+        }
+
         nRefCount--;
-        assert(nRefCount >= 0);
     }
 
 
