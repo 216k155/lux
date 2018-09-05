@@ -245,16 +245,6 @@ static std::string RequestMethodString(HTTPRequest::RequestMethod m)
 /** HTTP request callback */
 static void http_request_cb(struct evhttp_request* req, void* arg)
 {
-    // Disable reading to work around a libevent bug, fixed in 2.2.0.
-    if (event_get_version_number() < 0x02020001) {
-        evhttp_connection* conn = evhttp_request_get_connection(req);
-        if (conn) {
-            bufferevent* bev = evhttp_connection_get_bufferevent(conn);
-            if (bev) {
-                bufferevent_disable(bev, EV_READ);
-            }
-        }
-    }
     std::unique_ptr<HTTPRequest> hreq(new HTTPRequest(req));
 
     LogPrint(BCLog::HTTP, "Received a %s request for %s from %s\n",
@@ -531,8 +521,8 @@ static void httpevent_callback_fn(evutil_socket_t, short, void* data)
         delete self;
 }
 
-HTTPEvent::HTTPEvent(struct event_base* base, bool deleteWhenTriggered, struct evbuffer *databuf, const std::function<void(void)>& handler):
-    deleteWhenTriggered(deleteWhenTriggered), handler(handler), databuf(databuf)
+HTTPEvent::HTTPEvent(struct event_base* base, bool _deleteWhenTriggered, struct evbuffer *_databuf, const std::function<void(void)>& _handler):
+    deleteWhenTriggered(_deleteWhenTriggered), handler(_handler), databuf(_databuf)
 {
     ev = event_new(base, -1, 0, httpevent_callback_fn, this);
     assert(ev);
@@ -551,12 +541,14 @@ void HTTPEvent::trigger(struct timeval* tv)
     else
         evtimer_add(ev, tv); // trigger after timeval passed
 }
-HTTPRequest::HTTPRequest(struct evhttp_request* req) : req(req),
+
+HTTPRequest::HTTPRequest(struct evhttp_request* pReq) : req(pReq),
                                                        replySent(false),
                                                        startedChunkTransfer(false),
                                                        connClosed(false)
 {
 }
+
 HTTPRequest::~HTTPRequest()
 {
     if (!replySent && !startedChunkTransfer) {
@@ -568,25 +560,11 @@ HTTPRequest::~HTTPRequest()
 }
 
 void HTTPRequest::waitClientClose() {
-    LogPrint(BCLog::HTTPPOLL, "wait for connection close\n");
-
-    // wait at most 5 seconds for client to close
-    for (int i = 0; i < 10 && IsRPCRunning() && !isConnClosed(); i++) {
-        std::unique_lock<std::mutex> lock(cs);
-        closeCv.wait_for(lock, std::chrono::milliseconds(500));
-    }
-
-    if (isConnClosed()) {
-        LogPrint(BCLog::HTTPPOLL, "wait for connection close, ok\n");
-    } else if (!IsRPCRunning()) {
-        LogPrint(BCLog::HTTPPOLL, "wait for connection close, RPC stopped\n");
-    } else {
-        LogPrint(BCLog::HTTPPOLL, "wait for connection close, timeout after 5 seconds\n");
-    }
+    std::unique_lock<std::mutex> lock(cs);
+    closeCv.wait(lock);
 }
 
 void HTTPRequest::startDetectClientClose() {
-    LogPrint(BCLog::HTTPPOLL, "start detect http connection close\n");
     // will need to call evhttp_send_reply_end to clean this up
     auto conn = evhttp_request_get_connection(req);
 
@@ -596,19 +574,11 @@ void HTTPRequest::startDetectClientClose() {
     //
     // But we should just write to the socket to test liveness. This is useful for long-poll RPC calls to see
     // if they should terminate the request early.
-    //
-    // More weirdness: if process received SIGTERM, the http event loop (in HTTPThread) returns prematurely with 1.
-    // In which case evhttp_send_reply_end doesn't seem to get called, and evhttp_connection_set_closecb is
-    // not called. BUT when the event base is freed, this callback IS called, and HTTPRequest is already freed.
-    //
-    // So, waitClientClose and startDetectClientClose should just not do anything if RPC is shutting down.
     evhttp_connection_set_closecb(conn, [](struct evhttp_connection *conn, void *data) {
-        LogPrint(BCLog::HTTPPOLL, "http connection close detected\n");
+        auto req = (HTTPRequest*) data;
+        req->setConnClosed();
 
-        if (IsRPCRunning()) {
-            auto req = (HTTPRequest*) data;
-            req->setConnClosed();
-        }
+        LogPrintf("http connection closed\n");
     }, (void *) this);
 }
 
@@ -664,6 +634,7 @@ bool HTTPRequest::ReplySent() {
 
 void HTTPRequest::WriteHeader(const std::string& hdr, const std::string& value)
 {
+    assert(req);
     struct evkeyvalq* headers = evhttp_request_get_output_headers(req);
     assert(headers);
     evhttp_add_header(headers, hdr.c_str(), value.c_str());

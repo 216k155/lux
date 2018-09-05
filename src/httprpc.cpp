@@ -159,7 +159,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         return false;
     }
 
-    JSONRPCRequest jreq;
+    JSONRPCRequest jreq(req);
     if (!RPCAuthorized(authHeader.second, jreq.authUser)) {
         LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeer().ToString());
 
@@ -171,6 +171,8 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         req->WriteReply(HTTP_UNAUTHORIZED);
         return false;
     }
+
+    req->WriteHeader("Content-Type", "application/json");
 
     try {
         // Parse request
@@ -203,7 +205,6 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         else
             throw JSONRPCError(RPC_PARSE_ERROR, "Top-level object parse error");
 
-        req->WriteHeader("Content-Type", "application/json");
         req->WriteReply(HTTP_OK, strReply);
     } catch (const UniValue& objError) {
         JSONErrorReply(req, objError, jreq.id);

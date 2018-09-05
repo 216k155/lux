@@ -183,7 +183,7 @@ string CRPCTable::help(string strCommand) const
 #endif
 
         try {
-            JSONRPCRequest jreq;
+            JSONRPCRequest jreq(nullptr);
             jreq.fHelp = true;
             rpcfn_type pfn = pcmd->actor;
             if (setDone.insert(pfn).second)
@@ -485,8 +485,8 @@ bool RPCIsInWarmup(std::string* outStatus)
     return fRPCInWarmup;
 }
 
-JSONRPCRequest::JSONRPCRequest(HTTPRequest *req): JSONRPCRequest() {
-    req = req;
+JSONRPCRequest::JSONRPCRequest(HTTPRequest *pReq): JSONRPCRequest() {
+    req = pReq;
 }
 
 bool JSONRPCRequest::PollAlive() {
@@ -494,12 +494,13 @@ bool JSONRPCRequest::PollAlive() {
 }
 
 void JSONRPCRequest::PollStart() {
-    // send an empty space to the client to ensure that it's still alive.
     assert(!isLongPolling);
     req->WriteHeader("Content-Type", "application/json");
-    req->WriteHeader("Connection", "close");
-    req->Chunk(std::string(" "));
+    //req->WriteHeader("Connection", "close");
+    req->WriteHeader("Connection", "keep-alive");
+
     isLongPolling = true;
+    this->PollPing();
 }
 
 void JSONRPCRequest::PollPing() {

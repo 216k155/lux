@@ -159,7 +159,7 @@ public:
      * deleteWhenTriggered deletes this event object after the event is triggered (and the handler called)
      * handler is the handler to call when the event is triggered.
      */
-    HTTPEvent(struct event_base* base, bool deleteWhenTriggered, struct evbuffer *databuf, const std::function<void(void)>& handler);
+    HTTPEvent(struct event_base* base, bool deleteWhenTriggered, struct evbuffer *_databuf, const std::function<void(void)>& handler);
     ~HTTPEvent();
 
     /** Trigger the event. If tv is 0, trigger it immediately. Otherwise trigger it after

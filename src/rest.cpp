@@ -183,11 +183,9 @@ static bool rest_headers(HTTPRequest* req,
         }
         case RF_JSON: {
             UniValue jsonHeaders(UniValue::VARR);
-#if 0
             for (const CBlockIndex *pindex : headers) {
                 jsonHeaders.push_back(blockheaderToJSON(pindex));
             }
-#endif
         std::string strJSON = jsonHeaders.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
             req->WriteReply(HTTP_OK, strJSON);
@@ -285,7 +283,7 @@ static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
 
     switch (rf) {
         case RF_JSON: {
-            JSONRPCRequest jsonRequest;
+            JSONRPCRequest jsonRequest(req);
             jsonRequest.params = UniValue(UniValue::VARR);
             UniValue chainInfoObject = getblockchaininfo(jsonRequest);
             std::string strJSON = chainInfoObject.write() + "\n";
