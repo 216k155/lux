@@ -1755,7 +1755,7 @@ void CWallet::ReacceptWalletTransactions()
         CWalletTx& wtx = *(item.second);
 
             // Try to add to memory pool
-            LOCK(mempool.cs);
+            //LOCK(mempool.cs);
             wtx.AcceptToMemoryPool(false);
         }
     }
@@ -3022,7 +3022,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
                             ++it;
                         }
                     }
-                    // no coin control
+                        // no coin control: send change to newly generated address
                     else {
                         // Note: We use a new key here to keep it from being obvious which side is the change.
                         //  The drawback is that by not reusing a previous key, the change may be lost if a
