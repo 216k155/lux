@@ -2367,7 +2367,6 @@ static DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* 
                     std::vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.end());
                     hashDest = Hash160(hashBytes);
                 } else {
-                    LogPrintf("%s: unhandled addressindex type %u\n", __func__, addressType);
                     continue;
                 }
 
@@ -2464,7 +2463,6 @@ static DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* 
                         std::vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.end());
                         hashDest = Hash160(hashBytes);
                     } else {
-                        LogPrintf("%s: unhandled addressindex type %u\n", __func__, addressType);
                         continue;
                     }
 
