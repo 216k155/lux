@@ -1221,6 +1221,7 @@ UniValue waitforlogs(const JSONRPCRequest& request_) {
     std::set<uint256> dupes;
     if (pstorageresult == nullptr) { return NullUniValue; }
     UniValue jsonLogs(UniValue::VARR);
+
     for (const auto& txHashes : hashesToBlock) {
         for (const auto& txHash : txHashes) {
             if(dupes.find(txHash) != dupes.end()) { continue; }
@@ -2044,13 +2045,14 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
             "gettransactionreceipt \"txid\"\n"
             "\nNOTE: This function requires -logevents enabled.\n"
 
-            "\nReturns an array of objects with smart contract transaction execution results.\n"
+            "\nReturn the smart contract transaction execution results.\n"
+            "Returns an Object with information about the 'txid'.\n"
 
             "\nArgument:\n"
             "1. \"txid\"      (string, required) The transaction id\n"
 
             "\nResult:\n"
-            "[{\n"
+            "{\n"
             "  \"blockHash\": \"data\",      (string)  The block hash containing the 'txid'\n"
             "  \"blockNumber\": n,         (numeric) The block height\n"
             "  \"transactionHash\": \"id\",  (string)  The transaction id (same as provided)\n"
@@ -2062,7 +2064,7 @@ UniValue gettransactionreceipt(const JSONRPCRequest& request)
             "  \"contractAddress\": \"hex\", (string)  The hexadecimal contract address\n"
             "  \"excepted\": \"None\",       (string)\n"
             "  \"log\": []                 (array)\n"
-            "}]\n"
+            "}\n"
         );
 
     if(!fLogEvents)
