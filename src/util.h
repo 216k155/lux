@@ -313,13 +313,16 @@ void TraceThread(const char* name, Callable func)
         LogPrintf("%s thread exit\n", name);
     } catch (boost::thread_interrupted) {
         LogPrintf("%s thread interrupt\n", name);
-        throw;
+        // rethrow exception if current thread is not the "net" thread
+        if (strcmp(name, "net")) throw;
     } catch (std::exception& e) {
         PrintExceptionContinue(&e, name);
-        throw;
+        // rethrow exception if current thread is not the "net" thread
+        if (strcmp(name, "net")) throw;
     } catch (...) {
         PrintExceptionContinue(nullptr, name);
-        throw;
+        // rethrow exception if current thread is not the "net" thread
+        if (strcmp(name, "net")) throw;
     }
 }
 
