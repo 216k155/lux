@@ -929,7 +929,7 @@ public:
     bool IsHDEnabled() const;
 
     CPubKey GenerateNewHDMasterKey();
-    bool SetHDMasterKey(const CPubKey& key);
+    bool SetHDMasterKey(const CPubKey& key, CHDChain *forOldChain = nullptr);
 };
 
 /** A key allocated from the key pool. */
