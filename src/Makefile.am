@@ -76,6 +76,7 @@ BITCOIN_CORE_H = \
   addressindex.h \
   alert.h \
   amount.h \
+  arith_uint256.h \
   base58.h \
   bip39.h \
   bip39_wordlist.h \
