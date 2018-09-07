@@ -151,9 +151,6 @@ void Bip38ToolDialog::on_encryptKeyButton_ENC_clicked()
         ui->statusLabel_ENC->setText(tr("Private key for the entered address is not available."));
         return;
     }
-
-    std::string encryptedKey = BIP38_Encrypt(EncodeDestination(addr), qstrPassphrase.toStdString(), key.GetPrivKey_256(), key.IsCompressed());
-    ui->encryptedKeyOut_ENC->setText(QString::fromStdString(encryptedKey));
 }
 
 void Bip38ToolDialog::on_copyKeyButton_ENC_clicked()

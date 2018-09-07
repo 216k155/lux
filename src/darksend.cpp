@@ -1645,7 +1645,7 @@ bool CDarkSendPool::SendRandomPaymentToSelf() {
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
@@ -1677,19 +1677,19 @@ bool CDarkSendPool::MakeCollateralAmounts() {
     // make our change address
     CReserveKey reservekey(pwalletMain);
 
-    CScript scriptChange;
+    CScript scriptDenom;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
-    scriptChange = GetScriptForDestination(vchPubKey.GetID());
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
+    scriptDenom = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
     int64_t nFeeRet = 0;
     std::string strFail = "";
     vector< pair<CScript, int64_t> > vecSend;
-
-    vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
-    vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
-
+#if 1
+    vecSend.push_back(make_pair(scriptDenom, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
+    vecSend.push_back(make_pair(scriptDenom, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
+#endif
     CCoinControl* coinControl = nullptr;
     //int32_t nChangePos;
     // try to use non-denominated and not mn-like funds
@@ -1722,7 +1722,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
@@ -1730,7 +1730,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
     std::string strFail = "";
     vector< pair<CScript, int64_t> > vecSend;
     int64_t nValueLeft = nTotalValue;
-
+#if 1
     // ****** Add collateral outputs ************ /
     if (!pwalletMain->HasCollateralInputs()) {
         vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
@@ -1738,6 +1738,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
         vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
         nValueLeft -= (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE;
     }
+#endif
 
     // ****** Add denoms ************ /
     for (int64_t v : reverse_iterate(darkSendDenominations)) {
@@ -1748,7 +1749,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
             CScript scriptChange;
             CPubKey vchPubKey;
             //use a unique change address
-            assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+            assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
             scriptChange = GetScriptForDestination(vchPubKey.GetID());
             reservekey.KeepKey();
 

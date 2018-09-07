@@ -15,7 +15,7 @@
 
 class uint512;
 class uint256;
-
+#if 0
 class uint_error : public std::runtime_error
 {
 public:
@@ -270,6 +270,7 @@ public:
         return pn[0] | (uint64_t)pn[1] << 32;
     }
 };
+#endif
 
 /** 256-bit unsigned big integer. */
 class arith_uint256 : public base_uint<256>

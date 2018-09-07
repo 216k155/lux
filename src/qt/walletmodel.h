@@ -292,6 +292,7 @@ signals:
 
     // Encryption status of wallet changed
     void encryptionStatusChanged(int status);
+    void hdEnabledStatusChanged(int hdEnabled);
 
     // Signal emitted when wallet needs to be unlocked
     // It is valid behaviour for listeners to keep the wallet locked after this signal;

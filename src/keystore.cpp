@@ -10,38 +10,13 @@
 #include "script/script.h"
 #include "script/standard.h"
 #include "util.h"
+#include <boost/foreach.hpp>
 
-bool CKeyStore::AddKey(const CKey& key)
-{
+bool CKeyStore::AddKey(const CKey &key) {
     return AddKeyPubKey(key, key.GetPubKey());
 }
 
-void CBasicKeyStore::ImplicitlyLearnRelatedKeyScripts(const CPubKey& pubkey)
-{
-    AssertLockHeld(cs_KeyStore);
-    CKeyID key_id = pubkey.GetID();
-    // We must actually know about this key already.
-    assert(HaveKey(key_id) || mapWatchKeys.count(key_id));
-    // This adds the redeemscripts necessary to detect P2WPKH and P2SH-P2WPKH
-    // outputs. Technically P2WPKH outputs don't have a redeemscript to be
-    // spent. However, our current IsMine logic requires the corresponding
-    // P2SH-P2WPKH redeemscript to be present in the wallet in order to accept
-    // payment even to P2WPKH outputs.
-    // Also note that having superfluous scripts in the keystore never hurts.
-    // They're only used to guide recursion in signing and IsMine logic - if
-    // a script is present but we can't do anything with it, it has no effect.
-    // "Implicitly" refers to fact that scripts are derived automatically from
-    // existing keys, and are present in memory, even without being explicitly
-    // loaded (e.g. from a file).
-    if (pubkey.IsCompressed()) {
-        CScript script = GetScriptForDestination(WitnessV0KeyHash(key_id));
-        // This does not use AddCScript, as it may be overridden.
-        CScriptID id(script);
-        mapScripts[id] = std::move(script);
-    }
-}
-
-bool CBasicKeyStore::GetPubKey(const CKeyID& address, CPubKey& vchPubKeyOut) const
+bool CBasicKeyStore::GetPubKey(const CKeyID &address, CPubKey &vchPubKeyOut) const
 {
     CKey key;
     if (!GetKey(address, key)) {
@@ -57,39 +32,11 @@ bool CBasicKeyStore::GetPubKey(const CKeyID& address, CPubKey& vchPubKeyOut) con
     return true;
 }
 
-bool CBasicKeyStore::AddKeyPubKey(const CKey& key, const CPubKey& pubkey)
+bool CBasicKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)
 {
     LOCK(cs_KeyStore);
     mapKeys[pubkey.GetID()] = key;
-    ImplicitlyLearnRelatedKeyScripts(pubkey);
     return true;
-}
-
-bool CBasicKeyStore::HaveKey(const CKeyID& address) const
-{
-    LOCK(cs_KeyStore);
-    return mapKeys.count(address) > 0;
-}
-
-std::set<CKeyID> CBasicKeyStore::GetKeys() const
-{
-    LOCK(cs_KeyStore);
-    std::set<CKeyID> set_address;
-    for (const auto& mi : mapKeys) {
-        set_address.insert(mi.first);
-    }
-    return set_address;
-}
-
-bool CBasicKeyStore::GetKey(const CKeyID& address, CKey& keyOut) const
-{
-    LOCK(cs_KeyStore);
-    KeyMap::const_iterator mi = mapKeys.find(address);
-    if (mi != mapKeys.end()) {
-        keyOut = mi->second;
-        return true;
-    }
-    return false;
 }
 
 bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
@@ -142,7 +89,6 @@ bool CBasicKeyStore::AddWatchOnly(const CScript &dest)
     CPubKey pubKey;
     if (ExtractPubKey(dest, pubKey)) {
         mapWatchKeys[pubKey.GetID()] = pubKey;
-        ImplicitlyLearnRelatedKeyScripts(pubKey);
     }
     return true;
 }
@@ -192,4 +138,11 @@ CKeyID GetKeyForDestination(const CKeyStore& store, const CTxDestination& dest)
         }
     }
     return CKeyID();
+}
+
+
+bool CBasicKeyStore::GetHDChain(CHDChain& hdChainRet)
+{
+    hdChainRet = hdChain;
+    return !hdChain.IsNull();
 }

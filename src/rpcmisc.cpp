@@ -17,6 +17,7 @@
 #include "script/standard.h"
 #include "spork.h"
 #include "timedata.h"
+#include "txmempool.h"
 #include "util.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
@@ -28,6 +29,7 @@
 #include <boost/assign/list_of.hpp>
 #include "univalue/univalue.h"
 #include "rpcutil.h"
+#include <boost/algorithm/string.hpp>
 
 using namespace boost;
 using namespace boost::assign;
@@ -346,6 +348,7 @@ UniValue validateaddress(const JSONRPCRequest& request)
             "  \"account\" : \"account\"         (string) The account associated with the address, \"\" is the default account\n"
             "  \"timestamp\" : timestamp,      (number, optional) The creation time of the key if available in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"hdkeypath\" : \"keypath\"       (string, optional) The HD keypath if the key is HD and available\n"
+            "  \"hdchainid\" : \"<hash>\"        (string, optional) The ID of the HD chain\n"
             "  \"hdmasterkeyid\" : \"<hash160>\" (string, optional) The Hash160 of the HD master pubkey\n"
             "}\n"
             "\nExamples:\n" +
@@ -374,7 +377,7 @@ UniValue validateaddress(const JSONRPCRequest& request)
         if (pwalletMain && pwalletMain->mapAddressBook.count(dest)) {
             ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest].name));
         }
-
+/*
         if (pwalletMain) {
             const CKeyMetadata* meta = nullptr;
             CKeyID key_id = GetKeyForDestination(*pwalletMain, dest);
@@ -397,7 +400,16 @@ UniValue validateaddress(const JSONRPCRequest& request)
                     ret.push_back(Pair("hdmasterkeyid", meta->hdMasterKeyID.GetHex()));
                     }
             }
+        }*/
+
+      CKeyID keyID;
+        CHDChain hdChainCurrent;
+        if (pwalletMain && pwalletMain->mapHdPubKeys.count(keyID) && pwalletMain->GetHDChain(hdChainCurrent))
+        {
+            ret.push_back(Pair("hdkeypath", pwalletMain->mapHdPubKeys[keyID].GetKeyPath()));
+            ret.push_back(Pair("hdchainid", hdChainCurrent.GetID().GetHex()));
         }
+
 #endif
     }
     return ret;

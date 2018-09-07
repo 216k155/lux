@@ -20,7 +20,6 @@
 
 #include <fs.h>
 #include <boost/thread.hpp>
-#include <boost/version.hpp>
 
 using namespace std;
 using namespace boost;
@@ -241,20 +240,11 @@ bool CDBEnv::Salvage(std::string strFile, bool fAggressive, std::vector<CDBEnv::
     while (!strDump.eof() && keyHex != DATA_END) {
         getline(strDump, keyHex);
         if (keyHex != DATA_END) {
-            if (strDump.eof())
-                break;
             getline(strDump, valueHex);
-            if (valueHex == DATA_END) {
-                LogPrintf("CDBEnv::Salvage: WARNING: Number of keys in data does not match number of values.\n");
-                break;
-            }
             vResult.push_back(make_pair(ParseHex(keyHex), ParseHex(valueHex)));
         }
     }
-    if (keyHex != DATA_END) {
-        LogPrintf("CDBEnv::Salvage: WARNING: Unexpected end of file while reading salvage output.\n");
-        return false;
-    }
+
     return (result == 0);
 }
 
@@ -308,7 +298,11 @@ CDB::CDB(const std::string& strFilename, const char* pszMode, bool fFlushOnClose
                 0);
 
             if (ret != 0) {
-                throw runtime_error(strprintf("CDB: Error %d, can't open database %s", ret, strFile));
+                delete pdb;
+                pdb = NULL;
+                --bitdb.mapFileUseCount[strFile];
+                strFile = "";
+                throw runtime_error(strprintf("CDB: Error %d, can't open database %s", ret, strFilename));
             }
 
             CheckUniqueFileid(bitdb, strFile, *pdb);
@@ -318,9 +312,9 @@ CDB::CDB(const std::string& strFilename, const char* pszMode, bool fFlushOnClose
                 WriteVersion(CLIENT_VERSION);
                 fReadOnly = fTmp;
             }
+
+            bitdb.mapDb[strFile] = pdb;
         }
-        ++bitdb.mapFileUseCount[strFilename];
-        strFile = strFilename;
     }
 }
 

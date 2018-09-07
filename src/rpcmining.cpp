@@ -858,7 +858,7 @@ UniValue getwork(const JSONRPCRequest& request) {
             CReserveKey reservekey(pwalletMain);
 
             CPubKey pubkey;
-            reservekey.GetReservedKey(pubkey);
+            reservekey.GetReservedKey(pubkey, false);
 
             pblocktemplate = BlockAssembler(Params()).CreateNewBlockWithKey(reservekey, false);
 
