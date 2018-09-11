@@ -669,7 +669,7 @@ double GetPoWMHashPS() {
 }
 
 double GetPoSKernelPS() {
-    int nStakingInterval = 22;
+    int nStakingInterval = Params().StakingInterval();
     double dStakeKernelsTriedAvg = 120;
     int nStakesHandled = 0, nStakesTime = 0;
     CBlockIndex* pindex = pindexBestHeader;
