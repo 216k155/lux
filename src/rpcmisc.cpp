@@ -1234,6 +1234,8 @@ UniValue getstakingstatus(const JSONRPCRequest& request)
             "  \"foundstake\": X,                  (integer) number of stake kernels found\n"
             "  \"beststakediff\": X.X,             (double) best diff of staked coins\n"
             "  \"posdiff\": X.X,                   (double) sum of diff of staked coins\n"
+            "  \"netstakeweight\": X,              (integer) estimated network weight\n"
+            "  \"expectedtime\": X                 (integer) expected time to stake in seconds\n"
             "}\n"
             "\nExamples:\n" +
             HelpExampleCli("getstakingstatus", "") + HelpExampleRpc("getstakingstatus", ""));
@@ -1249,6 +1251,9 @@ UniValue getstakingstatus(const JSONRPCRequest& request)
     uint64_t nWeight = 0;
     if (pwalletMain)
         pwalletMain->GetStakeWeight(nWeight);
+    uint64_t nNetworkWeight = GetPoSKernelPS();
+    int64_t nTargetSpacing = Params().StakingInterval();
+    uint64_t nExpectedTime = nWeight != 0 ? (nTargetSpacing * nNetworkWeight / nWeight) : 0;
     UniValue weight(UniValue::VOBJ);
     {
         LOCK(stake->stakeMiner.lock);
@@ -1263,6 +1268,8 @@ UniValue getstakingstatus(const JSONRPCRequest& request)
         obj.pushKV("foundstake", stake->stakeMiner.nKernelsFound);
         obj.pushKV("beststakediff", stake->stakeMiner.dKernelDiffMax);
         obj.pushKV("posdiff", stake->stakeMiner.dKernelDiffSum);
+        obj.push_back(Pair("netstakeweight", (uint64_t)nNetworkWeight));
+        obj.push_back(Pair("expectedtime", nExpectedTime));
     }
     return obj;
 }
