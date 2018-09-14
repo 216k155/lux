@@ -27,8 +27,8 @@ unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
 CScriptID::CScriptID(const CScript& in) : uint160(Hash160(in.begin(), in.end())) {}
 
-valtype DataVisitor::operator()(const CNoDestination& noDest)
-{ return valtype();
+valtype DataVisitor::operator()(const CNoDestination& noDest) {
+    return valtype();
 }
 valtype DataVisitor::operator()(const CKeyID& keyID) {
     return valtype(keyID.begin(), keyID.end());

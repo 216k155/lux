@@ -292,11 +292,12 @@ static const CRPCCommand vRPCCommands[] =
         {"blockchain", "reconsiderblock", &reconsiderblock, true, true, false},
 
         /* Address index */
-        {"addressindex", "getaddressmempool", &getaddressmempool, true, false, true},        // note: unsure of exact threadSafe/reqWallet parameters
-        {"addressindex", "getaddressutxos", &getaddressutxos, false, false, true},           //       just went with safest possible answers
-        {"addressindex", "getaddressdeltas", &getaddressdeltas, false, false, true},
-        {"addressindex", "getaddresstxids", &getaddresstxids, false, false, true},
-        {"addressindex", "getaddressbalance", &getaddressbalance, false, false, true},
+        {"addressindex", "getaddressmempool", &getaddressmempool, true, false, false},
+        {"addressindex", "getaddressutxos", &getaddressutxos, false, false, false},
+        {"addressindex", "getaddressdeltas", &getaddressdeltas, false, false, false},
+        {"addressindex", "getaddresstxids", &getaddresstxids, false, false, false},
+        {"addressindex", "getaddressbalance", &getaddressbalance, false, false, false},
+        {"addressindex", "getspentinfo", &getspentinfo, false, false, false},
 
         /*Smart Contract*/
         {"blockchain", "getaccountinfo", &getaccountinfo,true, true, false },

@@ -28,7 +28,7 @@ static const char DB_HEAD_BLOCKS = 'H';
 
 static const char DB_ADDRESSINDEX = 'a';
 static const char DB_ADDRESSUNSPENTINDEX = 'u';
-static const char DB_SPENTINDEX = 'p';
+static const char DB_SPENTINDEX = 's';
 
 static const char DB_FLAG = 'F';
 static const char DB_REINDEX_FLAG = 'R';
@@ -37,30 +37,6 @@ static const char DB_LAST_BLOCK = 'l';
 extern map<uint256, uint256> mapProofOfStake;
 
 using namespace std;
-
-namespace {
-
-struct CoinEntry {
-    COutPoint* outpoint;
-    char key;
-    CoinEntry(const COutPoint* ptr) : outpoint(const_cast<COutPoint*>(ptr)), key(DB_COIN)  {}
-
-    template<typename Stream>
-    void Serialize(Stream &s) const {
-        s << key;
-        s << outpoint->hash;
-        s << VARINT(outpoint->n);
-    }
-
-    template<typename Stream>
-    void Unserialize(Stream& s) {
-        s >> key;
-        s >> outpoint->hash;
-        s >> VARINT(outpoint->n);
-    }
-};
-
-}
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {

@@ -26,7 +26,6 @@ struct CAddressIndexIteratorHeightKey;
 struct CSpentIndexKey;
 struct CSpentIndexValue;
 class CCoins;
-class CCoinsViewDBCursor;
 class uint256;
 
 //! -dbcache default (MiB)
@@ -50,34 +49,10 @@ public:
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
     bool GetStats(CCoinsStats& stats) const;
-    CCoinsViewCursor *Cursor() const;
 
     //! Attempt to update from an older database format. Returns whether an error occurred.
     bool Upgrade();
     size_t EstimateSize() const;
-};
-
-/** Specialization of CCoinsViewCursor to iterate over a CCoinsViewDB */
-class CCoinsViewDBCursor: public CCoinsViewCursor
-{
-public:
-    ~CCoinsViewDBCursor() {}
-
-    bool GetKey(COutPoint &key) const;
-    bool GetValue(CCoins &coins) const;
-    unsigned int GetValueSize() const;
-
-    bool Valid() const;
-    void Next();
-
-private:
-    CCoinsViewDBCursor(leveldb::Iterator* pcursorIn, const uint256 &hashBlockIn):
-        CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
-    //std::unique_ptr<CDBIterator> pcursor;
-    boost::scoped_ptr<leveldb::Iterator> pcursor;
-    std::pair<char, COutPoint> keyTmp;
-
-    friend class CCoinsViewDB;
 };
 
 /** Access to the block database (blocks/index/) */

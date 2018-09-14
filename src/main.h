@@ -631,12 +631,13 @@ public:
     ScriptError GetScriptError() const { return error; }
 };
 
-bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+/** Address and Spent Indexes **/
 bool GetAddressIndex(uint160 addressHash, int type,
                      std::vector<std::pair<CAddressIndexKey, CAmount> > &addressIndex,
                      int start = 0, int end = 0);
 bool GetAddressUnspent(uint160 addressHash, int type,
                        std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &unspentOutputs);
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 
 /** Functions for disk access for blocks */
 bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos);
