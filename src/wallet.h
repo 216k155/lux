@@ -399,21 +399,6 @@ public:
 
     //std::set<int64_t> setKeyPool;
 
-    void LoadKeyPool(int nIndex, const CKeyPool &keypool)
-    {
-        if (keypool.fInternal) {
-            setInternalKeyPool.insert(nIndex);
-        } else {
-            setExternalKeyPool.insert(nIndex);
-        }
-
-        // If no metadata exists yet, create a default with the pool key's
-        // creation time. Note that this may be overwritten by actually
-        // stored metadata for that key later, which is fine.
-        CKeyID keyid = keypool.vchPubKey.GetID();
-        if (mapKeyMetadata.count(keyid) == 0)
-            mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
-    }
     std::set<int64_t> setInternalKeyPool;
     std::set<int64_t> setExternalKeyPool;
     int64_t m_max_keypool_index;
@@ -949,13 +934,6 @@ public:
      * This function will automatically add the necessary scripts to the wallet.
      */
     CTxDestination AddAndGetDestinationForScript(const CScript& script, OutputType);
-
-    void Flush(bool shutdown=false);
-
-    static bool Verify();
-
-    /* Initializes the wallet, returns a new CWallet instance or a null pointer in case of an error */
-    static bool InitLoadWallet();
 
     /**
      * HD Wallet Functions
@@ -1506,8 +1484,6 @@ public:
         }
         return true;
     }
-
-    bool WriteToDisk();
 
     int64_t GetTxTime() const;
     int GetRequestCount() const;

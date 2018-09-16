@@ -765,8 +765,8 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
         pcursor->close();
 
         // Store initial external keypool size since we mostly use external keys in mixing
-        pwalletMain->nKeysLeftSinceAutoBackup = pwalletMain->KeypoolCountExternalKeys();
-        LogPrintf("nKeysLeftSinceAutoBackup: %d\n", pwalletMain->nKeysLeftSinceAutoBackup);
+        //pwalletMain->nKeysLeftSinceAutoBackup = pwalletMain->KeypoolCountExternalKeys();
+        //LogPrintf("nKeysLeftSinceAutoBackup: %d\n", pwalletMain->nKeysLeftSinceAutoBackup);
 
     } catch (boost::thread_interrupted) {
         throw;

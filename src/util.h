@@ -320,7 +320,7 @@ void TraceThread(const char* name, Callable func)
         // rethrow exception if current thread is not the "net" thread
         if (strcmp(name, "net")) throw;
     } catch (...) {
-        PrintExceptionContinue(NULL, name);
+        PrintExceptionContinue(nullptr, name);
         // rethrow exception if current thread is not the "net" thread
         if (strcmp(name, "net")) throw;
     }

@@ -112,30 +112,8 @@ double ClientModel::getVerificationProgress(const CBlockIndex *tipIn) const {
     }
     return Checkpoints::GuessVerificationProgress(Params().Checkpoints(), tip);
 }
-
 void ClientModel::updateTimer()
 {
-    // Get required lock upfront. This avoids the GUI from getting stuck on
-    // periodical polls if the core is holding the locks for a longer time -
-    // for example, during a wallet rescan.
-    TRY_LOCK(cs_main, lockMain);
-    if (!lockMain)
-        return;
-
-    // Some quantities (such as number of blocks) change so fast that we don't want to be notified for each change.
-    // Periodically check and update with a timer.
-    int newNumBlocks = getNumBlocks();
-    QDateTime newBlockDate = getLastBlockDate();
-    // check for changed number of blocks we have, number of blocks peers claim to have, reindexing state and importing state
-    if (cachedNumBlocks != newNumBlocks ||    cachedBlockDate != newBlockDate || cachedReindexing != fReindex || cachedImporting != fImporting) {
-        cachedNumBlocks = newNumBlocks;
-        cachedBlockDate = newBlockDate;
-        cachedReindexing = fReindex;
-        cachedImporting = fImporting;
-
-        emit numBlocksChanged(newNumBlocks, newBlockDate);
-    }
-
     emit bytesChanged(getTotalBytesRecv(), getTotalBytesSent());
 }
 

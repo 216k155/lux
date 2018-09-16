@@ -356,9 +356,7 @@ bool CWallet::AddKeyPubKeyWithDB(CWalletDB &walletdb, const CKey& secret, const 
     }
 
     if (!IsCrypted()) {
-        return walletdb.WriteKey(pubkey,
-                                                 secret.GetPrivKey(),
-                                                 mapKeyMetadata[pubkey.GetID()]);
+        return walletdb.WriteKey(pubkey, secret.GetPrivKey(), mapKeyMetadata[pubkey.GetID()]);
     }
     return true;
 }
@@ -369,21 +367,16 @@ bool CWallet::AddKeyPubKey(const CKey& secret, const CPubKey &pubkey)
     return CWallet::AddKeyPubKeyWithDB(walletdb, secret, pubkey);
 }
 
-bool CWallet::AddCryptedKey(const CPubKey &vchPubKey,
-                            const std::vector<unsigned char> &vchCryptedSecret)
+bool CWallet::AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
 {
     if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
         return false;
     {
         LOCK(cs_wallet);
         if (pwalletdbEncryption)
-            return pwalletdbEncryption->WriteCryptedKey(vchPubKey,
-                vchCryptedSecret,
-                mapKeyMetadata[vchPubKey.GetID()]);
+            return pwalletdbEncryption->WriteCryptedKey(vchPubKey, vchCryptedSecret, mapKeyMetadata[vchPubKey.GetID()]);
         else
-            return CWalletDB(strWalletFile).WriteCryptedKey(vchPubKey,
-                                                            vchCryptedSecret,
-                                                            mapKeyMetadata[vchPubKey.GetID()]);
+            return CWalletDB(strWalletFile).WriteCryptedKey(vchPubKey, vchCryptedSecret, mapKeyMetadata[vchPubKey.GetID()]);
     }
 }
 
@@ -3213,7 +3206,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
                         // "Don't use change address" option is enable
                         if (fNotUseChangeAddress) {
                             for (const PAIRTYPE(const CWalletTx*, unsigned int) & coin : setCoins) {
-                                const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
+                                const CScript& scriptPubKey = coin.first->tx->vout[coin.second].scriptPubKey;
                                 CTxDestination address;
                                 if (ExtractDestination(scriptPubKey, address)) {
                                     LogPrintf("%s: Re-using the address \"%s\"\n", __func__, EncodeDestination(address));
@@ -3765,20 +3758,20 @@ bool CWallet::NewKeyPool()
 
 size_t CWallet::KeypoolCountExternalKeys()
 {
-    AssertLockHeld(cs_wallet); // setExternalKeyPool
+   // AssertLockHeld(cs_wallet); // setExternalKeyPool
     return setExternalKeyPool.size();
 }
 
 size_t CWallet::KeypoolCountInternalKeys()
 {
-    AssertLockHeld(cs_wallet); // setInternalKeyPool
+    //AssertLockHeld(cs_wallet); // setInternalKeyPool
     return setInternalKeyPool.size();
 }
 
 
 void CWallet::LoadKeyPool(int64_t nIndex, const CKeyPool &keypool)
 {
-    AssertLockHeld(cs_wallet);
+    //AssertLockHeld(cs_wallet);
     if (keypool.fInternal) {
         setInternalKeyPool.insert(nIndex);
     } else {
@@ -3954,12 +3947,19 @@ static int64_t GetOldestKeyTimeInPool(const std::set<int64_t>& setKeyPool, CWall
 }
 #endif
 static int64_t GetOldestKeyInPool(const std::set<int64_t>& setKeyPool, CWalletDB& walletdb) {
+    if (setKeyPool.empty()) {
+        return GetTime();
+    }
+
     CKeyPool keypool;
     int64_t nIndex = *(setKeyPool.begin());
     if (!walletdb.ReadPool(nIndex, keypool)) {
         throw std::runtime_error(std::string(__func__) + ": read oldest key in keypool failed");
     }
-    assert(keypool.vchPubKey.IsValid());
+    if (!keypool.vchPubKey.IsValid()) {
+        LogPrintf("%s: vchPubKey is invalid\n",__func__);
+        return GetTime();
+    }
     return keypool.nTime;
 }
 
@@ -4765,18 +4765,18 @@ CWallet* CWallet::InitLoadWallet(bool fDisableWallet, const std::string& strWall
     if (GetBoolArg("-zapwallettxes", false)) {
         uiInterface.InitMessage(_("Zapping all transactions from wallet..."));
 
-        pwalletMain = new CWallet(strWalletFile);
-        DBErrors nZapWalletRet = pwalletMain->ZapWalletTx(vWtx);
+        CWallet *tempWallet = new CWallet(strWalletFile);
+        DBErrors nZapWalletRet = tempWallet->ZapWalletTx(vWtx);
         if (nZapWalletRet != DB_LOAD_OK) {
             uiInterface.InitMessage(_("Error loading wallet.dat: Wallet corrupted"));
             return nullptr;
         }
-        delete pwalletMain;
-        pwalletMain = nullptr;
+        delete tempWallet;
+        tempWallet = nullptr;
     }
     uiInterface.InitMessage(_("Loading wallet..."));
     int64_t nStart = GetTimeMillis();
-    bool fFirstRun = true;
+    bool fFirstRun = false;
     CWallet *pwalletMain = new CWallet(strWalletFile);
     DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
     if (nLoadWalletRet != DB_LOAD_OK) {
@@ -4865,10 +4865,10 @@ CWallet* CWallet::InitLoadWallet(bool fDisableWallet, const std::string& strWall
         pwalletMain->ScanForWalletTransactions(pindexRescan, true);
         LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
         pwalletMain->SetBestChain(chainActive.GetLocator());
-        nWalletDBUpdated++;
 
         // Restore wallet transaction metadata after -zapwallettxes=1
         if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2") {
+            CWalletDB walletdb(strWalletFile);
             for (const CWalletTx& wtxOld : vWtx) {
                 uint256 hash = wtxOld.GetHash();
                 std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(hash);
@@ -4882,7 +4882,7 @@ CWallet* CWallet::InitLoadWallet(bool fDisableWallet, const std::string& strWall
                     copyTo->fFromMe = copyFrom->fFromMe;
                     copyTo->strFromAccount = copyFrom->strFromAccount;
                     copyTo->nOrderPos = copyFrom->nOrderPos;
-                    copyTo->WriteToDisk();
+                    walletdb.WriteTx(*copyTo);
                 }
             }
         }
