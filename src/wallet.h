@@ -911,6 +911,8 @@ public:
     /** Set whether this wallet broadcasts transactions. */
     void SetBroadcastTransactions(bool broadcast) { fBroadcastTransactions = broadcast; }
 
+    static CWallet* InitLoadWallet(bool fDisableWallet, const std::string& strWalletFile, std::string& warningString, std::string& errorString);
+
     /** Return whether transaction can be abandoned */
     bool TransactionCanBeAbandoned(const uint256& hashTx) const;
 
@@ -948,7 +950,12 @@ public:
      */
     CTxDestination AddAndGetDestinationForScript(const CScript& script, OutputType);
 
+    void Flush(bool shutdown=false);
 
+    static bool Verify();
+
+    /* Initializes the wallet, returns a new CWallet instance or a null pointer in case of an error */
+    static bool InitLoadWallet();
 
     /**
      * HD Wallet Functions

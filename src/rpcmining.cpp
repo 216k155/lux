@@ -927,7 +927,7 @@ UniValue getwork(const JSONRPCRequest& request) {
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
         CValidationState state;
-        return ProcessNewBlock(state, Params(), nullptr, pblock);
+        return ProcessNewBlock(state, Params(), nullptr, pblock, true, nullptr);
     }
 }
 
@@ -996,7 +996,7 @@ UniValue submitblock(const JSONRPCRequest& request)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash(usePhi2), usePhi2);
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, Params(), nullptr, &block);
+    bool fAccepted = ProcessNewBlock(state, Params(), NULL, &block, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found)

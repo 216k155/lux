@@ -350,6 +350,7 @@ public:
     std::multimap<int64_t, CInv> mapAskFor;
     std::vector<uint256> vBlockRequested;
     int64_t nNextInvSend;
+    std::vector<uint256> vBlockHashesToAnnounce;
 
     // Ping time measurement:
     // The pong reply we're expecting, or 0 if no pong expected.
@@ -461,6 +462,11 @@ public:
             if (!setInventoryKnown.contains(inv.GetHash()))
                 vInventoryToSend.push_back(inv);
         }
+    }
+
+    void PushBlockHash(const uint256 &hash)
+    {
+        vBlockHashesToAnnounce.push_back(hash);
     }
 
     void AskFor(const CInv& inv);
