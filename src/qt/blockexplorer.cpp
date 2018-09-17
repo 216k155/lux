@@ -431,7 +431,7 @@ std::string AddressToString(const CTxDestination& Address)
         uint256 lastTxHash = 0;
         for (aIndexVector::const_iterator it=aIndex.begin(); it!=aIndex.end(); it++, nEntry++)
         {
-            CTransaction tx;
+            CTransactionRef tx;
             uint256 hashBlock = 0;
             // we need to limit max displayed (last) rows due to html perf limits of Qt
             bool displayRow = (nEntries < nMaxEntries || nEntry > nEntries - nMaxEntries);
@@ -455,7 +455,7 @@ std::string AddressToString(const CTxDestination& Address)
             if (!GetTransaction(it->first.txhash, tx, Params().GetConsensus(), hashBlock, true))
                 continue;
 
-            time_t txTime = tx.nTime;
+            time_t txTime = tx->nTime;
             if (!txTime) {
                 CBlockIndex* pindex = LookupBlockIndex(hashBlock);
                 if (!pindex || !chainActive.Contains(pindex))
@@ -464,7 +464,7 @@ std::string AddressToString(const CTxDestination& Address)
             }
 
             std::string Prepend = "<a href=\"" + itostr(it->first.blockHeight) + "\">" + TimeToString(txTime) + "</a>";
-            std::string TxRow = TxToRow(tx, Address, Prepend, &Sum);
+            std::string TxRow = TxToRow(*tx, Address, Prepend, &Sum);
             nTxSummed++;
             // show latest ones first to avoid scrolling requierement for the current balance
             TxRows = TxRow + TxRows;
