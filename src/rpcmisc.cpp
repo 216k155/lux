@@ -1208,8 +1208,10 @@ UniValue getspentinfo(const JSONRPCRequest& request)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getspentinfo", "\"9e941e62e07c41e78dad34deab979fb49b4ef9f9c11113f0758b504f313d40a2\" 2")
-            + HelpExampleCli("getspentinfo", "'{\"txid\": \"9e941e62e07c41e78dad34deab979fb49b4ef9f9c11113f0758b504f313d40a2\", \"index\": 0}'")
-            + HelpExampleRpc("getspentinfo", "{\"txid\": \"9e941e62e07c41e78dad34deab979fb49b4ef9f9c11113f0758b504f313d40a2\", \"index\": 0}")
+            + HelpExampleCli("getspentinfo",
+                "'{\"txid\": \"9e941e62e07c41e78dad34deab979fb49b4ef9f9c11113f0758b504f313d40a2\", \"index\": 2}'")
+            + HelpExampleRpc("getspentinfo",
+                "{\"txid\": \"9e941e62e07c41e78dad34deab979fb49b4ef9f9c11113f0758b504f313d40a2\", \"index\": 2}")
         );
     }
 
