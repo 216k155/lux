@@ -1191,8 +1191,8 @@ UniValue sendmany(const UniValue& params, bool fHelp)
         fUseIX = params[4].get_bool();
     if (params.size() > 5)
         fUseDS = params[5].get_bool();
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePos, strFailReason);
-
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePos, strFailReason,
+                                                   NULL, fUseDS ? ONLY_DENOMINATED : ALL_COINS, fUseIX);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     if (!pwalletMain->CommitTransaction(wtx, keyChange)) {
