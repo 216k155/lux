@@ -67,6 +67,10 @@
 #include <QUrlQuery>
 #endif
 
+#if QT_VERSION >= 0x50200
+#include <QFontDatabase>
+#endif
+
 #if BOOST_FILESYSTEM_VERSION >= 3
 static boost::filesystem::detail::utf8_codecvt_facet utf8;
 #endif
@@ -93,6 +97,21 @@ QString dateTimeStr(const QDateTime& date)
 QString dateTimeStr(qint64 nTime)
 {
     return dateTimeStr(QDateTime::fromTime_t((qint32)nTime));
+}
+
+QFont fixedPitchFont()
+{
+#if QT_VERSION >= 0x50200
+    return QFontDatabase::systemFont(QFontDatabase::FixedFont);
+#else
+   QFont font("Monospace");
+#if QT_VERSION >= 0x040800
+   font.setStyleHint(QFont::Monospace);
+#else
+   font.setStyleHint(QFont::TypeWriter);
+#endif
+  return font;
+#endif
 }
 
 QFont bitcoinAddressFont()
@@ -775,8 +794,19 @@ LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef
     for (int i = 0; i < CFArrayGetCount(listSnapshot); i++) {
         LSSharedFileListItemRef item = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(listSnapshot, i);
         UInt32 resolutionFlags = kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes;
-        CFURLRef currentItemURL = NULL;
-        LSSharedFileListItemResolve(item, resolutionFlags, &currentItemURL, NULL);
+        CFURLRef currentItemURL = nullptr;
+
+#if defined(MAC_OS_X_VERSION_MAX_ALLOWED) && MAC_OS_X_VERSION_MAX_ALLOWED >= 10100
+	if(&LSSharedFileListItemCopyResolvedURL)
+	    currentItemURL = LSSharedFileListItemCopyResolvedURL(item, resolutionFlags, NULL);
+#if defined(MAC_OS_X_VERSION_MIN_REQUIRED) && MAC_OS_X_VERSION_MIN_REQUIRED < 10100
+	else
+	    LSSharedFileListItemResolve(item, resolutionFlags, &currentItemURL, NULL);
+#endif
+#else
+	LSSharedFileListItemResolve(item, resolutionFlags, &currentItemURL, NULL);
+#endif
+
         if (currentItemURL && CFEqual(currentItemURL, findUrl)) {
             // found
             CFRelease(currentItemURL);

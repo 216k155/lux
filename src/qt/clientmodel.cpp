@@ -20,6 +20,7 @@
 #include "txmempool.h"
 #include "ui_interface.h"
 #include "util.h"
+#include "masternode.h"
 
 #include <stdint.h>
 
@@ -76,6 +77,11 @@ int ClientModel::getNumConnections(unsigned int flags) const
             nNum++;
 
     return nNum;
+}
+
+QString ClientModel::getMasternodeCountString() const
+{
+    return QString::number((int)vecMasternodes.size()) + " / " + QString::number((int)vecMasternodes.size());
 }
 
 int ClientModel::getNumBlocks() const
@@ -154,12 +160,12 @@ double ClientModel::getVerificationProgress(const CBlockIndex *tipIn) const
 
 void ClientModel::updateTimer()
 {
-    emit bytesChanged(getTotalBytesRecv(), getTotalBytesSent());
+    Q_EMIT bytesChanged(getTotalBytesRecv(), getTotalBytesSent());
 }
 
 void ClientModel::updateMnTimer()
 {
-#if 0
+#if 1
     // Get required lock upfront. This avoids the GUI from getting stuck on
     // periodical polls if the core is holding the locks for a longer time -
     // for example, during a wallet rescan.
@@ -172,19 +178,19 @@ void ClientModel::updateMnTimer()
     if (cachedMasternodeCountString != newMasternodeCountString) {
         cachedMasternodeCountString = newMasternodeCountString;
 
-        emit strMasternodesChanged(cachedMasternodeCountString);
+        Q_EMIT strMasternodesChanged(cachedMasternodeCountString);
     }
 #endif
 }
 
 void ClientModel::updateNumConnections(int numConnections)
 {
-    emit numConnectionsChanged(numConnections);
+    Q_EMIT numConnectionsChanged(numConnections);
 }
 
 void ClientModel::updateNetworkActive(bool networkActive)
 {
-    emit networkActiveChanged(networkActive);
+    Q_EMIT networkActiveChanged(networkActive);
 }
 
 void ClientModel::updateAlert(const QString &hash, int status)
@@ -195,11 +201,11 @@ void ClientModel::updateAlert(const QString &hash, int status)
         hash_256.SetHex(hash.toStdString());
         CAlert alert = CAlert::getAlertByHash(hash_256);
         if (!alert.IsNull()) {
-            emit message(tr("Network Alert"), QString::fromStdString(alert.strStatusBar), CClientUIInterface::ICON_ERROR);
+            Q_EMIT message(tr("Network Alert"), QString::fromStdString(alert.strStatusBar), CClientUIInterface::ICON_ERROR);
         }
     }
 
-    emit alertsChanged(getStatusBarWarnings());
+    Q_EMIT alertsChanged(getStatusBarWarnings());
 }
 
 void ClientModel::getGasInfo(uint64_t& blockGasLimit, uint64_t& minGasPrice, uint64_t& nGasPrice) const
@@ -292,7 +298,7 @@ QString ClientModel::dataDir() const
 void ClientModel::updateBanlist()
 {
     banTableModel->refresh();
-    emit banListChanged();
+    Q_EMIT banListChanged();
 }
 
 // Handlers for core signals

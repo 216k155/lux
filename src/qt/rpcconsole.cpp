@@ -11,6 +11,7 @@
 #include "guiutil.h"
 #include "peertablemodel.h"
 #include "bantablemodel.h"
+#include "platformstyle.h"
 
 #include "chainparams.h"
 #include "main.h"
@@ -28,6 +29,7 @@
 
 #include <QDir>
 #include <QKeyEvent>
+#include <QMessageBox>
 #include <QMenu>
 #include <QScrollBar>
 #include <QSignalMapper>
@@ -90,10 +92,10 @@ class RPCExecutor : public QObject
 {
     Q_OBJECT
 
-public slots:
+public Q_SLOTS:
     void request(const QString& command);
 
-signals:
+Q_SIGNALS:
     void reply(int category, const QString& command);
 };
 
@@ -265,11 +267,10 @@ bool RPCConsole::RPCParseCommandLine(std::string &strResult, const std::string &
                     }
                     if ((ch == ')' || ch == '\n') && stack.size() > 0)
                     {
-                        if (fExecute) {
-                            // Convert argument list to JSON objects in method-dependent way,
-                            // and pass it along with the method name to the dispatcher.
-                            lastResult = tableRPC.execute(stack.back()[0], RPCConvertValues(stack.back()[0], std::vector<std::string>(stack.back().begin() + 1, stack.back().end())));
-                        }
+                        std::string strPrint;
+                        // Convert argument list to JSON objects in method-dependent way,
+                        // and pass it along with the method name to the dispatcher.
+                        lastResult = tableRPC.execute(stack.back()[0], RPCConvertValues(stack.back()[0], std::vector<std::string>(stack.back().begin() + 1, stack.back().end())));
 
                         state = STATE_COMMAND_EXECUTED;
                         curarg.clear();
@@ -375,20 +376,23 @@ void RPCExecutor::request(const QString &command)
     }
 }
 
-RPCConsole::RPCConsole(QWidget* parent) : QDialog(parent),
+RPCConsole::RPCConsole(const PlatformStyle *platformStyle, QWidget* parent) : QDialog(parent),
                                           ui(new Ui::RPCConsole),
                                           clientModel(0),
                                           historyPtr(0),
                                           cachedNodeid(-1),
                                           peersTableContextMenu(0),
-                                          banTableContextMenu(0)
+                                          banTableContextMenu(0),
+                                          platformStyle(platformStyle)
 {
     ui->setupUi(this);
     GUIUtil::restoreWindowGeometry("nRPCConsoleWindow", this->size(), this);
 
-#ifndef Q_OS_MAC
-    ui->openDebugLogfileButton->setIcon(QIcon(":/icons/export"));
-#endif
+    if (platformStyle->getImagesOnButtons()) {
+        ui->openDebugLogfileButton->setIcon(platformStyle->SingleColorIcon(":/icons/export"));
+    }
+    ui->clearButton->setIcon(platformStyle->SingleColorIcon(":/icons/remove"));
+
 
     // Install event filter for up and down arrow
     ui->lineEdit->installEventFilter(this);
@@ -467,6 +471,7 @@ bool RPCConsole::eventFilter(QObject* obj, QEvent* event)
             case Qt::Key_Enter:
                 // forward these events to lineEdit
                 if(obj == autoCompleter->popup()) {
+                    autoCompleter->popup()->hide();
                     QApplication::postEvent(ui->lineEdit, new QKeyEvent(*keyevt));
                     return true;
                 }
@@ -500,7 +505,7 @@ void RPCConsole::setClientModel(ClientModel* model)
 
         updateNetworkState();
         connect(model, SIGNAL(networkActiveChanged(bool)), this, SLOT(setNetworkActive(bool)));
-#if 0
+#if 1
         setMasternodeCount(model->getMasternodeCountString());
         connect(model, SIGNAL(strMasternodesChanged(QString)), this, SLOT(setMasternodeCount(QString)));
 #endif
@@ -591,7 +596,7 @@ void RPCConsole::setClientModel(ClientModel* model)
         // Provide initial values
         ui->clientVersion->setText(model->formatFullVersion());
         ui->clientName->setText(model->clientName());
-        ui->buildDate->setText(model->formatBuildDate());
+        ui->dataDir->setText(model->dataDir());
         ui->startupTime->setText(model->formatClientStartupTime());
         ui->networkName->setText(QString::fromStdString(Params().NetworkIDString()));
 
@@ -615,7 +620,7 @@ void RPCConsole::setClientModel(ClientModel* model)
     if (!model) {
         // Client model is being set to 0, this means shutdown() is about to be called.
         // Make sure we clean up the executor thread
-        emit stopExecutor();
+        Q_EMIT stopExecutor();
         thread.wait();
     }
 }
@@ -727,7 +732,7 @@ void RPCConsole::buildParameterlist(QString arg)
     args.append(arg);
 
     // Send command-line arguments to BitcoinGUI::handleRestart()
-    emit handleRestart(args);
+    Q_EMIT handleRestart(args);
 }
 
 void RPCConsole::clear()
@@ -744,7 +749,7 @@ void RPCConsole::clear()
         ui->messagesWidget->document()->addResource(
             QTextDocument::ImageResource,
             QUrl(ICON_MAPPING[i].url),
-            QImage(ICON_MAPPING[i].source).scaled(ICON_SIZE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+            platformStyle->SingleColorImage(ICON_MAPPING[i].source).scaled(ICON_SIZE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     }
 
     // Set default style sheet

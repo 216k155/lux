@@ -1700,10 +1700,10 @@ bool CDarkSendPool::SendRandomPaymentToSelf() {
     // make our change address
     CReserveKey reservekey(pwalletMain);
 
-    CScript scriptChange;
+    CScript scriptDenom;
     CPubKey vchPubKey;
     assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
-    scriptChange = GetScriptForDestination(vchPubKey.GetID());
+    scriptDenom = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
     int64_t nFeeRet = 0;
@@ -1711,12 +1711,13 @@ bool CDarkSendPool::SendRandomPaymentToSelf() {
     vector< pair<CScript, int64_t> > vecSend;
 
     // ****** Add fees ************ /
-    vecSend.push_back(make_pair(scriptChange, nPayment));
+    vecSend.push_back(make_pair(scriptDenom, nPayment));
 
     CCoinControl* coinControl = NULL;
+    int nChangePos;
     //int32_t nChangePos;
     //bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_DENOMINATED);
-    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_DENOMINATED);
+    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_DENOMINATED);
     if (!success) {
         LogPrintf("SendRandomPaymentToSelf: Error - %s\n", strFail.c_str());
         return false;
@@ -1736,7 +1737,7 @@ bool CDarkSendPool::MakeCollateralAmounts() {
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
@@ -1748,15 +1749,16 @@ bool CDarkSendPool::MakeCollateralAmounts() {
     vecSend.push_back(make_pair(scriptChange, (DARKSEND_COLLATERAL * 2) + DARKSEND_FEE));
 
     CCoinControl* coinControl = NULL;
+    int nChangePos;
     //int32_t nChangePos;
     // try to use non-denominated and not mn-like funds
     //bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
-    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
+    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
     if (!success) {
         // if we failed (most likeky not enough funds), try to use denominated instead -
         // MN-like funds should not be touched in any case and we can't mix denominated without collaterals anyway
         //success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_DENOMINATED);
-        success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_DENOMINATED);
+        success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_DENOMINATED);
         if (!success) {
             LogPrintf("MakeCollateralAmounts: Error - %s\n", strFail.c_str());
             return false;
@@ -1779,7 +1781,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
@@ -1805,7 +1807,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
             CScript scriptChange;
             CPubKey vchPubKey;
             //use a unique change address
-            assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+            assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
             scriptChange = GetScriptForDestination(vchPubKey.GetID());
             reservekey.KeepKey();
 
@@ -1824,9 +1826,9 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
     // if we have anything left over, it will be automatically send back as change - there is no need to send it manually
 
     CCoinControl* coinControl = NULL;
-    //int32_t nChangePos;
+    int nChangePos;
     //bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
-    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
+    bool success = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ONLY_NONDENOMINATED_NOTMN);
     if (!success) {
         LogPrintf("CreateDenominated: Error - %s\n", strFail.c_str());
         return false;

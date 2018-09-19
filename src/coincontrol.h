@@ -23,6 +23,8 @@ public:
     bool fAllowWatchOnly;
     //! Minimum absolute fee (not per kilobyte)
     CAmount nMinimumTotalFee;
+    //! Override the default confirmation target, 0 = use default
+    int nConfirmTarget;
 
     CCoinControl()
     {
@@ -40,6 +42,7 @@ public:
         nMinimumTotalFee = 0;
         fSplitBlock = false;
         nSplitBlock = 1;
+        nConfirmTarget = 0;
     }
 
     bool HasSelected() const
@@ -68,7 +71,7 @@ public:
         setSelected.clear();
     }
 
-    void ListSelected(std::vector<COutPoint>& vOutpoints)
+    void ListSelected(std::vector<COutPoint>& vOutpoints) const
     {
         vOutpoints.assign(setSelected.begin(), setSelected.end());
     }
