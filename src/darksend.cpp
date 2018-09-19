@@ -1700,10 +1700,10 @@ bool CDarkSendPool::SendRandomPaymentToSelf() {
     // make our change address
     CReserveKey reservekey(pwalletMain);
 
-    CScript scriptChange;
+    CScript scriptDenom;
     CPubKey vchPubKey;
     assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
-    scriptChange = GetScriptForDestination(vchPubKey.GetID());
+    scriptDenom = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
     int64_t nFeeRet = 0;
@@ -1711,7 +1711,7 @@ bool CDarkSendPool::SendRandomPaymentToSelf() {
     vector< pair<CScript, int64_t> > vecSend;
 
     // ****** Add fees ************ /
-    vecSend.push_back(make_pair(scriptChange, nPayment));
+    vecSend.push_back(make_pair(scriptDenom, nPayment));
 
     CCoinControl* coinControl = NULL;
     int nChangePos;
@@ -1737,7 +1737,7 @@ bool CDarkSendPool::MakeCollateralAmounts() {
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
@@ -1781,7 +1781,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
 
     CScript scriptChange;
     CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+    assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptChange = GetScriptForDestination(vchPubKey.GetID());
 
     CWalletTx wtx;
@@ -1807,7 +1807,7 @@ bool CDarkSendPool::CreateDenominated(int64_t nTotalValue) {
             CScript scriptChange;
             CPubKey vchPubKey;
             //use a unique change address
-            assert(reservekey.GetReservedKey(vchPubKey)); // should never fail, as we just unlocked
+            assert(reservekey.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
             scriptChange = GetScriptForDestination(vchPubKey.GetID());
             reservekey.KeepKey();
 
