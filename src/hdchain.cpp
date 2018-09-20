@@ -41,7 +41,7 @@ bool CHDChain::IsCrypted() const
 
 void CHDChain::Debug(std::string strName) const
 {
-    DEBUG(
+    LUX_DEBUG(
     std::cout << __func__ << ": ---" << strName << "---" << std::endl;
     if (fCrypted) {
         std::cout << "mnemonic: ***CRYPTED***" << std::endl;

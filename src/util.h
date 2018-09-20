@@ -33,9 +33,9 @@
 
 //#define ENABLE_LUX_DEBUG
 #ifdef ENABLE_LUX_DEBUG
-#define DEBUG( x ) x
+#define LUX_DEBUG( x ) x
 #else
-#define DEBUG( x )
+#define LUX_DEBUG( x )
 #endif
 
 //LUX only features

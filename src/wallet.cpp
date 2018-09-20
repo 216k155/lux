@@ -811,7 +811,7 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
             CHDChain hdChainCrypted;
             assert(GetHDChain(hdChainCrypted));
 
-            DEBUG(
+            LUX_DEBUG(
             printf("EncryptWallet -- current seed: '%s'\n", HexStr(hdChainCurrent.GetSeed()).c_str());
             printf("EncryptWallet -- crypted seed: '%s'\n", HexStr(hdChainCrypted.GetSeed()).c_str());
             );
