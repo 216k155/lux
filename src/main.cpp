@@ -2505,8 +2505,10 @@ static DisconnectResult DisconnectBlock(const CBlock& block, const CBlockIndex* 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
-    setGlobalStateRoot(uintToh256(pindex->pprev->hashStateRoot));
-    setGlobalStateUTXO(uintToh256(pindex->pprev->hashUTXORoot));
+    if (fClean == false && pindex->nHeight > Params().FirstSCBlock()) {
+        setGlobalStateRoot(uintToh256(pindex->pprev->hashStateRoot));
+        setGlobalStateUTXO(uintToh256(pindex->pprev->hashUTXORoot));
+    }
     if (fClean == false && fLogEvents) {
         pstorageresult->deleteResults(block.vtx);
         pblocktree->EraseHeightIndex(pindex->nHeight);
@@ -5693,14 +5695,16 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview,
             }
 
             if (!ConnectBlock(block, state, pindex, coins, chainparams)) {
-                setGlobalStateRoot(oldHashStateRoot);
-                setGlobalStateUTXO(oldHashUTXORoot);
-                if (pstorageresult != nullptr)
+                if (chainActive.Height() >= chainparams.FirstSCBlock()) {
+                    setGlobalStateRoot(oldHashStateRoot);
+                    setGlobalStateUTXO(oldHashUTXORoot);
+                }
+                if (fLogEvents && pstorageresult != nullptr)
                     pstorageresult->clearCacheResult();
                 return error("VerifyDB: *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
-    } else {
+    } else if (chainActive.Height() >= chainparams.FirstSCBlock()) {
         setGlobalStateRoot(oldHashStateRoot);
         setGlobalStateUTXO(oldHashUTXORoot);
     }
