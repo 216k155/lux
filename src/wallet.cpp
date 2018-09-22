@@ -52,7 +52,7 @@ bool fPayAtLeastCustomFee = true;
 OutputType g_address_type = OUTPUT_TYPE_NONE;
 OutputType g_change_type = OUTPUT_TYPE_NONE;
 const char * DEFAULT_WALLET_DAT = "wallet.dat";
-
+bool fCheckUpdates = CHECKUPDATES;
 bool bZeroBalanceAddressToken = DEFAULT_ZERO_BALANCE_ADDRESS_TOKEN;
 bool fNotUseChangeAddress = DEFAULT_NOT_USE_CHANGE_ADDRESS;
 /**
