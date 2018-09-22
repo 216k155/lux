@@ -382,7 +382,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (ipv4, ipv6 or onion)") + "\n";
     strUsage += "  -permitbaremultisig    " + strprintf(_("Relay non-P2SH multisig (default: %u)"), 1) + "\n";
     strUsage += "  -port=<port>           " +
-                strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), 26969, 28333) + "\n";
+    strUsage += "  -peerbloomfilters    " + strprintf(_("Support filtering of blocks and transaction with bloom filters (default: %u)"), DEFAULT_PEERBLOOMFILTERS) + "\n";
+    strUsage += "  -enforcenodebloom    " + strprintf(_("Enforce minimum protocol version to limit use of bloom filters (default: %u)"), DEFAULT_ENFORCE_NODE_BLOOM) + "\n";
+    strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), 26969, 28333) + "\n";
     strUsage += "  -proxy=<ip:port>       " + _("Connect through SOCKS5 proxy") + "\n";
     strUsage += "  -seednode=<ip>         " + _("Connect to a node to retrieve peer addresses, and disconnect") + "\n";
     strUsage += "  -timeout=<n>           " + strprintf(_("Specify connection timeout in milliseconds (minimum: 1, default: %d)"), DEFAULT_CONNECT_TIMEOUT) + "\n";
@@ -999,7 +1001,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     fAlerts = GetBoolArg("-alerts", DEFAULT_ALERTS);
 
 
-    if (GetBoolArg("-peerbloomfilters", true))
+    if (GetBoolArg("-peerbloomfilters", DEFAULT_PEERBLOOMFILTERS))
         nLocalServices = ServiceFlags(nLocalServices | NODE_BLOOM);
 
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log

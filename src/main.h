@@ -142,6 +142,7 @@ static const unsigned int DATABASE_FLUSH_INTERVAL = 24 * 60 * 60;
 static const unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
 /** Bloomfilter setting. */
 static const bool DEFAULT_PEERBLOOMFILTERS = true;
+static const bool DEFAULT_ENFORCE_NODE_BLOOM = false;
 /** Relay local address average delay(s) */
 static const unsigned int RELAY_LOCAL_ADDRESS_INTERVAL = 24 * 24 * 60;
 /** Relay peer address average delay(s) */

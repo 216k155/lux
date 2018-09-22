@@ -6069,6 +6069,20 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
         return false;
     }
 
+    if (!(nLocalServices & NODE_BLOOM) &&
+        (strCommand == "filterload" ||
+         strCommand == "filteradd" ||
+         strCommand == "filterclear"))
+    {
+        if (pfrom->nVersion >= NO_BLOOM_VERSION) {
+            Misbehaving(pfrom->GetId(), 100);
+            return false;
+        } else if (GetBoolArg("-enforcenodebloom", DEFAULT_ENFORCE_NODE_BLOOM)) {
+            pfrom->fDisconnect = true;
+            return false;
+        }
+    }
+
     if (strCommand == "version") {
         // Each connection can only send one version message
         if (pfrom->nVersion != 0) {
@@ -6783,19 +6797,6 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
                 Misbehaving(pfrom->GetId(), 10);
             }
         }
-    }
-
-
-    else if (!(nLocalServices & NODE_BLOOM) &&
-             (strCommand == "filterload" ||
-              strCommand == "filteradd" ||
-              strCommand == "filterclear") &&
-        //TODO: We dont need this after the entire network is upgraded
-             pfrom->nVersion >= NO_BLOOM_VERSION)
-    {
-        if (pfrom->nVersion >= NO_BLOOM_VERSION)
-            Misbehaving(pfrom->GetId(), 100);
-             LogPrintf("bloom message=%s\n", strCommand);
     }
 
     else if (strCommand == "filterload") {
