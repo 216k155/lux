@@ -249,6 +249,9 @@ std::string HelpMessageOpt(const std::string& option, const std::string& message
  */
 int GetNumCores();
 
+// Forces a arg setting
+void ForceSetArg(const std::string& strArg, const std::string& strValue);
+
 void SetThreadPriority(int nPriority);
 void RenameThread(const char* name);
 

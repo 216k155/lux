@@ -86,14 +86,18 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "addmultisigaddress", 1, "keys" },
     ////////////////////////////////////////////////// // lux
     { "getaddresstxids", 0, "addresses"},
+    { "getaddresstxids", 1, "start"},
+    { "getaddresstxids", 2, "end"},
     { "getaddressmempool", 0, "addresses"},
     { "getaddressdeltas", 0, "addresses"},
+    { "getaddressdeltas", 1, "start"},
+    { "getaddressdeltas", 2, "end"},
     { "getaddressbalance", 0, "addresses"},
     { "getaddressutxos", 0, "addresses"},
     { "getblockhashes", 0, "high"},
     { "getblockhashes", 1, "low"},
     { "getblockhashes", 2, "options"},
-    { "getspentinfo", 0, "argument"},
+    { "getspentinfo", 1, "index"},
     { "searchlogs", 0, "fromBlock"},
     { "searchlogs", 1, "toBlock"},
     { "searchlogs", 2, "address"},
@@ -227,6 +231,15 @@ UniValue RPCConvertValues(const std::string &strMethod, const std::vector<std::s
         // insert string value directly
         if (!rpcCvtTable.convert(strMethod, idx)) {
             params.push_back(strVal);
+        } else if (strMethod.substr(0, 10) == "getaddress") {
+            UniValue p;
+            try {
+                p = ParseNonRFCJSONValue(strVal);
+            } catch (...) {
+                // allow getaddressbalance "LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg" for convenience
+                p = strVal;
+            }
+            params.push_back(p);
         } else {
             // parse string as JSON, insert bool/number/object/etc. value
             params.push_back(ParseNonRFCJSONValue(strVal));

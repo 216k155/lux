@@ -219,7 +219,7 @@ void LuxState::addBalance(dev::Address const& _id, dev::u256 const& _amount)
         m_changeLog.emplace_back(dev::eth::detail::Change::Balance, _id, _amount);
 }
 
-dev::Address LuxState::createLuxAddress(dev::h256 hashTx, uint32_t voutNumber){
+const dev::Address LuxState::createLuxAddress(dev::h256 hashTx, uint32_t voutNumber){
     uint256 hashTXid(h256Touint(hashTx));
 	std::vector<unsigned char> txIdAndVout(hashTXid.begin(), hashTXid.end());
 	std::vector<unsigned char> voutNumberChrs;
@@ -380,4 +380,58 @@ std::vector<CTxOut> CondensingTX::createVout(){
 bool CondensingTX::checkDeleteAddress(dev::Address addr){
     return deleteAddresses.count(addr) != 0;
 }
+
+/**
+ * Read globalState root/utxo hashes, with a fallback to prev block one
+ */
+dev::h256 getGlobalStateRoot(CBlockIndex* pIndex){
+    dev::h256 root;
+    bool isset = false;
+    try {
+        if (globalState != nullptr) {
+            root = dev::h256(globalState->rootHash());
+            isset = true;
+        }
+    } catch (std::exception& e) {
+        // When root node is empty, it will throw exception. We must re-initialize value
+    }
+    if (!isset) {
+        root = dev::sha3(dev::rlp(""));
+        if (pIndex && pIndex->pprev->hashStateRoot != uint256()) {
+            root = uintToh256(pIndex->pprev->hashStateRoot);
+        }
+    }
+    return root;
+}
+
+dev::h256 getGlobalStateUTXO(CBlockIndex* pIndex){
+    dev::h256 root;
+    bool isset = false;
+    try {
+        if (globalState != nullptr) {
+            root = dev::h256(globalState->rootHashUTXO());
+            isset = true;
+        }
+    } catch (std::exception& e) {
+        // When root node is empty, it will throw exception. We must re-initialize value
+    }
+    if (!isset) {
+        root = dev::sha3(dev::rlp(""));
+        if (pIndex && pIndex->pprev->hashUTXORoot != uint256()) {
+            root = uintToh256(pIndex->pprev->hashUTXORoot);
+        }
+    }
+    return root;
+}
+
+void setGlobalStateRoot(dev::h256 root){
+    if (globalState != nullptr)
+        globalState->setRoot(root);
+}
+
+void setGlobalStateUTXO(dev::h256 root){
+    if (globalState != nullptr)
+        globalState->setRootUTXO(root);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
