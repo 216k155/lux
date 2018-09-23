@@ -898,6 +898,21 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     fCheckBlockIndex = GetBoolArg("-checkblockindex", chainparams.DefaultConsistencyChecks());
     Checkpoints::fEnabled = GetBoolArg("-checkpoints", true);
 
+    // mempool limits
+    int64_t nMempoolSizeMax = GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
+    int64_t nMempoolSizeMin = GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT) * 1000 * 40;
+    if (nMempoolSizeMax < 0 || nMempoolSizeMax < nMempoolSizeMin)
+        return InitError(strprintf(_("-maxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
+    // incremental relay fee sets the minimimum feerate increase necessary for BIP 125 replacement in the mempool
+    // and the amount the mempool min fee increases above the feerate of txs evicted due to mempool limiting.
+    if (IsArgSet("-incrementalrelayfee"))
+    {
+        CAmount n = 0;
+        if (!ParseMoney(GetArg("-incrementalrelayfee", ""), n))
+            return InitError(AmountErrMsg("incrementalrelayfee", GetArg("-incrementalrelayfee", "")));
+        incrementalRelayFee = CFeeRate(n);
+    }
+
     // -par=0 means autodetect, but nScriptCheckThreads==0 means no concurrency
     nScriptCheckThreads = GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS);
     if (nScriptCheckThreads <= 0)
@@ -1272,6 +1287,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     nCoinDBCache = min(nCoinDBCache, nMaxCoinsDBCache << 20); // cap total coins db cache
     nTotalCache -= nCoinDBCache;
     nCoinCacheUsage = nTotalCache;
+    nMempoolSizeMax = GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
 
     bool fLoaded = false;
     while (!fLoaded && !fRequestShutdown) {

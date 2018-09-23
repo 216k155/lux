@@ -2885,7 +2885,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
                 if (coinControl && !coinControl->fSplitBlock) {
                     for (const PAIRTYPE(CScript, CAmount) & s : vecSend) {
                         CTxOut txout(s.second, s.first);
-                        if (txout.IsDust(::minRelayTxFee)) {
+                        if (txout.IsDust(dustRelayFee)) {
                             strFailReason = _("Transaction amount too small");
                             return false;
                         }
@@ -3032,7 +3032,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
 
                         // Never create dust outputs; if we would, just
                         // add the dust to the fee.
-                        if (newTxOut.IsDust(::minRelayTxFee)) {
+                        if (newTxOut.IsDust(dustRelayFee)) {
                             nFeeRet += nChange;
                             nChange = 0;
                             reservekey.ReturnKey();
@@ -3106,8 +3106,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend, 
 
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
                 // because we must be at the maximum allowed fee.
-                if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes)) {
-                    strFailReason = strprintf("Transaction too large for fee policy (Fee = %lu; min requirement = %lu)", nFeeNeeded, ::minRelayTxFee.GetFee(nBytes));
+                if (nFeeNeeded < dustRelayFee.GetFee(nBytes)) {
+                    strFailReason = strprintf("Transaction too large for fee policy (Fee = %lu; min requirement = %lu)", nFeeNeeded, dustRelayFee.GetFee(nBytes));
                     return false;
                 }
 
@@ -3212,8 +3212,8 @@ CAmount CWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarge
     if (nFeeNeeded == 0)
         nFeeNeeded = minTxFee.GetFee(nTxBytes);
     // prevent user from paying a non-sense fee (like 1 satoshi): 0 < fee < minRelayFee
-    if (nFeeNeeded < ::minRelayTxFee.GetFee(nTxBytes))
-        nFeeNeeded = ::minRelayTxFee.GetFee(nTxBytes);
+    if (nFeeNeeded < dustRelayFee.GetFee(nTxBytes))
+        nFeeNeeded = dustRelayFee.GetFee(nTxBytes);
     // But always obey the maximum
     if (nFeeNeeded > maxTxFee)
         nFeeNeeded = maxTxFee;

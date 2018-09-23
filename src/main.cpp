@@ -1218,9 +1218,9 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                                         hash.ToString(), nFees, txMinFee),
                     REJECT_INSUFFICIENTFEE, "insufficient fee");
 
-            // Require that free transactions have sufficient priority to be mined in the next block.
-            if (GetBoolArg("-relaypriority", true) && nFees < ::minRelayTxFee.GetFee(nSize) && !AllowFree(entry.GetPriority(chainActive.Height() + 1))) {
-                return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "insufficient priority");
+            CAmount mempoolRejectFee = pool.GetMinFee(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFee(nSize);
+            if (mempoolRejectFee > 0 && nFees < mempoolRejectFee) {
+                return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool min fee not met", false, strprintf("%d < %d", nFees, mempoolRejectFee));
             }
 
             // Continuously rate-limit free (really, very-low-fee) transactions
@@ -3137,6 +3137,7 @@ static void FindFilesToPruneManual(std::set<int>& setFilesToPrune, int nManualPr
  */
 static bool FlushStateToDisk(CValidationState& state, FlushStateMode mode, int nManualPruneHeight)
 {
+    int64_t nMempoolUsage = mempool.DynamicMemoryUsage();
     LOCK2(cs_main, cs_LastBlockFile);
     static int64_t nLastWrite = 0;
     static int64_t nLastFlush = 0;
@@ -3179,11 +3180,14 @@ static bool FlushStateToDisk(CValidationState& state, FlushStateMode mode, int n
             if (nLastSetChain == 0) {
                 nLastSetChain = nNow;
             }
-            size_t cacheSize = pcoinsTip->DynamicMemoryUsage();
-            // The cache is large and close to the limit, but we have time now (not in the middle of a block processing).
-            bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize * (10.0/9) > nCoinCacheUsage;
+            int64_t nMempoolSizeMax = GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
+            int64_t cacheSize = pcoinsTip->DynamicMemoryUsage() * DB_PEAK_USAGE_FACTOR;
+            int64_t nTotalSpace = nCoinCacheUsage + std::max<int64_t>(nMempoolSizeMax - nMempoolUsage, 0);
+            // The cache is large and we're within 10% and 100 MiB of the limit, but we have time now (not in the middle of a block processing).
+            bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize > std::min(std::max(nTotalSpace / 2, nTotalSpace - MIN_BLOCK_COINSDB_USAGE * 1024 * 1024),
+                                                                                    std::max((9 * nTotalSpace) / 10, nTotalSpace - MAX_BLOCK_COINSDB_USAGE * 1024 * 1024));
             // The cache is over the limit, we have to write now.
-            bool fCacheCritical = mode == FLUSH_STATE_IF_NEEDED && cacheSize > nCoinCacheUsage;
+            bool fCacheCritical = mode == FLUSH_STATE_IF_NEEDED && cacheSize > nTotalSpace;
             // It's been a while since we wrote the block index to disk. Do this frequently, so we don't need to redownload after a crash.
             bool fPeriodicWrite = mode == FLUSH_STATE_PERIODIC && nNow > nLastWrite + (int64_t)DATABASE_WRITE_INTERVAL * 1000000;
             // It's been very long since we flushed the cache. Do this infrequently, to optimize cache usage.

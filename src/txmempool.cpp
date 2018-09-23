@@ -15,6 +15,7 @@
 #include "version.h"
 #include "core_memusage.h"
 #include "policy/policy.h"
+#include "utiltime.h"
 
 #include <boost/circular_buffer.hpp>
 
@@ -1246,6 +1247,13 @@ CFeeRate CTxMemPool::GetMinFee(size_t sizelimit) const {
         }
     }
     return std::max(CFeeRate(rollingMinimumFeeRate), incrementalRelayFee);
+}
+
+void CTxMemPool::UpdateMinFee(const CFeeRate& _minReasonableRelayFee)
+{
+    LOCK(cs);
+    delete minerPolicyEstimator;
+    minerPolicyEstimator = new CBlockPolicyEstimator(_minReasonableRelayFee);
 }
 
 void CTxMemPool::trackPackageRemoved(const CFeeRate& rate) {

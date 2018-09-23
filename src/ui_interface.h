@@ -127,6 +127,8 @@ bool InitError(const std::string& str);
 
 extern CClientUIInterface uiInterface;
 
+std::string AmountErrMsg(const char* const optname, const std::string& strValue);
+
 /**
  * Translation function: Call Translate signal on UI interface, which returns a boost::optional result.
  * If no translation slot is registered, nothing is returned, and simply return the input.

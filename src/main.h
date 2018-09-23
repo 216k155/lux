@@ -161,7 +161,12 @@ static const int64_t STATIC_POS_REWARD = 1 * COIN; //Constant reward 8%
 static const bool DEFAULT_LOGEVENTS = false;
 /** Default for -mempoolexpiry */
 static const unsigned int DEFAULT_MEMPOOL_EXPIRY = 72;
-
+/** Default for -limitancestorsize, maximum kilobytes of tx + all in-mempool ancestors */
+static const unsigned int DEFAULT_ANCESTOR_SIZE_LIMIT = 900;
+/** Default for -limitdescendantcount, max number of in-mempool descendants */
+static const unsigned int DEFAULT_DESCENDANT_LIMIT = 1000;
+/** Default for -limitdescendantsize, maximum kilobytes of in-mempool descendants */
+static const unsigned int DEFAULT_DESCENDANT_SIZE_LIMIT = 2500;
 ////////////////////////////////////////////////////// lux
 static const uint64_t DEFAULT_GAS_LIMIT_OP_CREATE=2500000;
 static const uint64_t DEFAULT_GAS_LIMIT_OP_SEND=250000;
