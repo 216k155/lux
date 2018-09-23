@@ -641,7 +641,7 @@ luxd_CPPFLAGS = $(BITCOIN_INCLUDES)
 luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-luxd_SOURCES += luxd-res.rc
+luxd_SOURCES += luxd-res.rc config/lux-config.h
 endif
 
 luxd_LDADD = \
@@ -666,7 +666,7 @@ lux_cli_SOURCES = lux-cli.cpp
 lux_cli_CPPFLAGS = $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
 
 if TARGET_WINDOWS
-lux_cli_SOURCES += lux-cli-res.rc
+lux_cli_SOURCES += lux-cli-res.rc config/lux-config.h
 endif
 
 lux_cli_LDADD = \
