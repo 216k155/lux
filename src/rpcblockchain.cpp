@@ -5,18 +5,22 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "core_io.h"
 #include "checkpoints.h"
 #include "consensus/validation.h"
 #include "main.h"
 #include "primitives/transaction.h"
 #include "rpcserver.h"
+#include "rpcwallet.cpp"
 #include "sync.h"
+#include "txdb.h"
 #include "util.h"
 
 #include <stdint.h>
 
 #include "univalue/univalue.h"
-
+#include <mutex>
+#include <condition_variable>
 using namespace std;
 
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry);
@@ -84,7 +88,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     result.push_back(Pair("stateroot", block.hashStateRoot.GetHex()));
     result.push_back(Pair("utxoroot", block.hashUTXORoot.GetHex()));
     UniValue txs(UniValue::VARR);
-    BOOST_FOREACH (const CTransaction& tx, block.vtx) {
+    for (const CTransaction& tx : block.vtx) {
         if (txDetails) {
             UniValue objTx(UniValue::VOBJ);
             TxToJSON(tx, uint256(), objTx);
@@ -97,7 +101,8 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     result.push_back(Pair("nonce", (uint64_t)block.nNonce));
     result.push_back(Pair("bits", strprintf("%08x", block.nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
-    result.push_back(Pair("flags", strprintf("%s%s", blockindex->IsProofOfStake()?"proof-of-stake":"proof-of-work", blockindex->GeneratedStakeModifier()?" stake-modifier":"")));
+    result.push_back(Pair("flags", strprintf("%s%s", blockindex->IsProofOfStake()?"proof-of-stake":"proof-of-work",
+            blockindex->IsProofOfStake() && blockindex->GeneratedStakeModifier()?" stake-modifier":"")));
     result.push_back(Pair("chainwork", blockindex->nChainWork.GetHex()));
 
     if (blockindex->pprev)
@@ -152,21 +157,33 @@ UniValue getbestblockhash(const UniValue& params, bool fHelp)
     return chainActive.Tip()->GetBlockHash().GetHex();
 }
 
+void RPCNotifyBlockChange(bool ibd, const CBlockIndex* pindex)
+{
+    if(pindex) {
+        std::lock_guard<std::mutex> lock(cs_blockchange);
+        latestblock.hash = pindex->GetBlockHash();
+        latestblock.height = pindex->nHeight;
+    }
+    cond_blockchange.notify_all();
+}
+
 UniValue getdifficulty(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getdifficulty\n"
             "\nReturns the proof-of-work difficulty as a multiple of the minimum difficulty.\n"
+            "\nReturns the proof-of-stake difficulty as a multiple of the minimum difficulty.\n"
             "\nResult:\n"
             "n.nnn       (numeric) the proof-of-work difficulty as a multiple of the minimum difficulty.\n"
             "\nExamples:\n" +
             HelpExampleCli("getdifficulty", "") + HelpExampleRpc("getdifficulty", ""));
 
     LOCK(cs_main);
-
-    CBlockIndex* powTip = GetLastBlockOfType(0);
-    return GetDifficulty(powTip);
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("proof-of-work", GetDifficulty(GetLastBlockIndex(pindexBestHeader, false))));
+    obj.push_back(Pair("proof-of-stake", GetDifficulty(GetLastBlockIndex(pindexBestHeader, true))));
+    return obj;
 }
 
 UniValue getrawmempool(const UniValue& params, bool fHelp)
@@ -182,17 +199,18 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             "  \"transactionid\"     (string) The transaction id\n"
             "  ,...\n"
             "]\n"
-            "\nResult: (for verbose = true):\n"
-            "{                           (json object)\n"
-            "  \"transactionid\" : {       (json object)\n"
+            "\nResult: (for verbose = true): [\n"
+            "  {                           (json object)\n"
+            "    \"txid\", \"...\",          (string)  the transaction id\n"
+            "    \"hash\", \"...\",          (string)  the transaction hash\n"
             "    \"size\" : n,             (numeric) transaction size in bytes\n"
             "    \"fee\" : n,              (numeric) transaction fee in lux\n"
-            "    \"time\" : n,             (numeric) local time transaction entered pool in seconds since 1 Jan 1970 GMT\n"
+            "    \"time\" : n,             (numeric) unix timestamp when transaction entered the mempool\n"
             "    \"height\" : n,           (numeric) block height when transaction entered pool\n"
             "    \"startingpriority\" : n, (numeric) priority when transaction entered pool\n"
             "    \"currentpriority\" : n,  (numeric) transaction priority now\n"
-            "    \"depends\" : [           (array) unconfirmed transactions used as inputs for this transaction\n"
-            "        \"transactionid\",    (string) parent transaction id\n"
+            "    \"depends\" : [           (array)   unconfirmed transactions used as inputs for the transaction\n"
+            "        \"transactionid\",    (string)  parent transaction id\n"
             "       ... ]\n"
             "  }, ...\n"
             "]\n"
@@ -207,10 +225,13 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
 
     if (fVerbose) {
         LOCK(mempool.cs);
-        UniValue o(UniValue::VOBJ);
-        BOOST_FOREACH(const CTxMemPoolEntry& e, mempool.mapTx) {
-            const uint256& hash = e.GetTx().GetHash();
+        UniValue o(UniValue::VARR);
+        for (const CTxMemPoolEntry& e : mempool.mapTx) {
+            const uint256& txid = e.GetTx().GetHash();
+            const uint256& hash = e.GetTx().GetWitnessHash();
             UniValue info(UniValue::VOBJ);
+            info.push_back(Pair("txid", txid.GetHex()));
+            info.push_back(Pair("hash", hash.GetHex()));
             info.push_back(Pair("size", (int)e.GetTxSize()));
             info.push_back(Pair("fee", ValueFromAmount(e.GetFee())));
             info.push_back(Pair("time", e.GetTime()));
@@ -219,19 +240,18 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             info.push_back(Pair("currentpriority", e.GetPriority(chainActive.Height())));
             const CTransaction& tx = e.GetTx();
             set<string> setDepends;
-            BOOST_FOREACH (const CTxIn& txin, tx.vin) {
+            for (const CTxIn& txin : tx.vin) {
                 if (mempool.exists(txin.prevout.hash))
                     setDepends.insert(txin.prevout.hash.ToString());
             }
             UniValue depends(UniValue::VARR);
 
-            BOOST_FOREACH(const string& dep, setDepends)
-            {
+            for (const std::string& dep : setDepends) {
                   depends.push_back(dep);
             }
 
             info.push_back(Pair("depends", depends));
-            o.push_back(Pair(hash.ToString(), info));
+            o.push_back(info);
         }
         return o;
     } else {
@@ -239,7 +259,7 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
         mempool.queryHashes(vtxid);
 
         UniValue a(UniValue::VARR);
-        BOOST_FOREACH (const uint256& hash, vtxid)
+        for (const uint256& hash : vtxid)
             a.push_back(hash.ToString());
 
         return a;
@@ -401,7 +421,7 @@ UniValue getstorage(const UniValue& params, bool fHelp)
     LOCK(cs_main);
 
     std::string strAddr = params[0].get_str();
-    if(strAddr.size() != 40 || !CheckHex(strAddr))
+    if(strAddr.size() != 40 || !regex_match(strAddr, hexData))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect address"); 
 
     TemporaryState ts(globalState);
@@ -502,6 +522,407 @@ UniValue listcontracts(const UniValue& params, bool fHelp)
         return result;
 }
 
+bool getContractAddressesFromParams(const UniValue& params, std::vector<dev::h160> &addresses)
+{
+    if (params[2].isStr()) {
+        auto addrStr(params[2].get_str());
+        if (addrStr.length() != 40)
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+        dev::h160 address(params[2].get_str());
+        addresses.push_back(address);
+    } else if (params[2].isObject()) {
+
+        UniValue addressValues = find_value(params[2].get_obj(), "addresses");
+        if (!addressValues.isArray()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Addresses is expected to be an array");
+        }
+
+        std::vector<UniValue> values = addressValues.getValues();
+
+        for (std::vector<UniValue>::iterator it = values.begin(); it != values.end(); ++it) {
+            auto addrStr(it->get_str());
+            if (addrStr.length() != 40 || !std::regex_match(addrStr, hexData))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            addresses.push_back(dev::h160(addrStr));
+        }
+    } else {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+
+    return true;
+}
+
+bool getTopicsFromParams(const UniValue& params, std::vector<std::pair<unsigned, dev::h256>> &topics)
+{
+    if (params[3].isObject()) {
+
+        UniValue topicValues = find_value(params[3].get_obj(), "topics");
+        if (!topicValues.isArray()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Topics is expected to be an array");
+        }
+
+        std::vector<UniValue> values = topicValues.getValues();
+
+        for (size_t i = 0; i < values.size(); ++i) {
+            auto topicStr(values[i].get_str());
+            if (topicStr == "null")
+                continue;
+            if (topicStr.length() != 64 || !regex_match(topicStr, hexData))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid topic");
+            topics.push_back({i, dev::h256(topicStr)});
+        }
+    } else {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid topic");
+    }
+
+    return true;
+}
+
+class SearchLogsParams {
+public:
+    size_t fromBlock;
+    size_t toBlock;
+    size_t minconf;
+
+    std::set<dev::h160> addresses;
+    std::vector<boost::optional<dev::h256>> topics;
+
+    SearchLogsParams(const UniValue& params) {
+        std::unique_lock<std::mutex> lock(cs_blockchange);
+
+        setFromBlock(params[0]);
+        setToBlock(params[1]);
+
+        parseParam(params[2]["addresses"], addresses);
+        parseParam(params[3]["topics"], topics);
+
+        minconf = parseUInt(params[4], 0);
+    }
+
+private:
+    void setFromBlock(const UniValue& val) {
+        if (!val.isNull()) {
+            fromBlock = parseBlockHeight(val);
+        } else {
+            fromBlock = latestblock.height;
+        }
+    }
+
+    void setToBlock(const UniValue& val) {
+        if (!val.isNull()) {
+            toBlock = parseBlockHeight(val);
+        } else {
+            toBlock = latestblock.height;
+        }
+    }
+
+};
+
+UniValue searchlogs(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 2)
+        throw std::runtime_error(
+                "searchlogs <fromBlock> <toBlock> (address) (topics)\n"
+                "requires -logevents to be enabled"
+                "\nArgument:\n"
+                "1. \"fromBlock\"        (numeric, required) The number of the earliest block (latest may be given to mean the most recent block).\n"
+                "2. \"toBlock\"          (string, required) The number of the latest block (-1 may be given to mean the most recent block).\n"
+                "3. \"address\"          (string, optional) An address or a list of addresses to only get logs from particular account(s).\n"
+                "4. \"topics\"           (string, optional) An array of values from which at least one must appear in the log entries. The order is important, if you want to leave topics out use null, e.g. [\"null\", \"0x00...\"]. \n"
+                "5. \"minconf\"          (uint, optional, default=0) Minimal number of confirmations before a log is returned\n"
+                "\nExamples:\n"
+                + HelpExampleCli("searchlogs", "0 472000 '{\"addresses\": [\"04159f89d938b5d2de4b67bdbf482f788a97946a\"]}' '{\"topics\": [\"null\",\"ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\"]}'")
+                + HelpExampleRpc("searchlogs", "0 472000 {\"addresses\": [\"04159f89d938b5d2de4b67bdbf482f788a97946a\"]} {\"topics\": [\"null\",\"ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\"]}")
+        );
+
+    if(!fLogEvents)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Events indexing disabled");
+
+    int curheight = 0;
+
+    LOCK(cs_main);
+
+    SearchLogsParams logsParams(params);
+
+    std::vector<std::vector<uint256>> hashesToBlock;
+
+    curheight = pblocktree->ReadHeightIndex(logsParams.fromBlock, logsParams.toBlock, logsParams.minconf, hashesToBlock, logsParams.addresses);
+
+    if (curheight == -1) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Incorrect params");
+    }
+
+    UniValue result(UniValue::VARR);
+
+    auto topics = logsParams.topics;
+
+    for(const auto& hashesTx : hashesToBlock)
+    {
+        for(const auto& e : hashesTx)
+        {
+            std::vector<TransactionReceiptInfo> receipts = pstorageresult->getResult(uintToh256(e));
+
+            for(const auto& receipt : receipts) {
+                if(receipt.logs.empty()) {
+                    continue;
+                }
+
+                if (!topics.empty()) {
+                    for (size_t i = 0; i < topics.size(); i++) {
+                        const auto& tc = topics[i];
+
+                        if (!tc) {
+                            continue;
+                        }
+
+                        for (const auto& log: receipt.logs) {
+                            auto filterTopicContent = tc.get();
+
+                            if (i >= log.topics.size()) {
+                                continue;
+                            }
+
+                            if (filterTopicContent == log.topics[i]) {
+                                goto push;
+                            }
+                        }
+                    }
+
+                    // Skip the log if none of the topics are matched
+                    continue;
+                }
+
+                push:
+
+                UniValue tri(UniValue::VOBJ);
+                transactionReceiptInfoToJSON(receipt, tri);
+                result.push_back(tri);
+            }
+        }
+    }
+
+    return result;
+}
+
+class WaitForLogsParams {
+public:
+    int fromBlock;
+    int toBlock;
+
+    size_t minconf;
+
+    std::set<dev::h160> addresses;
+    std::vector<boost::optional<dev::h256>> topics;
+
+    // bool wait;
+
+    WaitForLogsParams(const UniValue& params) {
+        std::unique_lock<std::mutex> lock(cs_blockchange);
+
+        fromBlock = parseBlockHeight(params[0], latestblock.height + 1);
+        toBlock = parseBlockHeight(params[1], -1);
+
+        parseFilter(params[2]);
+        minconf = parseUInt(params[3], 6);
+    }
+
+private:
+    void parseFilter(const UniValue& val) {
+        if (val.isNull()) {
+            return;
+        }
+
+        parseParam(val["addresses"], addresses);
+        parseParam(val["topics"], topics);
+    }
+};
+
+UniValue waitforlogs(const UniValue& params, bool fHelp) {
+    if (fHelp) {
+        throw std::runtime_error(
+                "waitforlogs (fromBlock) (toBlock) (filter) (minconf)\n"
+                "requires -logevents to be enabled\n"
+                "\nWaits for a new logs and return matching log entries. When the call returns, it also specifies the next block number to start waiting for new logs.\n"
+                "By calling waitforlogs repeatedly using the returned nextBlock number, a client can receive a stream of the current log entires.\n"
+                "\nThis call is different from the similarly named waitforlogs. This call returns individual matching log entries, `searchlogs` returns a transaction receipt if one of the log entries of that transaction matches the filter conditions.\n"
+                "\nArguments:\n"
+                "1. fromBlock (int | \"latest\", optional, default=null) The block number to start looking for logs. ()\n"
+                "2. toBlock   (int | \"latest\", optional, default=null) The block number to stop looking for logs. If null, will wait indefinitely into the future.\n"
+                "3. filter    ({ addresses?: Hex160String[], topics?: Hex256String[] }, optional default={}) Filter conditions for logs. Addresses and topics are specified as array of hexadecimal strings\n"
+                "4. minconf   (uint, optional, default=6) Minimal number of confirmations before a log is returned\n"
+                "\nResult:\n"
+                "An object with the following properties:\n"
+                "1. logs (LogEntry[]) Array of matchiing log entries. This may be empty if `filter` removed all entries."
+                "2. count (int) How many log entries are returned."
+                "3. nextBlock (int) To wait for new log entries haven't seen before, use this number as `fromBlock`"
+                "\nUsage:\n"
+                "`waitforlogs` waits for new logs, starting from the tip of the chain.\n"
+                "`waitforlogs 600` waits for new logs, but starting from block 600. If there are logs available, this call will return immediately.\n"
+                "`waitforlogs 600 700` waits for new logs, but only up to 700th block\n"
+                "`waitforlogs null null` this is equivalent to `waitforlogs`, using default parameter values\n"
+                "`waitforlogs null null` { \"addresses\": [ \"ff0011...\" ], \"topics\": [ \"c0fefe\"] }` waits for logs in the future matching the specified conditions\n"
+                "\nSample Output:\n"
+                "{\n\"entries\": [\n {\n\"blockHash\": \"000000000013ca244452d2af443a3de40d9084fa1b12755e421178faaa329bdf\",\n\"blockNumber\": 352754,\n\"transactionHash\": \"23dbfa9bcb0ce1b0247e04563de558edbbd6cdf3b08f13a5643994476f3d9d3a\",\n"
+        );
+    }
+
+    if (!fLogEvents)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Events indexing disabled");
+
+    WaitForLogsParams logsParams(params);
+
+    std::vector<std::vector<uint256>> hashesToBlock;
+
+    int curheight = 0;
+
+    auto& addresses = logsParams.addresses;
+    auto& filterTopics = logsParams.topics;
+
+    while (curheight == 0) {
+        {
+            LOCK(cs_main);
+            curheight = pblocktree->ReadHeightIndex(logsParams.fromBlock, logsParams.toBlock, logsParams.minconf,
+                                                    hashesToBlock, addresses);
+        }
+
+        if (curheight > 0) {
+            break;
+        }
+
+        if (curheight == -1) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Incorrect params");
+        }
+
+        // wait for a new block to arrive
+        {
+            while (true) {
+                std::unique_lock<std::mutex> lock(cs_blockchange);
+                auto blockHeight = latestblock.height;
+
+                cond_blockchange.wait_for(lock, std::chrono::milliseconds(1000));
+                if (latestblock.height > blockHeight) {
+                    break;
+                }
+
+                if (!IsRPCRunning()) {
+                    LogPrintf("waitforlogs client disconnected\n");
+                    return NullUniValue;
+                }
+            }
+        }
+    }
+
+    LOCK(cs_main);
+
+    UniValue jsonLogs(UniValue::VARR);
+
+    for (const auto& txHashes : hashesToBlock) {
+        for (const auto& txHash : txHashes) {
+            std::vector<TransactionReceiptInfo> receipts = pstorageresult->getResult(
+                    uintToh256(txHash));
+
+            for (const auto& receipt : receipts) {
+                for (const auto& log : receipt.logs) {
+
+                    bool includeLog = true;
+
+                    if (!filterTopics.empty()) {
+                        for (size_t i = 0; i < filterTopics.size(); i++) {
+                            auto filterTopic = filterTopics[i];
+
+                            if (!filterTopic) {
+                                continue;
+                            }
+
+                            auto filterTopicContent = filterTopic.get();
+                            auto topicContent = log.topics[i];
+
+                            if (topicContent != filterTopicContent) {
+                                includeLog = false;
+                                break;
+                            }
+                        }
+                    }
+
+
+                    if (!includeLog) {
+                        continue;
+                    }
+
+                    UniValue jsonLog(UniValue::VOBJ);
+
+                    assignJSON(jsonLog, receipt);
+                    assignJSON(jsonLog, log, false);
+
+                    jsonLogs.push_back(jsonLog);
+                }
+            }
+        }
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("entries", jsonLogs));
+    result.push_back(Pair("count", (int) jsonLogs.size()));
+    result.push_back(Pair("nextblock", curheight + 1));
+
+    return result;
+}
+
+UniValue gettransactionreceipt(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1)
+        throw std::runtime_error(
+            "gettransactionreceipt \"txid\"\n"
+            "\nNOTE: This function requires -logevents enabled.\n"
+
+            "\nReturns an array of objects with smart contract transaction execution results.\n"
+
+            "\nArgument:\n"
+            "1. \"txid\"      (string, required) The transaction id\n"
+
+            "\nResult:\n"
+            "[{\n"
+            "  \"blockHash\": \"data\",      (string)  The block hash containing the 'txid'\n"
+            "  \"blockNumber\": n,         (numeric) The block height\n"
+            "  \"transactionHash\": \"id\",  (string)  The transaction id (same as provided)\n"
+            "  \"transactionIndex\": n,    (numeric) The transaction index in block\n"
+            "  \"from\": \"address\",        (string)  The hexadecimal address from\n"
+            "  \"to\": \"address\",          (string)  The hexadecimal address to\n"
+            "  \"cumulativeGasUsed\": n,   (numeric) The gas used during execution\n"
+            "  \"gasUsed\": n,             (numeric) The gas used during execution\n"
+            "  \"contractAddress\": \"hex\", (string)  The hexadecimal contract address\n"
+            "  \"excepted\": \"None\",       (string)\n"
+            "  \"log\": []                 (array)\n"
+            "}]\n"
+        );
+
+    if(!fLogEvents)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Events indexing disabled");
+
+    LOCK(cs_main);
+
+    std::string hashTemp = params[0].get_str();
+    if(hashTemp.size() != 64){
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect hash");
+    }
+
+    uint256 hash(uint256S(hashTemp));
+
+    if (pstorageresult == nullptr) {
+        return NullUniValue;
+    }
+
+    std::vector<TransactionReceiptInfo> transactionReceiptInfo = pstorageresult->getResult(uintToh256(hash));
+
+    UniValue result(UniValue::VARR);
+    for(TransactionReceiptInfo& t : transactionReceiptInfo){
+        UniValue tri(UniValue::VOBJ);
+        transactionReceiptInfoToJSON(t, tri);
+        result.push_back(tri);
+    }
+    return result;
+}
+
 UniValue pruneblockchain(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
@@ -557,18 +978,18 @@ UniValue getaccountinfo(const UniValue& params, bool fHelp)
         throw std::runtime_error(
                 "getaccountinfo \"address\"\n"
                 "\nArgument:\n"
-                "1. \"address\"          (string, required) The account address\n"
+                "1. \"address\" (string, required) The contract/account hash160\n"
         );
 
     LOCK(cs_main);
 
     std::string strAddr = params[0].get_str();
-    if(strAddr.size() != 40 || !CheckHex(strAddr))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect address");
+    if(strAddr.size() != 40 || !regex_match(strAddr, hexData))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid contract address");
 
     dev::Address addrAccount(strAddr);
     if(!globalState->addressInUse(addrAccount))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not exist");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Contract does not exist");
 
     UniValue result(UniValue::VOBJ);
 
@@ -740,7 +1161,7 @@ UniValue gettxout(const UniValue& params, bool fHelp)
 
     CCoins coins;
     if (fMempool) {
-        LOCK(mempool.cs);
+        //LOCK(mempool.cs);
         CCoinsViewMemPool view(pcoinsTip, mempool);
         if (!view.GetCoin(out, coins) || mempool.isSpent(out)) { // TODO: filtering spent coins should be done by the CCoinsViewMemPool
             return NullUniValue;
@@ -825,20 +1246,26 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
             "Returns an object containing various state info regarding block chain processing.\n"
             "\nResult:\n"
             "{\n"
-            "  \"chain\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
+            "  \"chain\": \"xxxx\",          (string) current network name as defined in BIP70 (main, test, regtest)\n"
             "  \"blocks\": xxxxxx,         (numeric) the current number of blocks processed in the server\n"
             "  \"headers\": xxxxxx,        (numeric) the current number of headers we have validated\n"
-            "  \"bestblockhash\": \"...\", (string) the hash of the currently best block\n"
+            "  \"bestblockhash\": \"...\",   (string) the hash of the currently best block\n"
             "  \"difficulty\": xxxxxx,     (numeric) the current difficulty\n"
             "  \"mediantime\": xxxxxx,     (numeric) median time for the current best block\n"
-            "  \"verificationprogress\": xxxx, (numeric) estimate of verification progress [0..1]\n"
-            "  \"chainwork\": \"xxxx\"     (string) total amount of work in active chain, in hexadecimal\n"
-            "  \"bip9_softforks\": {          (object) status of BIP9 softforks in progress\n"
-            "     \"xxxx\" : {                (string) name of the softfork\n"
-            "        \"status\": \"xxxx\",    (string) one of \"defined\", \"started\", \"lockedin\", \"active\", \"failed\"\n"
-            "        \"bit\": xx,             (numeric) the bit, 0-28, in the block version field used to signal this soft fork\n"
-            "        \"startTime\": xx,       (numeric) the minimum median time past of a block at which the bit gains its meaning\n"
-            "        \"timeout\": xx          (numeric) the median time past of a block at which the deployment is considered failed if not yet locked in\n"
+            "  \"verificationprogress\": x, (number) estimate of verification progress [0..1]\n"
+            "  \"chainwork\": \"xxxx\",      (string) total amount of work in active chain, in hexadecimal\n"
+            "  \"pruned\": xx,             (boolean) if the blocks are subject to pruning\n"
+            "  \"pruneheight\": xxxxxx,    (numeric) lowest-height complete block stored\n"
+            "  \"logevents\": true|false,  (boolean) show the current -logevents setting\n"
+            "  \"addressindex\": false,    (boolean) show the current -addressindex setting\n"
+            "  \"spentindex\": true|false, (boolean) show the current -spentindex setting\n"
+            "  \"txindex\": true|false,    (boolean) show the current -txindex setting\n"
+            "  \"bip9_softforks\": {       (object) status of BIP9 softforks in progress\n"
+            "     \"xxxx\" : {             (string) name of the softfork\n"
+            "        \"status\": \"xxxx\",   (string) one of \"defined\", \"started\", \"lockedin\", \"active\", \"failed\"\n"
+            "        \"bit\": xx,          (numeric) the bit, 0-28, in the block version field used to signal this soft fork\n"
+            "        \"startTime\": xx,    (numeric) the minimum median time past of a block at which the bit gains its meaning\n"
+            "        \"timeout\": xx       (numeric) the median time past of a block at which the deployment is considered failed if not yet locked in\n"
             "     }\n"
             "  }\n"
             "}\n"
@@ -849,15 +1276,28 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
     CBlockIndex* powTip = GetLastBlockOfType(0);
+    CBlockIndex* posTip = GetLastBlockOfType(1);
     UniValue obj(UniValue::VOBJ);
+    UniValue diff(UniValue::VOBJ);
     obj.push_back(Pair("chain",                 Params().NetworkIDString()));
     obj.push_back(Pair("blocks",                chainActive.Height()));
     obj.push_back(Pair("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1));
     obj.push_back(Pair("bestblockhash",         chainActive.Tip()->GetBlockHash().GetHex()));
-    obj.push_back(Pair("difficulty",            (double)GetDifficulty(powTip)));
+    diff.push_back(Pair("proof-of-work",        (double)GetDifficulty(powTip)));
+    diff.push_back(Pair("proof-of-stake",       (double)GetDifficulty(posTip)));
+    obj.push_back(Pair("difficulty",            diff));
     obj.push_back(Pair("mediantime",            (int64_t)chainActive.Tip()->GetMedianTimePast()));
     obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), chainActive.Tip())));
     obj.push_back(Pair("chainwork",             chainActive.Tip()->nChainWork.GetHex()));
+    obj.push_back(Pair("pruned",                fPruneMode));
+    if (fPruneMode) {
+        CBlockIndex *block = chainActive.Tip(); while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA))block = block->pprev;
+        obj.push_back(Pair("pruneheight",       block->nHeight));
+    }
+    obj.push_back(Pair("logevents",             fLogEvents));
+    obj.push_back(Pair("addressindex",          fAddressIndex));
+    obj.push_back(Pair("spentindex",            fSpentIndex));
+    obj.push_back(Pair("txindex",               fTxIndex));
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
     UniValue bip9_softforks(UniValue::VOBJ);
@@ -919,12 +1359,20 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
        known blocks, and successively remove blocks that appear as pprev
        of another block.  */
     std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
-    BOOST_FOREACH (const PAIRTYPE(const uint256, CBlockIndex*) & item, mapBlockIndex)
-        setTips.insert(item.second);
-    BOOST_FOREACH (const PAIRTYPE(const uint256, CBlockIndex*) & item, mapBlockIndex) {
-        const CBlockIndex* pprev = item.second->pprev;
-        if (pprev)
-            setTips.erase(pprev);
+    std::set<const CBlockIndex*> setOrphans;
+    std::set<const CBlockIndex*> setPrevs;
+
+    for (const PAIRTYPE(const uint256, CBlockIndex*)& item : mapBlockIndex) {
+        if (!chainActive.Contains(item.second)) {
+            setOrphans.insert(item.second);
+            setPrevs.insert(item.second->pprev);
+        }
+    }
+
+    for (std::set<const CBlockIndex*>::iterator it = setOrphans.begin(); it != setOrphans.end(); ++it) {
+        if (setPrevs.erase(*it) == 0) {
+            setTips.insert(*it);
+        }
     }
 
     // Always report the currently active tip.
@@ -932,7 +1380,7 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
 
     /* Construct the output array.  */
     UniValue res(UniValue::VARR);
-    BOOST_FOREACH (const CBlockIndex* block, setTips) {
+    for (const CBlockIndex* block : setTips) {
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("height", block->nHeight));
         obj.push_back(Pair("hash", block->phashBlock->GetHex()));
@@ -1062,4 +1510,77 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
     }
 
     return NullUniValue;
+}
+
+UniValue getchaintxstats(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw runtime_error(
+                "getchaintxstats ( nblocks blockhash )\n"
+                "\nCompute statistics about the total number and rate of transactions in the chain.\n"
+                "\nArguments:\n"
+                "1. nblocks                                 (numeric, optional) Size of the window in number of blocks (default: one month).\n"
+                "2. \"blockhash\"                           (string, optional) The hash of the block that ends the window.\n"
+                "\nResult:\n"
+                "{\n"
+                "  \"time\": xxxxx,                         (numeric) The timestamp for the final block in the window in UNIX format.\n"
+                "  \"txtotal\": xxxxx,                      (numeric) The total number of transactions in the chain up to that point.\n"
+                "  \"window_block_count\": xxxxx,           (numeric) Size of the window in number of blocks.\n"
+                "  \"window_tx_count\": xxxxx,              (numeric) The number of transactions in the window. Only returned if \"window_block_count\" is > 0.\n"
+                "  \"window_interval\": xxxxx,              (numeric) The elapsed time in the window in seconds. Only returned if \"window_block_count\" is > 0.\n"
+                "  \"txrate\": x.xx,                        (numeric) The average rate of transactions per second in the window. Only returned if \"window_interval\" is > 0.\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getchaintxstats", "")
+                + HelpExampleRpc("getchaintxstats", "2016")
+        );
+
+    const CBlockIndex* pindex;
+    int blockcount = 30 * 24 * 60 * 60 / Params().GetConsensus().nPowTargetSpacing;
+
+    if (params.size() > 0 && !params[0].isNull()) {
+        blockcount = params[0].get_int();
+    }
+
+    bool havehash = params.size() > 1 && !params[1].isNull();
+    uint256 hash;
+    if (havehash) {
+        hash = uint256S(params[1].get_str());
+    }
+    {
+        LOCK(cs_main);
+        if (havehash) {
+            auto it = mapBlockIndex.find(hash);
+            if (it == mapBlockIndex.end()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+            }
+            pindex = it->second;
+            if (!chainActive.Contains(pindex)) {
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Block isn't in the main chain");
+            }
+        } else {
+            pindex = chainActive.Tip();
+        }
+    }
+
+    if (blockcount < 1 || blockcount >= pindex->nHeight) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block count");
+    }
+
+    const CBlockIndex* pindexPast = pindex->GetAncestor(pindex->nHeight - blockcount);
+    int nTimeDiff = pindex->GetMedianTimePast() - pindexPast->GetMedianTimePast();
+    int nTxDiff = pindex->nChainTx - pindexPast->nChainTx;
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("time", (int64_t)pindex->nTime));
+    ret.push_back(Pair("txtotal", (int64_t)pindex->nChainTx));
+    ret.push_back(Pair("window_block_count", blockcount));
+    if (blockcount > 0) {
+        ret.push_back(Pair("window_tx_count", nTxDiff));
+        ret.push_back(Pair("window_interval", nTimeDiff));
+        if (nTimeDiff > 0) {
+            ret.push_back(Pair("txrate", ((double)nTxDiff) / nTimeDiff));
+        }
+    }
+    return ret;
 }

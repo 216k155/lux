@@ -5,8 +5,6 @@
 
 #include "wallet.h"
 
-#include <boost/foreach.hpp>
-
 #include <QFont>
 #include <QDebug>
 
@@ -53,7 +51,7 @@ public:
         cachedContractTable.clear();
         {
             LOCK(wallet->cs_wallet);
-            BOOST_FOREACH(const PAIRTYPE(std::string, CContractBookData)& item, wallet->mapContractBook)
+            for (const PAIRTYPE(std::string, CContractBookData)& item : wallet->mapContractBook)
             {
                 const std::string& address = item.first;
                 const std::string& strName = item.second.name;

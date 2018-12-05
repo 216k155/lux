@@ -12,8 +12,6 @@
 #include "tinyformat.h"
 #include "utilstrencodings.h"
 
-#include <boost/foreach.hpp>
-
 std::string COutPoint::ToString() const
 {
     return strprintf("COutPoint(%s, %u)", hash.ToString()/*.substr(0,10)*/, n);
@@ -134,6 +132,17 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     *const_cast<uint256*>(&hash) = tx.hash;
     *const_cast<CTxWitness*>(&wit) = tx.wit;
     return *this;
+}
+
+bool CTransaction::IsEquivalent(const CTransaction& tx) const {
+    if (nVersion != tx.nVersion || nLockTime != tx.nLockTime || vin.size() != tx.vin.size() || vout != tx.vout)
+        return false;
+    for (unsigned int i = 0; i < vin.size(); i++) {
+        if (vin[i].nSequence != tx.vin[i].nSequence ||
+            vin[i].prevout   != tx.vin[i].prevout)
+            return false;
+    }
+    return true;
 }
 
 CAmount CTransaction::GetValueOut() const

@@ -5,7 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "rpcserver.h"
-
+#include "core_io.h"
 #include "clientversion.h"
 #include "main.h"
 #include "net.h"
@@ -15,8 +15,7 @@
 #include "timedata.h"
 #include "util.h"
 #include "version.h"
-
-#include <boost/foreach.hpp>
+#include "ui_interface.h"
 
 #include "univalue/univalue.h"
 
@@ -50,8 +49,9 @@ UniValue ping(const UniValue& params, bool fHelp)
 
     // Request that each node send a ping during next message processing pass
     LOCK2(cs_main, cs_vNodes);
-    BOOST_FOREACH (CNode* pNode, vNodes) {
-        pNode->fPingQueued = true;
+    for (CNode* pNode : vNodes) {
+        if (pNode)
+            pNode->fPingQueued = true;
     }
 
     return NullUniValue;
@@ -63,7 +63,8 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
 
     LOCK(cs_vNodes);
     vstats.reserve(vNodes.size());
-    BOOST_FOREACH (CNode* pnode, vNodes) {
+    for (CNode* pnode : vNodes) {
+        if (!pnode) continue;
         CNodeStats stats;
         pnode->copyStats(stats);
         vstats.push_back(stats);
@@ -88,8 +89,9 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
             "    \"bytessent\": n,            (numeric) The total bytes sent\n"
             "    \"bytesrecv\": n,            (numeric) The total bytes received\n"
             "    \"conntime\": ttt,           (numeric) The connection time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "    \"pingtime\": n,             (numeric) ping time\n"
-            "    \"pingwait\": n,             (numeric) ping wait\n"
+            "    \"pingtime\": n,             (numeric) ping time (if available)\n"
+            "    \"minping\": n,              (numeric) minimum observed ping time (if any at all)\n"
+            "    \"pingwait\": n,             (numeric) ping wait (if non-zero)\n"
             "    \"version\": v,              (numeric) The peer version, such as 7001\n"
             "    \"subver\": \"/Luxcore:x.x.x.x/\",  (string) The string version\n"
             "    \"inbound\": true|false,     (boolean) Inbound (true) or Outbound (false)\n"
@@ -114,7 +116,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VARR);
 
-    BOOST_FOREACH (const CNodeStats& stats, vstats) {
+    for (const CNodeStats& stats : vstats) {
         UniValue obj(UniValue::VOBJ);
         CNodeStateStats statestats;
         bool fStateStats = GetNodeStateStats(stats.nodeid, statestats);
@@ -143,7 +145,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
             obj.push_back(Pair("synced_headers", statestats.nSyncHeight));
             obj.push_back(Pair("synced_blocks", statestats.nCommonHeight));
             UniValue heights(UniValue::VARR);
-            BOOST_FOREACH (int height, statestats.vHeightInFlight) {
+            for (int height : statestats.vHeightInFlight) {
                 heights.push_back(height);
             }
             obj.push_back(Pair("inflight", heights));
@@ -391,7 +393,7 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
     UniValue localAddresses(UniValue::VARR);
     {
         LOCK(cs_mapLocalHost);
-        BOOST_FOREACH (const PAIRTYPE(CNetAddr, LocalServiceInfo) & item, mapLocalHost) {
+        for (const PAIRTYPE(CNetAddr, LocalServiceInfo) & item : mapLocalHost) {
             UniValue rec(UniValue::VOBJ);
             rec.push_back(Pair("address", item.first.ToString()));
             rec.push_back(Pair("port", item.second.nPort));
@@ -411,19 +413,18 @@ UniValue setban(const UniValue& params, bool fHelp)
     if (fHelp || params.size() < 2 ||
         (strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
-            "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
-            "\nAttempts add or remove a IP/Subnet from the banned list.\n"
-
-            "\nArguments:\n"
-            "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
-            "2. \"command\"      (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list\n"
-            "3. \"bantime\"      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)\n"
-            "4. \"absolute\"     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
-
-            "\nExamples:\n"
-            + HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
-            + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
-            + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400"));
+                "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
+                "\nAttempts add or remove a IP/Subnet from the banned list.\n"
+                "\nArguments:\n"
+                "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
+                "2. \"command\"      (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list\n"
+                "3. \"bantime\"      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)\n"
+                "4. \"absolute\"     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
+                "\nExamples:\n"
+                + HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
+                + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
+                + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400")
+        );
 
     CSubNet subNet;
     CNetAddr netAddr;
@@ -450,14 +451,14 @@ UniValue setban(const UniValue& params, bool fHelp)
             banTime = params[2].get_int64();
 
         bool absolute = false;
-        if (params.size() == 4)
-            absolute = params[3].get_bool();
+        if (params.size() == 4 && params[3].isTrue())
+            absolute = true;
 
-        isSubnet ? CNode::Ban(subNet, BanReasonManually, banTime, absolute) : CNode::Ban(netAddr, BanReasonManually, banTime, absolute);
+        isSubnet ? CNode::Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : CNode::Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
 
         //disconnect possible nodes
         while(CNode *bannedNode = (isSubnet ? FindNode(subNet) : FindNode(netAddr)))
-            bannedNode->CloseSocketDisconnect();
+            bannedNode->fDisconnect = true;
     }
     else if(strCommand == "remove")
     {
@@ -466,6 +467,8 @@ UniValue setban(const UniValue& params, bool fHelp)
     }
 
     DumpBanlist(); //store banlist to disk
+    uiInterface.BannedListChanged();
+
     return NullUniValue;
 }
 
@@ -512,6 +515,8 @@ UniValue clearbanned(const UniValue& params, bool fHelp)
 
     CNode::ClearBanned();
     DumpBanlist(); //store banlist to disk
+    uiInterface.BannedListChanged();
+
 
     return NullUniValue;
 }

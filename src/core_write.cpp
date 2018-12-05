@@ -15,9 +15,18 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 
-#include <boost/foreach.hpp>
-
 using namespace std;
+
+UniValue ValueFromAmount(const CAmount& amount)
+{
+    bool sign = amount < 0;
+    int64_t n_abs = (sign ? -amount : amount);
+    int64_t quotient = n_abs / COIN;
+    int64_t remainder = n_abs % COIN;
+    return UniValue(UniValue::VNUM,
+                    strprintf("%s%d.%08d", sign ? "-" : "", quotient, remainder));
+}
+
 
 string FormatScript(const CScript& script)
 {
@@ -82,7 +91,7 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
     out.pushKV("type", GetTxnOutputType(type));
 
     UniValue a(UniValue::VARR);
-    BOOST_FOREACH (const CTxDestination& addr, addresses)
+    for (const CTxDestination& addr : addresses)
         a.push_back(EncodeDestination(addr));
     out.pushKV("addresses", a);
 }
@@ -94,7 +103,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
     entry.pushKV("locktime", (int64_t)tx.nLockTime);
 
     UniValue vin(UniValue::VARR);
-    BOOST_FOREACH (const CTxIn& txin, tx.vin) {
+    for (const CTxIn& txin : tx.vin) {
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));

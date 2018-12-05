@@ -238,7 +238,7 @@ public:
     std::string ToString() const;
 };
 
-class CTxinWitness
+class CTxInWitness
 {
 public:
     CScriptWitness scriptWitness;
@@ -253,14 +253,14 @@ public:
 
     bool IsNull() const { return scriptWitness.IsNull(); }
 
-    CTxinWitness() { }
+    CTxInWitness() { }
 };
 
 class CTxWitness
 {
 public:
     /** In case vtxinwit is missing, all entries are treated as if they were empty CTxInWitnesses */
-    std::vector<CTxinWitness> vtxinwit;
+    std::vector<CTxInWitness> vtxinwit;
 
     ADD_SERIALIZE_METHODS;
 
@@ -432,6 +432,8 @@ public:
     // Compute a hash that includes both transaction and witness data
     uint256 GetWitnessHash() const;
 
+    bool IsEquivalent(const CTransaction& tx) const;
+
     // Return sum of txouts.
     CAmount GetValueOut() const;
     // GetValueIn() is a method on CCoinsViewCache, because
@@ -463,6 +465,11 @@ public:
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
         return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+    }
+
+    bool IsCoinGenerated() const
+    {
+        return this->IsCoinBase() || this->IsCoinStake();
     }
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)

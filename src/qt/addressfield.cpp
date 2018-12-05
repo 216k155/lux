@@ -9,7 +9,6 @@
 #include "base58.h"
 #include "qvalidatedlineedit.h"
 #include "bitcoinaddressvalidator.h"
-#include <boost/foreach.hpp>
 #include <QLineEdit>
 #include <QCompleter>
 
@@ -113,7 +112,7 @@ void AddressField::on_refresh()
             pwalletMain->AvailableCoins(vecOutputs);
         }
 
-        BOOST_FOREACH(const COutput& out, vecOutputs) {
+        for (const COutput& out : vecOutputs) {
             CTxDestination address;
             const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;
             bool fValidAddress = ExtractDestination(scriptPubKey, address);

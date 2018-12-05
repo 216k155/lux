@@ -22,7 +22,7 @@ std::map<uint256, CConsensusVote> mapTxLockVote;
 std::map<uint256, CTransactionLock> mapTxLocks;
 std::map<COutPoint, uint256> mapLockedInputs;
 std::map<uint256, int64_t> mapUnknownVotes; //track votes with no tx for DOS
-int nCompleteTXLocks;
+int nCompleteTXLocks = 0;
 
 //txlock - Locks transaction
 //
@@ -53,7 +53,7 @@ void ProcessInstantX(CNode* pfrom, const std::string& strCommand, CDataStream& v
             return;
         }
 
-        BOOST_FOREACH(const CTxOut o, tx.vout) {
+        for (const CTxOut o : tx.vout) {
             if (!o.scriptPubKey.IsNormalPaymentScript()) {
                 printf("ProcessInstantX::txlreq - Invalid Script %s\n", tx.ToString().c_str());
                 return;
@@ -70,8 +70,9 @@ void ProcessInstantX(CNode* pfrom, const std::string& strCommand, CDataStream& v
             vector<CInv> vInv;
             vInv.push_back(inv);
             LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-                pnode->PushMessage("inv", vInv);
+            for (CNode* pnode : vNodes)
+                if (pnode)
+                    pnode->PushMessage("inv", vInv);
 
             DoConsensusVote(tx, nBlockHeight);
 
@@ -94,7 +95,7 @@ void ProcessInstantX(CNode* pfrom, const std::string& strCommand, CDataStream& v
                 tx.GetHash().ToString().c_str()
             );
 
-            BOOST_FOREACH(const CTxIn& in, tx.vin) {
+            for (const CTxIn& in : tx.vin) {
                 if (!mapLockedInputs.count(in.prevout)) {
                     mapLockedInputs.insert(make_pair(in.prevout, tx.GetHash()));
                 }
@@ -160,8 +161,9 @@ void ProcessInstantX(CNode* pfrom, const std::string& strCommand, CDataStream& v
             vector<CInv> vInv;
             vInv.push_back(inv);
             LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode * pnode, vNodes)
-                pnode->PushMessage("inv", vInv);
+            for (CNode * pnode : vNodes)
+                if (pnode)
+                    pnode->PushMessage("inv", vInv);
 
         }
 
@@ -177,10 +179,10 @@ bool IsIXTXValid(const CTransaction& txCollateral) {
     int64_t nValueOut = 0;
     bool missingTx = false;
 
-    BOOST_FOREACH(const CTxOut o, txCollateral.vout)
+    for (const CTxOut o : txCollateral.vout)
         nValueOut += o.nValue;
 
-    BOOST_FOREACH(const CTxIn i, txCollateral.vin) {
+    for (const CTxIn i : txCollateral.vin) {
         CTransaction tx2;
         uint256 hash;
         //if(GetTransaction(i.prevout.hash, tx2, hash, true)){
@@ -219,7 +221,7 @@ bool IsIXTXValid(const CTransaction& txCollateral) {
 int64_t CreateNewLock(CTransaction tx) {
 
     int64_t nTxAge = 0;
-    BOOST_REVERSE_FOREACH(CTxIn i, tx.vin) {
+    for (CTxIn i : reverse_iterate(tx.vin)) {
         nTxAge = GetInputAge(i);
         if (nTxAge < 6) {
             LogPrintf("CreateNewLock - Transaction not found / too new: %d / %s\n", nTxAge, tx.GetHash().ToString().c_str());
@@ -292,8 +294,9 @@ void DoConsensusVote(CTransaction& tx, int64_t nBlockHeight) {
     vector<CInv> vInv;
     vInv.push_back(inv);
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("inv", vInv);
+    for (CNode* pnode : vNodes) {
+        if (pnode)
+            pnode->PushMessage("inv", vInv);
     }
 
 }
@@ -342,14 +345,6 @@ bool ProcessConsensusVote(CConsensusVote& ctx) {
     if (i != mapTxLocks.end()) {
         (*i).second.AddSignature(ctx);
 
-#ifdef ENABLE_WALLET
-        if(pwalletMain){
-            //when we get back signatures, we'll count them as requests. Otherwise the client will think it didn't propagate.
-            if(pwalletMain->mapRequestCount.count(ctx.txHash))
-                pwalletMain->mapRequestCount[ctx.txHash]++;
-        }
-#endif
-
         if (fDebug) LogPrintf("InstantX::ProcessConsensusVote - Transaction Lock Votes %d - %s !\n", (*i).second.CountSignatures(), ctx.GetHash().ToString().c_str());
 
         if ((*i).second.CountSignatures() >= INSTANTX_SIGNATURES_REQUIRED) {
@@ -367,7 +362,7 @@ bool ProcessConsensusVote(CConsensusVote& ctx) {
 #endif
 
                 if (mapTxLockReq.count(ctx.txHash)) {
-                    BOOST_FOREACH(const CTxIn& in, tx.vin){
+                    for (const CTxIn& in : tx.vin){
                         if (!mapLockedInputs.count(in.prevout)) {
                             mapLockedInputs.insert(make_pair(in.prevout, ctx.txHash));
                         }
@@ -398,7 +393,7 @@ bool CheckForConflictingLocks(CTransaction& tx) {
         Blocks could have been rejected during this time, which is OK. After they cancel out, the client will
         rescan the blocks and find they're acceptable and then take the chain with the most work.
     */
-    BOOST_FOREACH(const CTxIn& in, tx.vin) {
+    for (const CTxIn& in : tx.vin) {
         if (mapLockedInputs.count(in.prevout)) {
             if (mapLockedInputs[in.prevout] != tx.GetHash()) {
                 LogPrintf("InstantX::CheckForConflictingLocks - found two complete conflicting locks - removing both. %s %s", tx.GetHash().ToString().c_str(),
@@ -439,13 +434,13 @@ void CleanTransactionLocksList() {
             if (mapTxLockReq.count(it->second.txHash)) {
                 CTransaction& tx = mapTxLockReq[it->second.txHash];
 
-                BOOST_FOREACH(const CTxIn& in, tx.vin)
+                for (const CTxIn& in : tx.vin)
                     mapLockedInputs.erase(in.prevout);
 
                 mapTxLockReq.erase(it->second.txHash);
                 mapTxLockReqRejected.erase(it->second.txHash);
 
-                BOOST_FOREACH(CConsensusVote& v, it->second.vecConsensusVotes)
+                for (CConsensusVote& v : it->second.vecConsensusVotes)
                     mapTxLockVote.erase(v.GetHash());
             }
 
@@ -514,7 +509,7 @@ bool CConsensusVote::Sign() {
 
 bool CTransactionLock::SignaturesValid() {
 
-    BOOST_FOREACH(CConsensusVote vote, vecConsensusVotes) {
+    for (CConsensusVote vote : vecConsensusVotes) {
         int n = GetMasternodeRank(vote.vinMasternode, vote.nBlockHeight, MIN_INSTANTX_PROTO_VERSION);
 
         if (n == -1) {
@@ -549,7 +544,7 @@ int CTransactionLock::CountSignatures() {
     if (nBlockHeight == 0) return -1;
 
     int n = 0;
-    BOOST_FOREACH(CConsensusVote v, vecConsensusVotes) {
+    for (CConsensusVote v : vecConsensusVotes) {
         if (v.nBlockHeight == nBlockHeight) {
             n++;
         }

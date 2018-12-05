@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <ios>
 #include <limits>
+#include <list>
 #include <map>
 #include <set>
 #include <stdint.h>
@@ -431,6 +432,7 @@ I ReadVarInt(Stream& is)
 
 #define FLATDATA(obj) REF(CFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))
 #define VARINT(obj) REF(WrapVarInt(REF(obj)))
+#define COMPACTSIZE(obj) REF(CCompactSize(REF(obj)))
 #define LIMITED_STRING(obj, n) REF(LimitedString<n>(REF(obj)))
 
 /** 
@@ -503,6 +505,28 @@ public:
     void Unserialize(Stream& s, int, int)
     {
         n = ReadVarInt<Stream, I>(s);
+    }
+};
+
+class CCompactSize
+{
+protected:
+    uint64_t &n;
+public:
+    CCompactSize(uint64_t& nIn) : n(nIn) { }
+
+    unsigned int GetSerializeSize(int, int) const {
+        return GetSizeOfCompactSize(n);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream &s, int, int) const {
+        WriteCompactSize<Stream>(s, n);
+    }
+
+    template<typename Stream>
+    void Unserialize(Stream& s, int, int) {
+        n = ReadCompactSize<Stream>(s);
     }
 };
 
@@ -988,6 +1012,40 @@ void Unserialize(Stream& is, std::set<K, Pred, A>& m, int nType, int nVersion)
         it = m.insert(it, key);
     }
 }
+
+/**
+ * list
+ */
+template<typename T, typename A>
+unsigned int GetSerializeSize(const std::list<T, A>& l, int nType, int nVersion)
+{
+    unsigned int nSize = GetSizeOfCompactSize(l.size());
+    for (typename std::list<T, A>::const_iterator it = l.begin(); it != l.end(); ++it)
+        nSize += GetSerializeSize((*it), nType, nVersion);
+    return nSize;
+}
+
+template<typename Stream, typename T, typename A>
+void Serialize(Stream& os, const std::list<T, A>& l, int nType, int nVersion)
+{
+    WriteCompactSize(os, l.size());
+    for (typename std::list<T, A>::const_iterator it = l.begin(); it != l.end(); ++it)
+        Serialize(os, (*it), nType, nVersion);
+}
+
+template<typename Stream, typename T, typename A>
+void Unserialize(Stream& is, std::list<T, A>& l, int nType, int nVersion)
+{
+    l.clear();
+    unsigned int nSize = ReadCompactSize(is);
+    for (unsigned int i = 0; i < nSize; i++)
+    {
+        T val;
+        Unserialize(is, val, nType, nVersion);
+        l.push_back(val);
+    }
+}
+
 
 
 /**

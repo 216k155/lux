@@ -42,6 +42,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getsubsidy", 0, "height" },
     { "getreceivedbyaddress", 1, "minconf" },
     { "getreceivedbyaccount", 1, "minconf" },
+    { "listaddressbalances", 0, "minamount" },
     { "listreceivedbyaddress", 0, "minconf" },
     { "listreceivedbyaddress", 1, "include_empty" },
     { "listreceivedbyaddress", 2, "include_watchonly" },
@@ -71,26 +72,33 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "listsinceblock", 2, "include_watchonly" },
     { "sendmany", 1, "amounts" },
     { "sendmany", 2, "minconf" },
-    { "sendmany", 4, "subtractfeefrom" },
-    { "sendmanywithdupes", 1, "amounts" },
-    { "sendmanywithdupes", 2, "minconf" },
-    { "sendmanywithdupes", 4, "subtractfeefrom" },
+    { "sendmany", 3, "comment" },
     { "addmultisigaddress", 0, "nrequired" },
     { "addmultisigaddress", 1, "keys" },
     ////////////////////////////////////////////////// // lux
+    { "autocombinerewards", 0, "enable"},
+    { "autocombinerewards", 1, "threshold"},
     { "getaddresstxids", 0, "addresses"},
+    { "getaddresstxids", 1, "start"},
+    { "getaddresstxids", 2, "end"},
     { "getaddressmempool", 0, "addresses"},
     { "getaddressdeltas", 0, "addresses"},
+    { "getaddressdeltas", 1, "start"},
+    { "getaddressdeltas", 2, "end"},
     { "getaddressbalance", 0, "addresses"},
     { "getaddressutxos", 0, "addresses"},
     { "getblockhashes", 0, "high"},
     { "getblockhashes", 1, "low"},
     { "getblockhashes", 2, "options"},
-    { "getspentinfo", 0, "argument"},
+    { "getspentinfo", 1, "index"},
     { "searchlogs", 0, "fromBlock"},
     { "searchlogs", 1, "toBlock"},
     { "searchlogs", 2, "address"},
     { "searchlogs", 3, "topics"},
+    { "waitforlogs", 0, "fromBlock"},
+    { "waitforlogs", 1, "txlimit"},
+    { "waitforlogs", 2, "address"},
+    { "waitforlogs", 3, "topics"},
     //////////////////////////////////////////////////
     { "createmultisig", 0, "nrequired" },
     { "createmultisig", 1, "keys" },
@@ -99,6 +107,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "listunspent", 2, "addresses" },
     { "getblock", 1, "verbose" },
     { "getblockheader", 1, "verbose" },
+    { "getchaintxstats", 0, "nblocks" },
     { "gettransaction", 1, "include_watchonly" },
     { "getrawtransaction", 1, "verbose" },
     { "createrawtransaction", 0, "transactions" },
@@ -220,6 +229,15 @@ UniValue RPCConvertValues(const std::string &strMethod, const std::vector<std::s
         // insert string value directly
         if (!rpcCvtTable.convert(strMethod, idx)) {
             params.push_back(strVal);
+        } else if (strMethod.substr(0, 10) == "getaddress") {
+            UniValue p;
+            try {
+                p = ParseNonRFCJSONValue(strVal);
+            } catch (...) {
+                // allow getaddressbalance "LYmrT81UoxqfskSNt28ZKZ3XXskSFENEtg" for convenience
+                p = strVal;
+            }
+            params.push_back(p);
         } else {
             // parse string as JSON, insert bool/number/object/etc. value
             params.push_back(ParseNonRFCJSONValue(strVal));

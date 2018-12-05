@@ -28,14 +28,30 @@
 
 #include <boost/filesystem/path.hpp>
 #include <boost/thread/exceptions.hpp>
+#include <regex>
+
+#define END_IGNORE_EXCEPTION "END_IGNORE_EXCEPTION"
+
+extern std::regex hexData;
+
+// Debugging macros
+
+//#define ENABLE_LUX_DEBUG
+#ifdef ENABLE_LUX_DEBUG
+#define DEBUG_SECTION( x ) x
+#else
+#define DEBUG_SECTION( x )
+#endif
 
 //LUX only features
 extern std::atomic<bool> hideLogMessage;
 
+extern int nLogFile;
 extern bool fMasterNode;
 extern bool fEnableInstanTX;
 extern int nInstanTXDepth;
 extern int nDarksendRounds;
+extern int nWalletBackups;
 extern int nAnonymizeLuxAmount;
 extern int nLiquidityProvider;
 extern bool fEnableDarksend;
@@ -64,6 +80,8 @@ void SetupEnvironment();
 bool LogAcceptCategory(const char* category);
 /** Send a string to the log output */
 int LogPrintStr(const std::string& str, bool useVMLog = false);
+/** Push debug files */
+void pushDebugLog(std::string pathDebugStr, int debugNum);
 
 #define LogPrintf(...) LogPrint(NULL, __VA_ARGS__)
 
@@ -133,6 +151,7 @@ boost::filesystem::path GetPidFile();
 void CreatePidFile(const boost::filesystem::path& path, pid_t pid);
 #endif
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
+void WriteConfigToFile(std::string strKey, std::string strValue);
 #ifdef WIN32
 boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
 #endif
@@ -210,6 +229,33 @@ bool SoftSetArg(const std::string& strArg, const std::string& strValue);
  */
 bool SoftSetBoolArg(const std::string& strArg, bool fValue);
 
+// Forces a arg setting
+void ForceSetArg(const std::string& strArg, const std::string& strValue);
+
+/**
+ * Format a string to be used as group of options in help messages
+ *
+ * @param message Group name (e.g. "RPC server options:")
+ * @return the formatted string
+ */
+std::string HelpMessageGroup(const std::string& message);
+
+/**
+ * Format a string to be used as option description in help messages
+ *
+ * @param option Option message (e.g. "-rpcuser=<user>")
+ * @param message Option description (e.g. "Username for JSON-RPC connections")
+ * @return the formatted string
+ */
+std::string HelpMessageOpt(const std::string& option, const std::string& message);
+
+/**
+ * Return the number of physical cores available on the current system.
+ * @note This does not count virtual cores, such as those provided by HyperThreading
+ * when boost is newer than 1.56.
+ */
+int GetNumCores();
+
 void SetThreadPriority(int nPriority);
 void RenameThread(const char* name);
 
@@ -217,6 +263,25 @@ inline uint32_t ByteReverse(uint32_t value)
 {
     value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
     return (value<<16) | (value>>16);
+}
+
+inline static bool IsExceptionIgnored (const char* name)
+{
+    const char* IgnoredThread [] = {
+        "net",
+        "Runaway exception",
+        "msghand",
+        END_IGNORE_EXCEPTION
+    };
+
+    int i = 0;
+    while (strcmp(IgnoredThread[i], END_IGNORE_EXCEPTION))
+    {
+        if (!strcmp(IgnoredThread[i], name))
+            return true;
+        i++;
+    }
+    return false;
 }
 
 /**
@@ -233,16 +298,47 @@ void TraceThread(const char* name, Callable func)
         LogPrintf("%s thread exit\n", name);
     } catch (boost::thread_interrupted) {
         LogPrintf("%s thread interrupt\n", name);
-        throw;
+        // rethrow exception if current thread is not in the ignore list
+        if (!IsExceptionIgnored(name)) throw;
     } catch (std::exception& e) {
         PrintExceptionContinue(&e, name);
-        throw;
+        // rethrow exception if current thread is not in the ignore list
+        if (!IsExceptionIgnored(name)) throw;
     } catch (...) {
         PrintExceptionContinue(NULL, name);
-        throw;
+        // rethrow exception if current thread is not in the ignore list
+        if (!IsExceptionIgnored(name)) throw;
     }
 }
 
 bool CheckHex(const std::string& str);
+
+/**
+ * @brief Converts version strings to 4-byte unsigned integer
+ * @param strVersion version in "x.x.x" format (decimal digits only)
+ * @return 4-byte unsigned integer, most significant byte is always 0
+ * Throws std::bad_cast if format doesn\t match.
+ */
+uint32_t StringVersionToInt(const std::string& strVersion);
+
+
+/**
+ * @brief Converts version as 4-byte unsigned integer to string
+ * @param nVersion 4-byte unsigned integer, most significant byte is always 0
+ * @return version string in "x.x.x" format (last 3 bytes as version parts)
+ * Throws std::bad_cast if format doesn\t match.
+ */
+std::string IntVersionToString(uint32_t nVersion);
+
+
+/**
+ * @brief Copy of the IntVersionToString, that returns "Invalid version" string
+ * instead of throwing std::bad_cast
+ * @param nVersion 4-byte unsigned integer, most significant byte is always 0
+ * @return version string in "x.x.x" format (last 3 bytes as version parts)
+ * or "Invalid version" if can't cast the given value
+ */
+std::string SafeIntVersionToString(uint32_t nVersion);
+
 
 #endif // BITCOIN_UTIL_H

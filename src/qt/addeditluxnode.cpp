@@ -65,7 +65,7 @@ void AddEditLuxNode::on_okButton_clicked()
                  ++it)
             {
                 const CWalletTx& wtx = (*it).second;
-                BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+                for (const CTxOut& txout : wtx.vout)
                     if (txout.scriptPubKey == scriptPubKey)
                         bKeyUsed = true;
             }
@@ -74,7 +74,7 @@ void AddEditLuxNode::on_okButton_clicked()
         // Generate a new key
         if (!account.vchPubKey.IsValid() || bForceNew || bKeyUsed)
         {
-            if (!pwalletMain->GetKeyFromPool(account.vchPubKey))
+            if (!pwalletMain->GetKeyFromPool(account.vchPubKey, false))
             {
 		QMessageBox msg;
                 msg.setText("Keypool ran out, please call keypoolrefill first.");

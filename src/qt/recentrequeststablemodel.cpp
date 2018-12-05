@@ -10,9 +10,8 @@
 #include "optionsmodel.h"
 #include "streams.h"
 
-#include <boost/foreach.hpp>
-
-RecentRequestsTableModel::RecentRequestsTableModel(CWallet* wallet, WalletModel* parent) : walletModel(parent)
+RecentRequestsTableModel::RecentRequestsTableModel(CWallet *wallet, WalletModel *parent) :
+        QAbstractTableModel(parent), walletModel(parent)
 {
     Q_UNUSED(wallet);
     nReceiveRequestsMaxId = 0;
@@ -20,7 +19,7 @@ RecentRequestsTableModel::RecentRequestsTableModel(CWallet* wallet, WalletModel*
     // Load entries from wallet
     std::vector<std::string> vReceiveRequests;
     parent->loadReceiveRequests(vReceiveRequests);
-    BOOST_FOREACH (const std::string& request, vReceiveRequests)
+    for (const std::string& request : vReceiveRequests)
         addNewRequest(request);
 
     /* These columns must match the indices in the ColumnIndex enumeration */
@@ -105,7 +104,7 @@ QVariant RecentRequestsTableModel::headerData(int section, Qt::Orientation orien
 void RecentRequestsTableModel::updateAmountColumnTitle()
 {
     columns[Amount] = getAmountTitle();
-    emit headerDataChanged(Qt::Horizontal, Amount, Amount);
+    Q_EMIT headerDataChanged(Qt::Horizontal, Amount, Amount);
 }
 
 /** Gets title for amount column including current display unit if optionsModel reference available. */
@@ -197,7 +196,7 @@ void RecentRequestsTableModel::addNewRequest(RecentRequestEntry& recipient)
 void RecentRequestsTableModel::sort(int column, Qt::SortOrder order)
 {
     qSort(list.begin(), list.end(), RecentRequestEntryLessThan(column, order));
-    emit dataChanged(index(0, 0, QModelIndex()), index(list.size() - 1, NUMBER_OF_COLUMNS - 1, QModelIndex()));
+    Q_EMIT dataChanged(index(0, 0, QModelIndex()), index(list.size() - 1, NUMBER_OF_COLUMNS - 1, QModelIndex()));
 }
 
 void RecentRequestsTableModel::updateDisplayUnit()

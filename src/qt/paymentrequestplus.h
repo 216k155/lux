@@ -6,12 +6,15 @@
 #define BITCOIN_QT_PAYMENTREQUESTPLUS_H
 
 #include "paymentrequest.pb.h"
-
 #include "base58.h"
+
+#include <openssl/x509.h>
 
 #include <QByteArray>
 #include <QList>
 #include <QString>
+
+static const bool DEFAULT_SELFSIGNED_ROOTCERTS = false;
 
 //
 // Wraps dumb protocol buffer paymentRequest

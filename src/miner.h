@@ -68,6 +68,12 @@ struct CTxMemPoolModifiedEntry {
         nSigOpCostWithAncestors = entry->GetSigOpCostWithAncestors();
     }
 
+    int64_t GetModifiedFee() const { return iter->GetModifiedFee(); }
+    uint64_t GetSizeWithAncestors() const { return nSizeWithAncestors; }
+    CAmount GetModFeesWithAncestors() const { return nModFeesWithAncestors; }
+    size_t GetTxSize() const { return iter->GetTxSize(); }
+    const CTransaction& GetTx() const { return iter->GetTx(); }
+
     CTxMemPool::txiter iter;
     uint64_t nSizeWithAncestors;
     CAmount nModFeesWithAncestors;
@@ -248,6 +254,7 @@ public:
     BlockAssembler(const CChainParams& chainparams);
     /** Construct a new block template with coinbase to scriptPubKeyIn */
     std::unique_ptr<CBlockTemplate> CreateNewBlock(const CScript& scriptPubKeyIn, bool fMineWitnessTx=true, bool fProofOfStake=false, int64_t* pTotalFees = 0, int32_t nTime=0, int32_t nTimeLimit=0);
+    std::unique_ptr<CBlockTemplate> CreateNewStake(bool fMineWitnessTx=true, bool fProofOfStake=false, int64_t* pTotalFees = 0, int32_t nTime=0, int32_t nTimeLimit=0);
     std::unique_ptr<CBlockTemplate> CreateNewBlockWithKey(CReserveKey& reservekey, bool fMineWitnessTx=true, bool fProofOfStake=false, int64_t* pTotalFees = 0, int32_t nTime=0, int32_t nTimeLimit=0);
 private:
     // utility functions
@@ -260,9 +267,9 @@ private:
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on tx "priority" */
-    void addPriorityTxs(uint64_t minGasPrice);
+    void addPriorityTxs(uint64_t minGasPrice, const bool fProofOfStake);
     /** Add transactions based on feerate including unconfirmed ancestors */
-    void addPackageTxs(uint64_t minGasPrice);
+    void addPackageTxs(uint64_t minGasPrice, const bool fProofOfStake);
 
     // helper function for addPriorityTxs
     /** Test if tx will still "fit" in the block */
@@ -297,6 +304,6 @@ private:
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev,bool isProofOfStake);
-bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey);
+bool ProcessBlockFound(CBlock* pblock, CWallet& wallet);
 void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata);
 #endif // BITCOIN_MINER_H

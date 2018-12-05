@@ -61,10 +61,11 @@ public:
 #if QT_VERSION >= 0x040700
             cachedNodeStats.reserve(vNodes.size());
 #endif
-            BOOST_FOREACH (CNode* pnode, vNodes) {
+            Q_FOREACH (CNode* pnode, vNodes) {
                 CNodeCombinedStats stats;
                 stats.nodeStateStats.nMisbehavior = 0;
                 stats.nodeStateStats.nSyncHeight = -1;
+                stats.nodeStateStats.nCommonHeight = -1;
                 stats.fNodeStateStatsAvailable = false;
                 pnode->copyStats(stats.nodeStats);
                 cachedNodeStats.append(stats);
@@ -75,7 +76,7 @@ public:
         {
             TRY_LOCK(cs_main, lockMain);
             if (lockMain) {
-                BOOST_FOREACH (CNodeCombinedStats& stats, cachedNodeStats)
+                for (CNodeCombinedStats& stats : cachedNodeStats)
                     stats.fNodeStateStatsAvailable = GetNodeStateStats(stats.nodeStats.nodeid, stats.nodeStateStats);
             }
         }
@@ -87,7 +88,7 @@ public:
         // build index map
         mapNodeRows.clear();
         int row = 0;
-        BOOST_FOREACH (CNodeCombinedStats& stats, cachedNodeStats)
+            Q_FOREACH (const CNodeCombinedStats& stats, cachedNodeStats)
             mapNodeRows.insert(std::pair<NodeId, int>(stats.nodeStats.nodeid, row++));
     }
 
@@ -111,17 +112,21 @@ PeerTableModel::PeerTableModel(ClientModel* parent) : QAbstractTableModel(parent
                                                       timer(0)
 {
     columns << tr("Address/Hostname") << tr("Version") << tr("Ping Time");
-    priv = new PeerTablePriv();
+    priv.reset(new PeerTablePriv());
     // default to unsorted
     priv->sortColumn = -1;
 
     // set up timer for auto refresh
-    timer = new QTimer();
+    timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), SLOT(refresh()));
     timer->setInterval(MODEL_UPDATE_DELAY);
 
     // load initial data
     refresh();
+}
+
+PeerTableModel::~PeerTableModel()
+{
 }
 
 void PeerTableModel::startAutoRefresh()
@@ -209,9 +214,9 @@ const CNodeCombinedStats* PeerTableModel::getNodeStats(int idx)
 
 void PeerTableModel::refresh()
 {
-    emit layoutAboutToBeChanged();
+    Q_EMIT layoutAboutToBeChanged();
     priv->refreshPeers();
-    emit layoutChanged();
+    Q_EMIT layoutChanged();
 }
 
 int PeerTableModel::getRowByNodeId(NodeId nodeid)

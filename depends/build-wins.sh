@@ -16,14 +16,20 @@ INSTALL_DIR="$OLD_PATH/$PLATFORM"
 LIB_DIR="$INSTALL_DIR/lib"
 INCLUDE_DIR="$INSTALL_DIR/include"
 
-sudo apt install software-properties-common
-sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu zesty universe"
-sudo apt update
-sudo apt upgrade
+#sudo apt install software-properties-common
+#sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu zesty universe"
+#sudo apt update
+#sudo apt upgrade
 
 # Install development tools if needed
 if [ ! -f $CC ]; then
    sudo apt-get install build-essential libtool autotools-dev automake cmake pkg-config bsdmainutils curl g++-mingw-w64-x86-64 mingw-w64-x86-64-dev g++-mingw-w64-i686 mingw-w64-i686-dev -y
+fi
+
+# Ubuntu 16.04 LTS mingw 4 (gcc 5.3) doesnt include a win10 header, copy it
+if [ ! -f /usr/i686-w64-mingw32/include/uiviewsettingsinterop.h ]; then
+    cp $OLD_PATH/patches/qt/uiviewsettingsinterop.h /usr/share/mingw-w64/include/
+    ln -s ../../share/mingw-w64/include/uiviewsettingsinterop.h /usr/i686-w64-mingw32/include/uiviewsettingsinterop.h
 fi
 
 #Double check whether we have the expected toolchain
@@ -40,18 +46,6 @@ fi
 if [ -z "$CC" ] || [ -z "$CXX" ]; then
     echo "No expected toolchain existing. Quit compilation process"
     exit
-fi
-
-if [ -z "$(echo $JAVA_HOME)" ]; then
-   echo "warning: JAVA_HOME env var is not set!"
-   #sudo apt install openjdk-8-jdk
-   sudo apt install oracle-java8-set-default
-fi
-
-if [ ! -f "$JAVA_HOME/include/jni_md.h" ]; then
-   if [ -f "$JAVA_HOME/include/linux/jni_md.h" ]; then
-      sudo ln -s "linux/jni_md.h" "$JAVA_HOME/include/jni_md.h"
-   fi
 fi
 
 # Make dependencies
@@ -75,11 +69,12 @@ cp ../src/config/implementation.hpp "$INCLUDE_DIR/boost/unordered/detail/impleme
 cp ../src/config/condition_variable.hpp "$INCLUDE_DIR/boost/thread/win32/condition_variable.hpp"
 
 cd ..
+TARGET_ARCH_FLAGS="-march=core2" # arch samples: core2 atom corei7 corei7-avx
 ./autogen.sh windows $PLATFORM $INSTALL_DIR
-./configure --prefix=$PWD/depends/$PLATFORM --host=$PLATFORM --disable-tests --disable-shared CPPFLAGS="-DMINIUPNP_STATICLIB" CFLAGS="-std=c99" LDFLAGS="-static -static-libgcc -Wl,-Bstatic -lstdc++"
+./configure --prefix=$PWD/depends/$PLATFORM --host=$PLATFORM --disable-shared --enable-reduce-exports CPPFLAGS="$TARGET_ARCH_FLAGS -DMINIUPNP_STATICLIB" CFLAGS="-std=c99" LDFLAGS="-static -static-libgcc -Wl,-Bstatic -lstdc++"
 
 # Build the application
-make -j$(nproc)
+make -j$(nproc) #--trace
 
 RELEASE="$OLD_PATH/Release"
 mkdir -p "$RELEASE"

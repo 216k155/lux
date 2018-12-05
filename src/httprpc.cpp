@@ -25,7 +25,7 @@ class HTTPRPCTimer : public RPCTimerBase
 {
 public:
     HTTPRPCTimer(struct event_base* eventBase, boost::function<void(void)>& func, int64_t millis) :
-        ev(eventBase, false, func)
+        ev(eventBase, false, NULL, func)
     {
         struct timeval tv;
         tv.tv_sec = millis/1000;
@@ -39,7 +39,7 @@ private:
 class HTTPRPCTimerInterface : public RPCTimerInterface
 {
 public:
-    HTTPRPCTimerInterface(struct event_base* base) : base(base)
+    HTTPRPCTimerInterface(struct event_base* _base) : base(_base)
     {
     }
     const char* Name()
@@ -73,8 +73,14 @@ static void JSONErrorReply(HTTPRequest* req, const UniValue& objError, const Uni
 
     std::string strReply = JSONRPCReply(NullUniValue, objError, id);
 
-    req->WriteHeader("Content-Type", "application/json");
-    req->WriteReply(nStatus, strReply);
+    if (req->isChunkMode()) {
+        // in chunk mode, we assume that the handler had already set the response content-type
+        req->Chunk(strReply);
+        req->ChunkEnd();
+    } else {
+        req->WriteHeader("Content-Type", "application/json");
+        req->WriteReply(nStatus, strReply);
+    }
 }
 
 static bool RPCAuthorized(const std::string& strAuth)
@@ -129,6 +135,11 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
 
             UniValue result = tableRPC.execute(jreq.strMethod, jreq.params);
 
+            if (jreq.isLongPolling) {
+                jreq.PollReply(result);
+                return true;
+            }
+
             // Send reply
             strReply = JSONRPCReply(result, NullUniValue, jreq.id);
 
@@ -177,7 +188,7 @@ bool StartHTTPRPC()
 
     assert(EventBase());
     httpRPCTimerInterface = new HTTPRPCTimerInterface(EventBase());
-    RPCRegisterTimerInterface(httpRPCTimerInterface);
+    RPCSetTimerInterface(httpRPCTimerInterface);
     return true;
 }
 
@@ -190,8 +201,11 @@ void StopHTTPRPC()
 {
     LogPrint("rpc", "Stopping HTTP RPC server\n");
     UnregisterHTTPHandler("/", true);
+#ifdef ENABLE_WALLET
+    UnregisterHTTPHandler("/wallet/", false);
+#endif
     if (httpRPCTimerInterface) {
-        RPCUnregisterTimerInterface(httpRPCTimerInterface);
+        RPCUnsetTimerInterface(httpRPCTimerInterface);
         delete httpRPCTimerInterface;
         httpRPCTimerInterface = 0;
     }

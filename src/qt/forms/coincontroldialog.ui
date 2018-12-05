@@ -447,7 +447,7 @@
       <bool>false</bool>
      </property>
      <property name="columnCount">
-      <number>13</number>
+      <number>12</number>
      </property>
      <attribute name="headerShowSortIndicator" stdset="0">
       <bool>true</bool>
@@ -477,11 +477,6 @@
      </column>
      <column>
       <property name="text">
-       <string>DS Rounds</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
        <string>Date</string>
       </property>
      </column>
@@ -500,27 +495,27 @@
      </column>
      <column>
       <property name="text">
-       <string/>
+       <string>Tx Hash</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string/>
+       <string>Output index</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string/>
+       <string>Priority</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string/>
+       <string>Luxsend Rounds</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string/>
+       <string>Date</string>
       </property>
      </column>
     </widget>

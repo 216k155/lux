@@ -1,15 +1,15 @@
-![LUX Logo](https://github.com/216k155/lux/blob/master/src/qt/res/images/lux_logo_horizontal.png)
+![LUX Logo](src/qt/res/images/lux_logo_horizontal.png)
 
 "FIRST OF ITS KIND"
 
 Luxcore is GNU AGPLv3 licensed.
 
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2F216k155%2Flux.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2F216k155%2Flux?ref=badge_shield) [![Build Status](https://travis-ci.org/216k155/lux.svg?branch=master)](https://travis-ci.org/216k155/lux) [![GitHub version](https://badge.fury.io/gh/216k155%2Flux.svg)](https://badge.fury.io/gh/216k155%2Flux.svg) [![HitCount](http://hits.dwyl.io/216k155/lux.svg)](http://hits.dwyl.io/216k155/lux)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2F216k155%2Flux.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2F216k155%2Flux?ref=badge_shield) [![Build Status](https://travis-ci.org/LUX-Core/lux.svg?branch=master)](https://travis-ci.org/LUX-Core/lux) [![GitHub version](https://badge.fury.io/gh/LUX-Core%2Flux.png)](https://badge.fury.io/gh/LUX-Core%2Flux.png) [![HitCount](http://hits.dwyl.io/216k155/lux.svg)](http://hits.dwyl.io/216k155/lux)
 <a href="https://discord.gg/27xFP5Y"><img src="https://discordapp.com/api/guilds/364500397999652866/embed.png" alt="Discord server" /></a> <a href="https://twitter.com/intent/follow?screen_name=LUX_COIN"><img src="https://img.shields.io/twitter/follow/LUX_COIN.svg?style=social&logo=twitter" alt="follow on Twitter"></a>
                                                                                                                                                      
-[![Build history](https://buildstats.info/travisci/chart/216k155/lux?branch=master)](https://travis-ci.org/216k155/lux?branch=master)
+[![Build history](https://buildstats.info/travisci/chart/LUX-Core/lux?branch=master)](https://travis-ci.org/LUX-Core/lux?branch=master)
 
-[Website](https://luxcore.io) — [LUXtre + LUXGate](https://github.com/216k155/luxtre) - [PoS Web Wallet](https://lux.poswallet.io) — [Block Explorer](https://explorer.luxcore.io/) — [Blog](https://reddit.com/r/LUXCoin) — [Forum](https://bitcointalk.org/index.php?topic=2254046.0) — [Telegram](https://t.me/LUXcoinOfficialChat) — [Twitter](https://twitter.com/LUX_Coin)
+[Website](https://luxcore.io) — [LUXtre + LUXGate](https://github.com/LUX-Core/luxtre) - [PoS Web Wallet](https://lux.poswallet.io) — [Block Explorer](https://explorer.luxcore.io/) — [Blog](https://reddit.com/r/LUXCoin) — [Forum](https://bitcointalk.org/index.php?topic=2254046.0) — [Telegram](https://t.me/LUXcoinOfficialChat) — [Twitter](https://twitter.com/LUX_Coin)
 
 Features
 =============
@@ -18,7 +18,7 @@ Features
 * Hybrid masternode
 * Static PoS
 * Segwit
-* Smart contract ( [Instruction](doc/smartcontract.md) )
+* Smart contract
 * New PHI2 PoW/PoS hybrid algorithm
 * Luxgate
 * Parallel masternode
@@ -54,6 +54,14 @@ In addition, without Luxgate and Pmn, Bitcoin and Ethereum cannot interact with 
 
 * NOTE: "getrawchangeaddress p2sh-segwit" to get p2sh-segwit address 
 
+Instructions
+-----------
+[Lux-qt](https://github.com/LUX-Core/lux/blob/master/doc/LUX_QT_v5_Win_Mac_User_Guide.pdf)
+
+[Smart contract](doc/smartcontract.md)
+
+[Token](https://github.com/LUX-Core/lux/blob/master/doc/Token_Instructionsv2.pdf) (Thanks @snowfro)
+
 Build Lux wallet
 ----------
 
@@ -63,7 +71,7 @@ The next three steps are an example of how to acquire the source and build in an
         
 Acquire the source and install dependencies.
 
-    git clone https://github.com/216k155/lux.git
+    git clone https://github.com/LUX-Core/lux
     sudo chmod -R a+rw lux
     cd lux/depends
     ./install-dependencies.sh
@@ -82,7 +90,7 @@ The next three steps are an example of how to acquire the source and build in an
         
 Acquire the source and install dependencies.
 
-    git clone https://github.com/216k155/lux.git
+    git clone https://github.com/LUX-Core/lux
     sudo chmod -R a+rw lux
     cd lux/depends
     ./install-dependencies.sh
@@ -99,7 +107,7 @@ Build in the usual way.
 
 Use
 
-    sudo add-apt-repository ppa:bitcoin/bitcoin; git clone https://github.com/216k155/lux; cd lux; depends/install-dependencies.sh; ./autogen.sh; ./configure --disable-tests --with-boost-libdir=/usr/local/lib; make clean; make -j$(nproc)
+    sudo add-apt-repository ppa:bitcoin/bitcoin; git clone https://github.com/LUX-Core/lux; cd lux; depends/install-dependencies.sh; ./autogen.sh; ./configure --disable-tests --with-boost-libdir=/usr/local/lib; make clean; make -j$(nproc)
 
 
 Add bitcoin repository for Berkeley DB 4.8
@@ -108,12 +116,12 @@ Add bitcoin repository for Berkeley DB 4.8
 
 Clone lux repository
 
-    git clone https://github.com/216k155/lux.git
+    git clone https://github.com/LUX-Core/lux
 
 Build lux 
 
     cd lux
-    ./install-dependencies.sh
+    ./depends/install-dependencies.sh
     ./autogen.sh
     ./configure --disable-tests
     make -j$(nproc)
@@ -131,23 +139,27 @@ Install the OS X command line tools:
 
 When the popup appears, click `Install`.
 
+If you're running macOS Mojave 10.14/Xcode 10.0 or later, and want to use the depends system, you'll also need to use the following script to install the macOS system headers into /usr/include.
+
+    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+
 Then install [Homebrew](https://brew.sh)
 
     /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
 #### Dependencies
 
-    brew install cmake automake berkeley-db4 leveldb libtool boost@1.66 --c++11 --without-single --without-static miniupnpc openssl pkg-config protobuf qt5 libevent imagemagick --with-librsvg
+    brew install cmake automake berkeley-db4 leveldb libtool boost@1.64 --c++11 --without-single --without-static miniupnpc openssl pkg-config protobuf qt5 libevent imagemagick --with-librsvg
 
-Link boost 1.66
+Link boost 1.64
 
-    brew link boost@1.66 --force
+    brew link boost@1.64 --force
 
 #### Build Luxcore
 
 Clone the Lux source code and cd into lux
 
-        git clone https://github.com/216k155/lux.git
+        git clone https://github.com/LUX-Core/lux
         cd lux
         ./building/mac/requirements.sh
         ./building/mac/build.sh
@@ -157,7 +169,7 @@ Setup and Build: Arch Linux
 This example lists the steps necessary to setup and build a command line only, non-wallet distribution of the latest changes on Arch Linux:
 
     pacman -S git base-devel boost libevent python
-    git clone https://github.com/216k155/lux
+    git clone https://github.com/LUX-Core/lux
     cd lux/
     ./autogen.sh
     ./configure --without-miniupnpc --disable-tests
@@ -220,7 +232,7 @@ Development Process
 -------------------
 
 The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/216k155/lux/tags) are created
+completely stable. [Tags](https://github.com/LUX-Core/lux/tags) are created
 regularly to indicate new official, stable release versions of Lux.
 
 The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).

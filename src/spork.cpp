@@ -96,7 +96,7 @@ bool IsSporkActive(int nSporkID) {
 }
 
 // grab the value of the spork on the network, or the default
-int GetSporkValue(int nSporkID) {
+long GetSporkValue(int nSporkID) {
     int r = 0;
     if (mapSporksActive.count(nSporkID)) {
         r = mapSporksActive[nSporkID].nValue;
@@ -212,8 +212,9 @@ void CSporkManager::Relay(CSporkMessage& msg) {
     vector <CInv> vInv;
     vInv.push_back(inv);
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodes) {
-        pnode->PushMessage("inv", vInv);
+    for (CNode* pnode : vNodes) {
+        if (pnode)
+            pnode->PushMessage("inv", vInv);
     }
 }
 

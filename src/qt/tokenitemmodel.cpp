@@ -5,7 +5,6 @@
 #include "bitcoinunits.h"
 #include "main.h"
 
-#include <boost/foreach.hpp>
 #include <algorithm>
 
 #include <QDateTime>
@@ -109,7 +108,7 @@ private Q_SLOTS:
 
         LOCK2(cs_main, wallet->cs_wallet);
 
-        int64_t backInPast = first ? COINBASE_MATURITY : 10;
+        int64_t backInPast = first ? Params().COINBASE_MATURITY() : 10;
         first = false;
 
         CBlockIndex* tip = chainActive.Tip();

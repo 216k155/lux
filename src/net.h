@@ -31,7 +31,6 @@
 #endif
 
 #include <boost/filesystem/path.hpp>
-#include <boost/foreach.hpp>
 #include <boost/signals2/signal.hpp>
 
 class CAddrMan;
@@ -96,7 +95,7 @@ typedef int NodeId;
 struct CNodeSignals {
     boost::signals2::signal<int()> GetHeight;
     boost::signals2::signal<bool(CNode*)> ProcessMessages;
-    boost::signals2::signal<bool(CNode*, bool)> SendMessages;
+    boost::signals2::signal<bool(CNode*)> SendMessages;
     boost::signals2::signal<void(NodeId, const CNode*)> InitializeNode;
     boost::signals2::signal<void(NodeId)> FinalizeNode;
 };
@@ -228,9 +227,9 @@ public:
 
 typedef enum BanReason
 {
-    BanReasonUnknown     = 0,
-    BanMisbehaving       = 1,
-    BanReasonManually    = 2
+    BanReasonUnknown          = 0,
+    BanReasonNodeMisbehaving  = 1,
+    BanReasonManuallyAdded    = 2
 } BanReason;
 
 class CBanEntry
@@ -275,10 +274,10 @@ public:
     std::string banReasonToString()
     {
         switch (banReason) {
-            case BanMisbehaving:
-                return "lux node misbehabing";
-            case BanReasonManually:
-                return "manually";
+            case BanReasonNodeMisbehaving:
+                return "node misbehaving";
+            case BanReasonManuallyAdded:
+                return "manually added";
             default:
                 return "unknown";
         }
@@ -302,15 +301,15 @@ public:
     uint64_t nSendBytes;
     std::deque<CSerializeData> vSendMsg;
     CCriticalSection cs_vSend;
-
+    CCriticalSection cs_vRecv;
     std::deque<CInv> vRecvGetData;
     std::deque<CNetMessage> vRecvMsg;
     CCriticalSection cs_vRecvMsg;
     uint64_t nRecvBytes;
     int nRecvVersion;
 
-    int64_t nLastSend;
-    int64_t nLastRecv;
+    std::atomic<int64_t> nLastSend;
+    std::atomic<int64_t> nLastRecv;
     int64_t nTimeConnected;
     CAddress addr;
     std::string addrName;
@@ -343,7 +342,7 @@ public:
     CSemaphoreGrant grantOutbound;
     CCriticalSection cs_filter;
     CBloomFilter* pfilter;
-    int nRefCount;
+    std::atomic<int> nRefCount;
     NodeId id;
 
 protected:
@@ -372,6 +371,8 @@ public:
     mruset<CAddress> setAddrKnown;
     bool fGetAddr;
     std::set<uint256> setKnown;
+    int64_t nNextAddrSend;
+    int64_t nNextLocalAddrSend;
 
     // inventory based relay
     mruset<CInv> setInventoryKnown;
@@ -379,16 +380,17 @@ public:
     CCriticalSection cs_inventory;
     std::multimap<int64_t, CInv> mapAskFor;
     std::vector<uint256> vBlockRequested;
+    int64_t nNextInvSend;
 
     // Ping time measurement:
     // The pong reply we're expecting, or 0 if no pong expected.
-    uint64_t nPingNonceSent;
+    std::atomic<uint64_t> nPingNonceSent;
     // Time (in usec) the last ping was sent, or 0 if no ping was ever sent.
-    int64_t nPingUsecStart;
+    std::atomic<int64_t> nPingUsecStart;
     // Last measured round-trip time.
-    int64_t nPingUsecTime;
+    std::atomic<int64_t> nPingUsecTime;
     // Whether a ping is requested.
-    bool fPingQueued;
+    std::atomic<bool> fPingQueued;
 
     CNode(SOCKET hSocketIn, CAddress addrIn, std::string addrNameIn = "", bool fInboundIn = false);
     ~CNode();
@@ -399,8 +401,6 @@ private:
     static CCriticalSection cs_totalBytesSent;
     static uint64_t nTotalBytesRecv;
     static uint64_t nTotalBytesSent;
-
-    CCriticalSection cs_nRefCount;
 
     CNode(const CNode&);
     void operator=(const CNode&);
@@ -413,8 +413,10 @@ public:
 
     int GetRefCount()
     {
-        LOCK(cs_nRefCount);
-        assert(nRefCount >= 0);
+        if (nRefCount <= 0) {
+            nRefCount = 0;
+            return 0;
+        }
         return nRefCount;
     }
 
@@ -422,7 +424,7 @@ public:
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
-        BOOST_FOREACH (const CNetMessage& msg, vRecvMsg)
+        for (const CNetMessage& msg : vRecvMsg)
             total += msg.vRecv.size() + 24;
         return total;
     }
@@ -434,22 +436,24 @@ public:
     void SetRecvVersion(int nVersionIn)
     {
         nRecvVersion = nVersionIn;
-        BOOST_FOREACH (CNetMessage& msg, vRecvMsg)
+        for (CNetMessage& msg : vRecvMsg)
             msg.SetVersion(nVersionIn);
     }
 
     CNode* AddRef()
     {
-        LOCK(cs_nRefCount);
         nRefCount++;
         return this;
     }
 
     void Release()
     {
-        LOCK(cs_nRefCount);
+        if (nRefCount <= 0) {
+            nRefCount = 0;
+            return;
+        }
+
         nRefCount--;
-        assert(nRefCount >= 0);
     }
 
 
@@ -673,7 +677,7 @@ public:
 
     bool HasFulfilledRequest(std::string strRequest)
     {
-        BOOST_FOREACH (std::string& type, vecRequestsFulfilled) {
+        for (std::string& type : vecRequestsFulfilled) {
             if (type == strRequest) return true;
         }
         return false;
@@ -780,12 +784,12 @@ public:
 };
 
 /** Access to the banlist database (banlist.dat) */
-class CBanListDB
+class CBanDB
 {
 private:
     boost::filesystem::path pathBanlist;
 public:
-    CBanListDB();
+    CBanDB();
     bool Write(const banmap_t& banSet);
     bool Read(banmap_t& banSet);
 };
@@ -799,6 +803,10 @@ struct AddedNodeInfo
     bool fConnected;
     bool fInbound;
 };
+
+
+// Return a future timestamp (microseconds)
+int64_t nNextSend(int64_t nNow, int average_interval_seconds);
 
 std::vector<AddedNodeInfo> GetAddedNodeInfo();
 

@@ -4,21 +4,11 @@ AM_CXXFLAGS = $(HARDENED_CXXFLAGS) $(ERROR_CXXFLAGS) -DETH_FATDB=1
 AM_CPPFLAGS = $(HARDENED_CPPFLAGS) -DLUX_BUILD
 EXTRA_LIBRARIES =
 
-
-if EMBEDDED_LEVELDB
-LEVELDB_CPPFLAGS += -I$(srcdir)/leveldb/include
-LEVELDB_CPPFLAGS += -I$(srcdir)/leveldb/helpers/memenv
-LIBLEVELDB += $(builddir)/leveldb/libleveldb.a
-LIBMEMENV  += $(builddir)/leveldb/libmemenv.a
-
-# NOTE: This dependency is not strictly necessary, but without it make may try to build both in parallel, which breaks the LevelDB build system in a race
-$(LIBLEVELDB): $(LIBMEMENV)
-
-$(LIBLEVELDB) $(LIBMEMENV):
-	@echo "Building LevelDB ..." && $(MAKE) -C $(@D) $(@F) CXX="$(CXX)" \
-	  CC="$(CC)" PLATFORM=$(TARGET_OS) AR="$(AR)" $(LEVELDB_TARGET_FLAGS) \
-          OPT="$(CXXFLAGS) $(CPPFLAGS)"
+if !TARGET_WINDOWS
+PIE_FLAGS = -fPIC
 endif
+
+EXTRA_LIBRARIES =
 
 BITCOIN_CONFIG_INCLUDES=-I$(builddir)/config
 BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS) -I$(srcdir)/cpp-ethereum/utils
@@ -82,10 +72,13 @@ endif
 BITCOIN_CORE_H = \
   activemasternode.h \
   addrman.h \
+  addressindex.h \
   alert.h \
   allocators.h \
   amount.h \
   base58.h \
+  bip39.h \
+  bip39_english.h \
   bech32.h \
   bip38.h \
   bloom.h \
@@ -99,16 +92,20 @@ BITCOIN_CORE_H = \
   coincontrol.h \
   coins.h \
   compat.h \
+  compat/byteswap.h \
+  compat/endian.h \
   compat/sanity.h \
   compressor.h \
   consensus/consensus.h \
   consensus/params.h \
   core_io.h \
   core_memusage.h \
+  cuckoocache.h \
   crypter.h \
   darksend.h \
   db.h \
   hash.h \
+  hdchain.h \
   indirectmap.h \
   init.h \
   instantx.h \
@@ -136,6 +133,7 @@ BITCOIN_CORE_H = \
   protocol.h \
   pubkey.h \
   random.h \
+  reverse_iterator.h \
   reverselock.h \
   rpcclient.h \
   rpcprotocol.h \
@@ -152,9 +150,13 @@ BITCOIN_CORE_H = \
   script/standard.h \
   script/script_error.h \
   serialize.h \
+  spentindex.h \
   spork.h \
   stake.h \
   streams.h \
+  support/allocators/zeroafterfree.h \
+  support/cleanse.h \
+  support/events.h \
   sync.h \
   threadsafety.h \
   timedata.h \
@@ -227,7 +229,6 @@ libbitcoin_server_a_SOURCES = \
   validationinterface.cpp \
   versionbits.cpp \
   lux/luxstate.cpp \
-  lux/luxtransaction.cpp \
   lux/luxDGP.cpp \
   lux/storageresults.cpp \
   $(BITCOIN_CORE_H)
@@ -244,7 +245,7 @@ endif
 # wallet: shared between luxd and lux-qt, but only linked
 # when wallet enabled
 
-libbitcoin_wallet_a_CFLAGS = -fPIC
+libbitcoin_wallet_a_CFLAGS = $(PIE_FLAGS)
 libbitcoin_wallet_a_CPPFLAGS = $(BITCOIN_INCLUDES)
 libbitcoin_wallet_a_SOURCES = \
   activemasternode.cpp \
@@ -268,7 +269,7 @@ libbitcoin_wallet_a_SOURCES = \
   $(BITCOIN_CORE_H)
 
 # crypto primitives library
-crypto_libbitcoin_crypto_a_CFLAGS = -fPIC
+crypto_libbitcoin_crypto_a_CFLAGS = $(PIE_FLAGS)
 crypto_libbitcoin_crypto_a_CPPFLAGS = $(BITCOIN_CONFIG_INCLUDES) $(BITCOIN_INCLUDES) -DLUX_BUILD
 crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/sha1.cpp \
@@ -321,6 +322,12 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   cpp-ethereum/utils/libscrypt/slowequals.c \
   cpp-ethereum/utils/libscrypt/slowequals.h \
   cpp-ethereum/utils/libscrypt/sysendian.h
+
+if USE_ASM
+crypto/crypto_libbitcoin_crypto_a-sha256.$(OBJEXT) : CXXFLAGS += -DUSE_ASM
+crypto/crypto_libbitcoin_crypto_a-sha256_sse4.$(OBJEXT) : CXXFLAGS += $(SSE42_CXXFLAGS) -DUSE_ASM
+crypto_libbitcoin_crypto_a_SOURCES += crypto/sha256_sse4.cpp
+endif
 
 # univalue JSON library
 univalue_libbitcoin_univalue_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
@@ -381,11 +388,12 @@ libbitcoin_consensus_a_SOURCES = \
 # common: shared between luxd, and lux-qt and non-server tools
 libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) -DLUX_BUILD
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libbitcoin_common_a_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -std=c99 -fPIC
+libbitcoin_common_a_CFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -std=c99
 libbitcoin_common_a_SOURCES = \
   allocators.cpp \
   amount.cpp \
   base58.cpp \
+  bip39.cpp \
   bech32.cpp \
   bip38.cpp \
   chainparams.cpp \
@@ -396,6 +404,7 @@ libbitcoin_common_a_SOURCES = \
   core_read.cpp \
   core_write.cpp \
   hash.cpp \
+  hdchain.cpp \
   key.cpp \
   keystore.cpp \
   netbase.cpp \
@@ -567,7 +576,6 @@ libbitcoin_common_a_SOURCES = \
   cpp-ethereum/libethash/io.h \
   cpp-ethereum/libethash/ethash.h \
   cpp-ethereum/libethash/internal.h \
-  cpp-ethereum/libethash/mmap_win32.c \
   cpp-ethereum/utils/json_spirit/JsonSpiritHeaders.h \
   cpp-ethereum/utils/json_spirit/json_spirit.h \
   cpp-ethereum/utils/json_spirit/json_spirit_error_position.h \
@@ -583,6 +591,7 @@ libbitcoin_common_a_SOURCES = \
 if TARGET_WINDOWS
     libbitcoin_common_a_SOURCES += \
       cpp-ethereum/libethash/io_win32.c \
+      cpp-ethereum/libethash/mmap_win32.c \
       cpp-ethereum/libethash/util_win32.c
 else
     libbitcoin_common_a_SOURCES += cpp-ethereum/libethash/io_posix.c
@@ -602,6 +611,7 @@ libbitcoin_util_a_SOURCES = \
   random.cpp \
   rpcprotocol.cpp \
   rpcutil.cpp \
+  support/cleanse.cpp \
   sync.cpp \
   uint256.cpp \
   util.cpp \
@@ -630,7 +640,7 @@ luxd_CPPFLAGS = $(BITCOIN_INCLUDES)
 luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-luxd_SOURCES += luxd-res.rc
+luxd_SOURCES += luxd-res.rc config/lux-config.h
 endif
 
 luxd_LDADD = \
@@ -655,7 +665,7 @@ lux_cli_SOURCES = lux-cli.cpp
 lux_cli_CPPFLAGS = $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
 
 if TARGET_WINDOWS
-lux_cli_SOURCES += lux-cli-res.rc
+lux_cli_SOURCES += lux-cli-res.rc config/lux-config.h
 endif
 
 lux_cli_LDADD = \
@@ -726,6 +736,9 @@ DISTCLEANFILES = obj/build.h
 
 EXTRA_DIST = leveldb
 
+# workaround for travis builds
+dist_pkgdata_DATA = multipliers.hpp univalue/univalue_utffilter.h
+
 clean-local:
 	-$(MAKE) -C leveldb clean
 	-$(MAKE) -C secp256k1 clean
@@ -747,6 +760,10 @@ clean-local:
 	$(AM_V_GEN) $(PROTOC) --cpp_out=$(@D) --proto_path=$(abspath $(<D) $<)
 
 include Makefile.cryptopp.include
+
+if EMBEDDED_LEVELDB
+include Makefile.leveldb.include
+endif
 
 if ENABLE_TESTS
 include Makefile.test.include

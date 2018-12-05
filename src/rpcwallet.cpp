@@ -8,6 +8,7 @@
 #include "amount.h"
 #include "base58.h"
 #include "core_io.h"
+#include "consensus/validation.h"
 #include "init.h"
 #include "net.h"
 #include "netbase.h"
@@ -23,6 +24,9 @@
 #include "rbf.h"
 #include <stdint.h>
 #include <string>
+#include "miner.h"
+
+#include "libdevcore/CommonData.h"
 
 #include "univalue/univalue.h"
 #include "rpcutil.h"
@@ -31,7 +35,14 @@
 using namespace std;
 using namespace boost;
 using namespace boost::assign;
-
+struct CUpdatedBlock
+{
+    uint256 hash;
+    int height;
+};
+static std::mutex cs_blockchange;
+static std::condition_variable cond_blockchange;
+static CUpdatedBlock latestblock;
 
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
@@ -55,7 +66,7 @@ std::string HelpRequiringPassphrase()
 
 void EnsureWalletIsUnlocked()
 {
-    if (pwalletMain->IsLocked() || pwalletMain->fWalletUnlockAnonymizeOnly)
+    if (pwalletMain->IsLocked() || pwalletMain->fWalletUnlockStakingOnly)
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 }
 
@@ -65,22 +76,24 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
     int confirmsTotal = GetIXConfirmations(wtx.GetHash()) + confirms;
     entry.push_back(Pair("confirmations", confirmsTotal));
     entry.push_back(Pair("bcconfirmations", confirms));
-    if (wtx.IsCoinBase() || wtx.IsCoinStake())
+    if (wtx.IsCoinGenerated())
         entry.push_back(Pair("generated", true));
     if (confirms > 0) {
         entry.push_back(Pair("blockhash", wtx.hashBlock.GetHex()));
         entry.push_back(Pair("blockindex", wtx.nIndex));
         entry.push_back(Pair("blocktime", mapBlockIndex[wtx.hashBlock]->GetBlockTime()));
+    } else {
+        entry.push_back(Pair("trusted", wtx.IsTrusted()));
     }
     uint256 hash = wtx.GetHash();
     entry.push_back(Pair("txid", hash.GetHex()));
     UniValue conflicts(UniValue::VARR);
-    BOOST_FOREACH (const uint256& conflict, wtx.GetConflicts())
+    for (const uint256& conflict : wtx.GetConflicts())
         conflicts.push_back(conflict.GetHex());
     entry.push_back(Pair("walletconflicts", conflicts));
     entry.push_back(Pair("time", wtx.GetTxTime()));
     entry.push_back(Pair("timereceived", (int64_t)wtx.nTimeReceived));
-    BOOST_FOREACH (const PAIRTYPE(string, string) & item, wtx.mapValue)
+    for (const PAIRTYPE(string, string) & item : wtx.mapValue)
         entry.push_back(Pair(item.first, item.second));
 }
 
@@ -131,6 +144,169 @@ UniValue transactionReceiptToJSON(const dev::eth::TransactionReceipt& txRec)
     result.push_back(Pair("log", logEntries));
     return result;
 }
+
+void assignJSON(UniValue& entry, const TransactionReceiptInfo& resExec) {
+    entry.push_back(Pair("blockHash", resExec.blockHash.GetHex()));
+    entry.push_back(Pair("blockNumber", uint64_t(resExec.blockNumber)));
+    entry.push_back(Pair("transactionHash", resExec.transactionHash.GetHex()));
+    entry.push_back(
+            Pair("transactionIndex", uint64_t(resExec.transactionIndex)));
+    entry.push_back(Pair("from", resExec.from.hex()));
+    entry.push_back(Pair("to", resExec.to.hex()));
+    entry.push_back(
+            Pair("cumulativeGasUsed", CAmount(resExec.cumulativeGasUsed)));
+    entry.push_back(Pair("gasUsed", CAmount(resExec.gasUsed)));
+    entry.push_back(Pair("contractAddress", resExec.contractAddress.hex()));
+    std::stringstream ss;
+    ss << resExec.excepted;
+    entry.push_back(Pair("excepted",ss.str()));
+}
+
+void assignJSON(UniValue& logEntry, const dev::eth::LogEntry& log,
+                bool includeAddress) {
+    if (includeAddress) {
+        logEntry.push_back(Pair("address", log.address.hex()));
+    }
+
+    UniValue topics(UniValue::VARR);
+    for (dev::h256 hash : log.topics) {
+        topics.push_back(hash.hex());
+    }
+    logEntry.push_back(Pair("topics", topics));
+    logEntry.push_back(Pair("data", HexStr(log.data)));
+}
+
+void transactionReceiptInfoToJSON(const TransactionReceiptInfo& resExec, UniValue& entry) {
+    assignJSON(entry, resExec);
+
+    const auto& logs = resExec.logs;
+    UniValue logEntries(UniValue::VARR);
+    for(const auto&log : logs){
+        UniValue logEntry(UniValue::VOBJ);
+        assignJSON(logEntry, log, true);
+        logEntries.push_back(logEntry);
+    }
+    entry.push_back(Pair("log", logEntries));
+}
+
+size_t parseUInt(const UniValue& val, size_t defaultVal) {
+    if (val.isNull()) {
+        return defaultVal;
+    } else {
+        int n = val.get_int();
+        if (n < 0) {
+            throw JSONRPCError(RPC_INVALID_PARAMS, "Expects unsigned integer");
+        }
+
+        return n;
+    }
+}
+
+size_t parseBlockHeight(const UniValue& val) {
+    if (val.isStr()) {
+        auto blockKey = val.get_str();
+
+        if (blockKey == "latest") {
+            return latestblock.height;
+        } else {
+            throw JSONRPCError(RPC_INVALID_PARAMS, "invalid block number");
+        }
+    }
+
+    if (val.isNum()) {
+        int blockHeight = val.get_int();
+
+        if (blockHeight < 0) {
+            return latestblock.height;
+        }
+
+        return blockHeight;
+    }
+
+    throw JSONRPCError(RPC_INVALID_PARAMS, "invalid block number");
+}
+
+size_t parseBlockHeight(const UniValue& val, size_t defaultVal) {
+    if (val.isNull()) {
+        return defaultVal;
+    } else {
+        return parseBlockHeight(val);
+    }
+}
+
+dev::h160 parseParamH160(const UniValue& val) {
+    if (!val.isStr()) {
+        throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid hex 160");
+    }
+
+    auto addrStr = val.get_str();
+
+    if (addrStr.length() != 40 || !CheckHex(addrStr)) {
+        throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid hex 160 string");
+    }
+    return dev::h160(addrStr);
+}
+
+void parseParam(const UniValue& val, std::vector<dev::h160> &h160s) {
+    if (val.isNull()) {
+        return;
+    }
+
+    // Treat a string as an array of length 1
+    if (val.isStr()) {
+        h160s.push_back(parseParamH160(val.get_str()));
+        return;
+    }
+
+    if (!val.isArray()) {
+        throw JSONRPCError(RPC_INVALID_PARAMS, "Expect an array of hex 160 strings");
+    }
+
+    auto vals = val.getValues();
+    h160s.resize(vals.size());
+
+    std::transform(vals.begin(), vals.end(), h160s.begin(), [](UniValue val) -> dev::h160 {
+        return parseParamH160(val);
+    });
+}
+
+void parseParam(const UniValue& val, std::set<dev::h160> &h160s) {
+    std::vector<dev::h160> v;
+    parseParam(val, v);
+    h160s.insert(v.begin(), v.end());
+}
+
+void parseParam(const UniValue& val, std::vector<boost::optional<dev::h256>> &h256s) {
+    if (val.isNull()) {
+        return;
+    }
+
+    if (!val.isArray()) {
+        throw JSONRPCError(RPC_INVALID_PARAMS, "Expect an array of hex 256 strings");
+    }
+
+    auto vals = val.getValues();
+    h256s.resize(vals.size());
+
+    std::transform(vals.begin(), vals.end(), h256s.begin(), [](UniValue val) -> boost::optional<dev::h256> {
+        if (val.isNull()) {
+            return boost::optional<dev::h256>();
+        }
+
+        if (!val.isStr()) {
+            throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid hex 256 string");
+        }
+
+        auto addrStr = val.get_str();
+
+        if (addrStr.length() != 64 || !CheckHex(addrStr)) {
+            throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid hex 256 string");
+        }
+
+        return boost::optional<dev::h256>(dev::h256(addrStr));
+    });
+}
+
 ////////////////////////////////////////////////////////////////////////////
 
 UniValue getnewaddress(const UniValue& params, bool fHelp)
@@ -169,7 +345,7 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 
     // Generate a new key that is added to wallet
     CPubKey newKey;
-    if (!pwalletMain->GetKeyFromPool(newKey))
+    if (!pwalletMain->GetKeyFromPool(newKey, false))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
     pwalletMain->LearnRelatedScripts(newKey, output_type);
@@ -181,6 +357,11 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 
 CTxDestination GetAccountDestination(CWallet* const pwallet, std::string strAccount, bool bForceNew=false)
 {
+    CPubKey pubKey;
+    if (!pwalletMain->GetAccountPubkey(pubKey, strAccount, bForceNew)) {
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+    }
+
     CTxDestination dest;
     if (!pwallet->GetAccountDestination(dest, strAccount, bForceNew)) {
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
@@ -244,7 +425,7 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
 
     CReserveKey reservekey(pwalletMain);
     CPubKey vchPubKey;
-    if (!reservekey.GetReservedKey(vchPubKey))
+    if (!reservekey.GetReservedKey(vchPubKey, true))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
     reservekey.KeepKey();
@@ -344,7 +525,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
-    BOOST_FOREACH (const PAIRTYPE(CTxDestination, CAddressBookData) & item, pwalletMain->mapAddressBook) {
+    for (const PAIRTYPE(CTxDestination, CAddressBookData) & item : pwalletMain->mapAddressBook) {
         const CTxDestination & dest = item.first;
         const string& strName = item.second.name;
         if (strName == strAccount)
@@ -368,6 +549,11 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
         LogPrintf("SendMoney() : %s", strError);
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
+    if (fWalletUnlockStakingOnly) {
+        strError = "Error: Wallet is unlocked for staking only.";
+        LogPrintf("SendMoney() : %s", strError);
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
 
     // Parse LUX address
     CScript scriptPubKey = GetScriptForDestination(address);
@@ -375,7 +561,8 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
-    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, ALL_COINS, fUseIX, (CAmount)0)) {
+    int nChangePos = -1;
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, nChangePos, strError, NULL, ALL_COINS, fUseIX, (CAmount)0)) {
         if (nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         LogPrintf("SendMoney() : %s\n", strError);
@@ -496,9 +683,9 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
 
     UniValue jsonGroupings(UniValue::VARR);
     map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances();
-    BOOST_FOREACH (set<CTxDestination> grouping, pwalletMain->GetAddressGroupings()) {
+    for (set<CTxDestination> grouping : pwalletMain->GetAddressGroupings()) {
         UniValue jsonGrouping(UniValue::VARR);
-        BOOST_FOREACH (CTxDestination address, grouping) {
+        for (CTxDestination address : grouping) {
             UniValue addressInfo(UniValue::VARR);
             addressInfo.push_back(EncodeDestination(address));
             addressInfo.push_back(ValueFromAmount(balances[address]));
@@ -512,6 +699,44 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
         jsonGroupings.push_back(jsonGrouping);
     }
     return jsonGroupings;
+}
+
+UniValue listaddressbalances(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw std::runtime_error(
+            "listaddressbalances ( minamount )\n"
+            "\nLists addresses of this wallet and their balances\n"
+            "\nArguments:\n"
+            "1. minamount  (numeric, optional, default=0) Minimum balance in " + CURRENCY_UNIT + " an address should have to be shown in the list\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"address\": amount, (string) Lux address and the amount in " + CURRENCY_UNIT + "\n"
+            "  ,...\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listaddressbalances", "") + HelpExampleCli("listaddressbalances", "10") + HelpExampleRpc("listaddressbalances", "") + HelpExampleRpc("listaddressbalances", "10")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    CAmount nMinAmount = 0;
+    if (params.size() > 0)
+        nMinAmount = AmountFromValue(params[0]);
+
+    if (nMinAmount < 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
+
+    UniValue jsonBalances(UniValue::VOBJ);
+    std::map<CTxDestination, CAmount> balances = pwalletMain->GetAddressBalances();
+    for (auto& balance : balances)
+        if (balance.second >= nMinAmount)
+            jsonBalances.push_back(Pair(EncodeDestination(balance.first), ValueFromAmount(balance.second)));
+
+    return jsonBalances;
 }
 
 UniValue signmessage(const UniValue& params, bool fHelp)
@@ -589,7 +814,7 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
     CScript scriptPubKey = GetScriptForDestination(dest);
     if (!IsMine(*pwalletMain, scriptPubKey))
-        return (double)0.0;
+        return ValueFromAmount(0);
 
     // Minimum confirmations
     int nMinDepth = 1;
@@ -600,10 +825,10 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     CAmount nAmount = 0;
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !IsFinalTx(wtx))
+        if (wtx.IsCoinGenerated() || !IsFinalTx(wtx))
             continue;
 
-        BOOST_FOREACH (const CTxOut& txout, wtx.vout)
+        for (const CTxOut& txout : wtx.vout)
             if (txout.scriptPubKey == scriptPubKey)
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
@@ -646,10 +871,10 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
     CAmount nAmount = 0;
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !IsFinalTx(wtx))
+        if (wtx.IsCoinGenerated() || !IsFinalTx(wtx))
             continue;
 
-        BOOST_FOREACH (const CTxOut& txout, wtx.vout) {
+        for (const CTxOut& txout : wtx.vout) {
             CTxDestination address;
             if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*pwalletMain, address) && setAddress.count(address))
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
@@ -657,7 +882,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
         }
     }
 
-    return (double)nAmount / (double)COIN;
+    return ValueFromAmount(nAmount);
 }
 
 CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter)
@@ -743,10 +968,10 @@ UniValue getbalance(const UniValue& params, bool fHelp)
             list<COutputEntry> listSent;
             wtx.GetAmounts(listReceived, listSent, allFee, strSentAccount, filter);
             if (wtx.GetDepthInMainChain() >= nMinDepth) {
-                BOOST_FOREACH (const COutputEntry& r, listReceived)
+                for (const COutputEntry& r : listReceived)
                     nBalance += r.amount;
             }
-            BOOST_FOREACH (const COutputEntry& s, listSent)
+            for (const COutputEntry& s : listSent)
                 nBalance -= s.amount;
             nBalance -= allFee;
         }
@@ -797,6 +1022,8 @@ UniValue movecmd(const UniValue& params, bool fHelp)
     string strFrom = AccountFromValue(params[0]);
     string strTo = AccountFromValue(params[1]);
     CAmount nAmount = AmountFromValue(params[2]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
     if (params.size() > 3)
         // unused parameter, used to be nMinDepth, keep type-checking it though
         (void)params[3].get_int();
@@ -870,6 +1097,8 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid LUX address");
     CAmount nAmount = AmountFromValue(params[2]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
     int nMinDepth = 1;
     if (params.size() > 3)
         nMinDepth = params[3].get_int();
@@ -937,7 +1166,7 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 
     CAmount totalAmount = 0;
     vector<string> keys = sendTo.getKeys();
-    BOOST_FOREACH(const string& name_, keys) {
+    for (const string& name_ : keys) {
         CTxDestination dest = DecodeDestination(name_);
         if (!IsValidDestination(dest))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid LUX address: ")+name_);
@@ -966,11 +1195,13 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     CReserveKey keyChange(pwalletMain);
     CAmount nFeeRequired = 0;
     string strFailReason;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason);
+    int nChangePos = -1;
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePos, strFailReason);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    if (!pwalletMain->CommitTransaction(wtx, keyChange))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
+    if (!pwalletMain->CommitTransaction(wtx, keyChange)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, string("Transaction commit failed: ")+strFailReason);
+    }
 
     return wtx.GetHash().GetHex();
 }
@@ -1077,7 +1308,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
 
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !IsFinalTx(wtx))
+        if (wtx.IsCoinGenerated() || !IsFinalTx(wtx))
             continue;
 
         int nDepth = wtx.GetDepthInMainChain();
@@ -1085,7 +1316,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
         if (nDepth < nMinDepth)
             continue;
 
-        BOOST_FOREACH (const CTxOut& txout, wtx.vout) {
+        for (const CTxOut& txout : wtx.vout) {
             CTxDestination address;
             if (!ExtractDestination(txout.scriptPubKey, address))
                 continue;
@@ -1107,11 +1338,15 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     // Reply
     UniValue ret(UniValue::VARR);
     map<string, tallyitem> mapAccountTally;
-    BOOST_FOREACH (const PAIRTYPE(CTxDestination, CAddressBookData) & item, pwalletMain->mapAddressBook) {
+    for (const PAIRTYPE(CTxDestination, CAddressBookData) & item : pwalletMain->mapAddressBook) {
         const CTxDestination& dest = item.first;
         const string& strAccount = item.second.name;
         map<CTxDestination, tallyitem>::iterator it = mapTally.find(dest);
         if (it == mapTally.end() && !fIncludeEmpty)
+            continue;
+
+        isminefilter mine = IsMine(*pwalletMain, dest);
+        if(!(mine & filter))
             continue;
 
         CAmount nAmount = 0;
@@ -1142,7 +1377,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
             obj.push_back(Pair("bcconfirmations", (nBCConf == std::numeric_limits<int>::max() ? 0 : nBCConf)));
             UniValue transactions(UniValue::VARR);
             if (it != mapTally.end()) {
-                BOOST_FOREACH (const uint256& item, (*it).second.txids) {
+                for (const uint256& item : (*it).second.txids) {
                     transactions.push_back(item.GetHex());
                 }
             }
@@ -1253,7 +1488,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
 
     // Sent
     if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount)) {
-        BOOST_FOREACH (const COutputEntry& s, listSent) {
+        for (const COutputEntry& s : listSent) {
             UniValue entry(UniValue::VOBJ);
             if (involvesWatchonly || (::IsMine(*pwalletMain, s.destination) & ISMINE_WATCH_ONLY))
                 entry.push_back(Pair("involvesWatchonly", true));
@@ -1268,8 +1503,11 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
             entry.push_back(Pair("vout", s.vout));
             if (!wtx.IsCoinStake())
                 entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
+            else if (s.amount == 0 && s.vout == 0)
+                continue;
             if (fLong)
                 WalletTxToJSON(wtx, entry);
+            entry.push_back(Pair("abandoned", wtx.isAbandoned()));
             ret.push_back(entry);
         }
     }
@@ -1277,7 +1515,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
     // Received
     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth) {
         bool stop = false;
-        BOOST_FOREACH (const COutputEntry& r, listReceived) {
+        for (const COutputEntry& r : listReceived) {
             string account;
             if (pwalletMain->mapAddressBook.count(r.destination))
                 account = pwalletMain->mapAddressBook[r.destination].name;
@@ -1287,7 +1525,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                     entry.push_back(Pair("involvesWatchonly", true));
                 entry.push_back(Pair("account", account));
                 MaybePushAddress(entry, r.destination);
-                if (wtx.IsCoinBase() || wtx.IsCoinStake()) {
+                if (wtx.IsCoinGenerated()) {
                     if (wtx.GetDepthInMainChain() < 1)
                         entry.push_back(Pair("category", "orphan"));
                     else if (wtx.GetBlocksToMaturity() > 0)
@@ -1297,10 +1535,10 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 } else {
                     entry.push_back(Pair("category", "receive"));
                 }
-                if (!wtx.IsCoinStake())
-                    entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
-                else {
-                    entry.push_back(Pair("amount", ValueFromAmount(-nFee)));
+
+                entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
+                if (wtx.IsCoinStake())
+                {
                     stop = true;
                 }
                 if (pwalletMain->mapAddressBook.count(r.destination)) {
@@ -1366,7 +1604,9 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
             "    \"confirmations\": n,       (numeric) The number of confirmations for the transaction. Available for 'send' and \n"
             "                                         'receive' category of transactions.\n"
             "    \"bcconfirmations\": n,     (numeric) The number of blockchain confirmations for the transaction. Available for 'send'\n"
-            "                                          and 'receive' category of transactions.\n"
+            "                                         'receive' category of transactions. Negative confirmations indicate the\n"
+            "                                         transation conflicts with the block chain\n"
+            "    \"trusted\": xxx            (bool) Whether we consider the outputs of this unconfirmed transaction safe to spend.\n"
             "    \"blockhash\": \"hashvalue\", (string) The block hash containing the transaction. Available for 'send' and 'receive'\n"
             "                                          category of transactions.\n"
             "    \"blockindex\": n,          (numeric) The block index containing the transaction. Available for 'send' and 'receive'\n"
@@ -1483,7 +1723,7 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
             includeWatchonly = includeWatchonly | ISMINE_WATCH_ONLY;
 
     map<string, CAmount> mapAccountBalances, immatureBalances;
-    BOOST_FOREACH (const PAIRTYPE(CTxDestination, CAddressBookData) & entry, pwalletMain->mapAddressBook) {
+    for (const PAIRTYPE(CTxDestination, CAddressBookData) & entry : pwalletMain->mapAddressBook) {
         if (IsMine(*pwalletMain, entry.first) & includeWatchonly) // This address belongs to me
             mapAccountBalances[entry.second.name] = 0;
     }
@@ -1499,10 +1739,10 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
             continue;
         wtx.GetAmounts(listReceived, listSent, nFee, strSentAccount, includeWatchonly);
         mapAccountBalances[strSentAccount] -= nFee;
-        BOOST_FOREACH (const COutputEntry& s, listSent)
+        for (const COutputEntry& s : listSent)
             mapAccountBalances[strSentAccount] -= s.amount;
         if (nDepth >= nMinDepth) {
-            BOOST_FOREACH (const COutputEntry& r, listReceived)
+            for (const COutputEntry& r : listReceived)
                 if (pwalletMain->mapAddressBook.count(r.destination))
                     mapAccountBalances[pwalletMain->mapAddressBook[r.destination].name] += r.amount;
                 else
@@ -1515,12 +1755,12 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
 
     list<CAccountingEntry> acentries;
     CWalletDB(pwalletMain->strWalletFile).ListAccountCreditDebit("*", acentries);
-    BOOST_FOREACH (const CAccountingEntry& entry, acentries)
+    for (const CAccountingEntry& entry : acentries)
         mapAccountBalances[entry.strAccount] += entry.nCreditDebit;
 
     UniValue ret(UniValue::VOBJ);
     UniValue imm(UniValue::VOBJ);
-    BOOST_FOREACH (const PAIRTYPE(string, CAmount) & accountBalance, mapAccountBalances) {
+    for (const PAIRTYPE(string, CAmount) & accountBalance : mapAccountBalances) {
         ret.push_back(Pair(accountBalance.first, ValueFromAmount(accountBalance.second)));
     }
     if (!immatureBalances.empty()) {
@@ -1725,6 +1965,39 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
     return entry;
 }
 
+UniValue abandontransaction(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                "abandontransaction \"txid\"\n"
+                "\nMark in-wallet transaction <txid> as abandoned\n"
+                "This will mark this transaction and all its in-wallet descendants as abandoned which will allow\n"
+                "for their inputs to be respent.  It can be used to replace \"stuck\" or evicted transactions.\n"
+                "It only works on transactions which are not included in a block and are not currently in the mempool.\n"
+                "It has no effect on transactions which are already conflicted or abandoned.\n"
+                "\nArguments:\n"
+                "1. \"txid\"    (string, required) The transaction id\n"
+                "\nResult:\n"
+                "\nExamples:\n"
+                + HelpExampleCli("abandontransaction", "\"b6ad03761e71c6afd0daa61f8d98a470bef57c81c3359febe4c675e7244d4c18\"")
+                + HelpExampleRpc("abandontransaction", "\"b6ad03761e71c6afd0daa61f8d98a470bef57c81c3359febe4c675e7244d4c18\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    uint256 hash;
+    hash.SetHex(params[0].get_str());
+
+    if (!pwalletMain->mapWallet.count(hash))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
+    if (!pwalletMain->AbandonTransaction(hash))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not eligible for abandonment");
+
+    return NullUniValue;
+}
 
 UniValue backupwallet(const UniValue& params, bool fHelp)
 {
@@ -1772,7 +2045,7 @@ UniValue keypoolrefill(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
     pwalletMain->TopUpKeyPool(kpSize);
 
-    if (pwalletMain->GetKeyPoolSize() < kpSize)
+    if (pwalletMain->GetKeyPoolSize() < (pwalletMain->IsHDEnabled() ? kpSize * 2 :  kpSize))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
 
     return NullUniValue;
@@ -1783,7 +2056,7 @@ static void LockWallet(CWallet* pWallet)
 {
     LOCK(cs_nWalletUnlockTime);
     nWalletUnlockTime = 0;
-    pWallet->fWalletUnlockAnonymizeOnly = false;
+    pWallet->fWalletUnlockStakingOnly = false;
     pWallet->Lock();
 }
 
@@ -1791,13 +2064,13 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
         throw runtime_error(
-            "walletpassphrase \"passphrase\" timeout ( anonymizeonly )\n"
+            "walletpassphrase \"passphrase\" timeout ( stakingOnly )\n"
             "\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
             "This is needed prior to performing transactions related to private keys such as sending LUXs\n"
             "\nArguments:\n"
             "1. \"passphrase\"     (string, required) The wallet passphrase\n"
             "2. timeout            (numeric, required) The time to keep the decryption key in seconds.\n"
-            "3. anonymizeonly      (boolean, optional, default=flase) If is true sending functions are disabled."
+            "3. stakingOnly      (boolean, optional, default=flase) If is true sending functions are disabled."
             "\nNote:\n"
             "Issuing the walletpassphrase command while the wallet is already unlocked will set a new unlock\n"
             "time that overrides the old one. A timeout of \"0\" unlocks until the wallet is closed.\n"
@@ -1822,14 +2095,14 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
     // Alternately, find a way to make params[0] mlock()'d to begin with.
     strWalletPass = params[0].get_str().c_str();
 
-    bool anonymizeOnly = false;
+    bool stakingOnly = false;
     if (params.size() == 3)
-        anonymizeOnly = params[2].get_bool();
+        stakingOnly = params[2].get_bool();
 
-    if (!pwalletMain->IsLocked() && pwalletMain->fWalletUnlockAnonymizeOnly && anonymizeOnly)
+    if (!pwalletMain->IsLocked() && pwalletMain->fWalletUnlockStakingOnly && stakingOnly)
         throw JSONRPCError(RPC_WALLET_ALREADY_UNLOCKED, "Error: Wallet is already unlocked.");
 
-    if (!pwalletMain->Unlock(strWalletPass, anonymizeOnly))
+    if (!pwalletMain->Unlock(strWalletPass, stakingOnly))
         throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The wallet passphrase entered was incorrect.");
 
     pwalletMain->TopUpKeyPool();
@@ -2023,8 +2296,7 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected object");
         const UniValue& o = output.get_obj();
 
-        RPCTypeCheckObj(o, boost::assign::map_list_of("txid", UniValue::VSTR)("vout", UniValue::VNUM));
-
+        RPCTypeCheckObj(o, { {"txid", UniValueType(UniValue::VSTR)}, {"vout", UniValueType(UniValue::VNUM)}, });
         string txid = find_value(o, "txid").get_str();
         if (!IsHex(txid))
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected hex txid");
@@ -2074,7 +2346,7 @@ UniValue listlockunspent(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VARR);
 
-    BOOST_FOREACH (COutPoint& outpt, vOutpts) {
+    for (COutPoint& outpt : vOutpts) {
         UniValue o(UniValue::VOBJ);
 
         o.push_back(Pair("txid", outpt.hash.GetHex()));
@@ -2101,9 +2373,7 @@ UniValue settxfee(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // Amount
-    CAmount nAmount = 0;
-    if (params[0].get_real() != 0.0)
-        nAmount = AmountFromValue(params[0]); // rejects 0.0 amounts
+    CAmount nAmount = AmountFromValue(params[0]);
 
     payTxFee = CFeeRate(nAmount, 1000);
     return true;
@@ -2123,14 +2393,29 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
             "  \"immature_balance\": xxxxxx, (numeric) the total immature balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"txcount\": xxxxxxx,         (numeric) the total number of transactions in the wallet\n"
             "  \"keypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
-            "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated\n"
+            "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated (only counts external keys)\n"
+            "  \"keypoolsize_hd_internal\": xxxx, (numeric) how many new keys are pre-generated for internal use (used for change outputs, only appears if the wallet is using this feature, otherwise external keys are used)\n"
+            "  \"keys_left\": xxxx,          (numeric) how many new keys are left since last automatic backup\n"
             "  \"unlocked_until\": ttt,      (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked\n"
+            "  \"paytxfee\": x.xxxx,         (numeric) the transaction fee configuration, set in " + CURRENCY_UNIT + "/kB\n"
+            "  \"hdchainid\": \"<hash>\",      (string) the ID of the HD chain\n"
+            "  \"hdaccountcount\": xxx,      (numeric) how many accounts of the HD chain are in this wallet\n"
+            "    [\n"
+            "      {\n"
+            "      \"hdaccountindex\": xxx,         (numeric) the index of the account\n"
+            "      \"hdexternalkeyindex\": xxxx,    (numeric) current external childkey index\n"
+            "      \"hdinternalkeyindex\": xxxx,    (numeric) current internal childkey index\n"
+            "      }\n"
+            "      ,...\n"
+            "    ]\n"
             "}\n"
             "\nExamples:\n" +
             HelpExampleCli("getwalletinfo", "") + HelpExampleRpc("getwalletinfo", ""));
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    CHDChain hdChainCurrent;
+    bool fHDEnabled = pwalletMain->GetHDChain(hdChainCurrent);
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
     obj.push_back(Pair("balance", ValueFromAmount(pwalletMain->GetBalance())));
@@ -2138,13 +2423,36 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance())));
     obj.push_back(Pair("txcount", (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
-    obj.push_back(Pair("keypoolsize", (int)pwalletMain->GetKeyPoolSize()));
+    obj.push_back(Pair("keypoolsize",   (int64_t)pwalletMain->KeypoolCountExternalKeys()));
+    if (fHDEnabled) {
+        obj.push_back(Pair("keypoolsize_hd_internal",   (int64_t)(pwalletMain->KeypoolCountInternalKeys())));
+    }
     if (pwalletMain->IsCrypted())
 #if 1
         obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
 #else
     obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime));
 #endif
+    if (fHDEnabled) {
+        obj.push_back(Pair("hdchainid", hdChainCurrent.GetID().GetHex()));
+        obj.push_back(Pair("hdaccountcount", (int64_t)hdChainCurrent.CountAccounts()));
+        UniValue accounts(UniValue::VARR);
+        for (size_t i = 0; i < hdChainCurrent.CountAccounts(); ++i)
+        {
+            CHDAccount acc;
+            UniValue account(UniValue::VOBJ);
+            account.push_back(Pair("hdaccountindex", (int64_t)i));
+            if(hdChainCurrent.GetAccount(i, acc)) {
+                account.push_back(Pair("hdexternalkeyindex", (int64_t)acc.nExternalChainCounter));
+                account.push_back(Pair("hdinternalkeyindex", (int64_t)acc.nInternalChainCounter));
+            } else {
+                account.push_back(Pair("error", strprintf("account %d is missing", i)));
+            }
+            accounts.push_back(account);
+        }
+        obj.push_back(Pair("hdaccounts", accounts));
+    }
+
     return obj;
 }
 
@@ -2287,7 +2595,7 @@ UniValue printAddresses()
     std::vector<COutput> vCoins;
     pwalletMain->AvailableCoins(vCoins);
     std::map<std::string, double> mapAddresses;
-    BOOST_FOREACH (const COutput& out, vCoins) {
+    for (const COutput& out : vCoins) {
         CTxDestination utxoAddress;
         ExtractDestination(out.tx->vout[out.i].scriptPubKey, utxoAddress);
         std::string strAdd = EncodeDestination(utxoAddress);
@@ -2518,10 +2826,10 @@ UniValue callcontract(const UniValue& params, bool fHelp)
     std::string strAddr = params[0].get_str();
     std::string data = params[1].get_str();
 
-    if(data.size() % 2 != 0 || !CheckHex(data))
+    if(data.size() % 2 != 0 || !regex_match(data, hexData))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
 
-    if(strAddr.size() != 40 || !CheckHex(strAddr))
+    if(strAddr.size() != 40 || !regex_match(strAddr, hexData))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect address");
 
     dev::Address addrAccount(strAddr);
@@ -2603,7 +2911,7 @@ UniValue createcontract(const UniValue& params, bool fHelp){
 
     string bytecode=params[0].get_str();
 
-    if(bytecode.size() % 2 != 0 || !CheckHex(bytecode))
+    if(bytecode.size() % 2 != 0 || !regex_match(bytecode, hexData))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
 
     uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_CREATE;
@@ -2666,7 +2974,7 @@ UniValue createcontract(const UniValue& params, bool fHelp){
         assert(pwalletMain != NULL);
         pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
 
-        BOOST_FOREACH(const COutput& out, vecOutputs) {
+        for (const COutput& out : vecOutputs) {
             CTxDestination address;
             const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;
             bool fValidAddress = ExtractDestination(scriptPubKey, address);
@@ -2711,10 +3019,11 @@ UniValue createcontract(const UniValue& params, bool fHelp){
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
     std::string strError;
+    int nChangePos = -1;
     vector<pair<CScript, CAmount> > vecSend;
     vecSend.push_back(make_pair(scriptPubKey, 0));
 
-    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, strError, &coinControl,  ALL_COINS,
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePos, strError, &coinControl,  ALL_COINS,
                                         false, (CAmount)0, nGasFee)) {
         if (nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
@@ -2746,7 +3055,7 @@ UniValue createcontract(const UniValue& params, bool fHelp){
         vector<unsigned char> contractAddress(20);
         vector<unsigned char> txIdAndVout(wtx.GetHash().begin(), wtx.GetHash().end());
         uint32_t voutNumber=0;
-        BOOST_FOREACH(const CTxOut& txout, wtx.vout) {
+        for (const CTxOut& txout : wtx.vout) {
             if(txout.scriptPubKey.HasOpCreate()){
                 std::vector<unsigned char> voutNumberChrs;
                 if (voutNumberChrs.size() < sizeof(voutNumber))voutNumberChrs.resize(sizeof(voutNumber));
@@ -2809,7 +3118,7 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     }
 
     std::string contractaddress = params[0].get_str();
-    if(contractaddress.size() != 40 || !CheckHex(contractaddress))
+    if(contractaddress.size() != 40 || !regex_match(contractaddress, hexData))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect contract address");
 
     dev::Address addrAccount(contractaddress);
@@ -2817,14 +3126,15 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "contract address does not exist");
 
     string datahex = params[1].get_str();
-    if(datahex.size() % 2 != 0 || !CheckHex(datahex))
+    if(datahex.size() % 2 != 0 || !regex_match(datahex, hexData))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
 
     CAmount nAmount = 0;
-    if (params.size() > 2){
-        nAmount = params[2].get_int64();
-        if (nAmount < 0)
-            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+    if (params.size() > 2) {
+        UniValue uAmount = params[2];
+        if(!ParseMoney(uAmount.getValStr(), nAmount)) {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for Amount");
+        }
     }
 
     uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_SEND;
@@ -2885,7 +3195,7 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
         assert(pwalletMain != NULL);
         pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
 
-        BOOST_FOREACH(const COutput& out, vecOutputs) {
+        for (const COutput& out : vecOutputs) {
 
             CTxDestination address;
             const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;
@@ -2932,12 +3242,13 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
     std::string strError;
+    int nChangePos = -1;
     vector<pair<CScript, CAmount> > vecSend;
 //    int nChangePosRet = -1;
     vecSend.push_back(make_pair(scriptPubKey, nAmount));
 
 
-    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, strError, &coinControl, ALL_COINS,
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePos, strError, &coinControl, ALL_COINS,
                                         false, (CAmount)0, nGasFee)) {
         if (nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
@@ -2973,4 +3284,95 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     }
 
     return result;
+}
+
+UniValue generateBlocks(std::shared_ptr<CReserveScript> coinbaseScript, int nGenerate, uint64_t nMaxTries, bool keepScript)
+{
+    static const int nInnerLoopCount = 0x10000;
+    int nHeightEnd = 0;
+    int nHeight = 0;
+
+    {   // Don't keep cs_main locked
+        LOCK(cs_main);
+        nHeight = chainActive.Height();
+        nHeightEnd = nHeight+nGenerate;
+    }
+    unsigned int nExtraNonce = 0;
+    UniValue blockHashes(UniValue::VARR);
+    while (nHeight < nHeightEnd)
+    {
+        std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript));
+        if (!pblocktemplate.get())
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+        CBlock *pblock = &pblocktemplate->block;
+        {
+            LOCK(cs_main);
+            IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
+        }
+        while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) {
+            ++pblock->nNonce;
+            --nMaxTries;
+        }
+        if (nMaxTries == 0) {
+            break;
+        }
+        if (pblock->nNonce == nInnerLoopCount) {
+            continue;
+        }
+        CValidationState state;
+        if (!ProcessNewBlock(state, Params(), NULL, pblock))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+        ++nHeight;
+        blockHashes.push_back(pblock->GetHash().GetHex());
+
+        //mark script as important because it was used at least for one coinbase output if the script came from the wallet
+        if (keepScript)
+        {
+            coinbaseScript->KeepScript();
+        }
+    }
+    return blockHashes;
+}
+
+UniValue generate(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp)) {
+        return NullUniValue;
+    }
+
+    if (fHelp || params.size() < 1 || params.size() > 2) {
+        throw std::runtime_error(
+            "generate nblocks ( maxtries )\n"
+            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
+            "\nArguments:\n"
+            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
+            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
+            "\nResult:\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
+            "\nExamples:\n"
+            "\nGenerate 11 blocks\n"
+            + HelpExampleCli("generate", "11")
+        );
+    }
+
+    int num_generate = params[0].get_int();
+    uint64_t max_tries = 1000000;
+    if (!params[1].isNull()) {
+        max_tries = params[1].get_int();
+    }
+
+    std::shared_ptr<CReserveScript> coinbase_script;
+    pwalletMain->GetScriptForMining(coinbase_script);
+
+    // If the keypool is exhausted, no script is returned at all.  Catch this.
+    if (!coinbase_script) {
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+    }
+
+    //throw an error if no script was provided
+    if (coinbase_script->reserveScript.empty()) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available");
+    }
+
+    return generateBlocks(coinbase_script, num_generate, max_tries, true);
 }

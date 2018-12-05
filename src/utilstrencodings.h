@@ -61,6 +61,20 @@ bool ParseInt32(const std::string& str, int32_t *out);
 bool ParseInt64(const std::string& str, int64_t *out);
 
 /**
+ * Convert decimal string to unsigned 32-bit integer with strict parse error feedback.
+ * @returns true if the entire string could be parsed as valid integer,
+ *   false if not the entire string could be parsed or when overflow or underflow occurred.
+ */
+bool ParseUInt32(const std::string& str, uint32_t *out);
+
+/**
+ * Convert decimal string to unsigned 64-bit integer with strict parse error feedback.
+ * @returns true if the entire string could be parsed as valid integer,
+ *   false if not the entire string could be parsed or when overflow or underflow occurred.
+ */
+bool ParseUInt64(const std::string& str, uint64_t *out);
+
+/**
  * Convert string to double with strict parse error feedback.
  * @returns true if the entire string could be parsed as valid double,
  *   false if not the entire string could be parsed or when overflow or underflow occurred.
@@ -148,5 +162,13 @@ bool ConvertBits(O& out, I it, I end) {
     }
     return true;
 }
+
+/** Parse number as fixed point according to JSON number syntax.
+ * See http://json.org/number.gif
+ * @returns true on success, false on error.
+ * @note The result must be in the range (-10^18,10^18), otherwise an overflow error will trigger.
+ */
+bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out);
+
 
 #endif // BITCOIN_UTILSTRENCODINGS_H

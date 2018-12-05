@@ -1,12 +1,14 @@
 dnl require autoconf 2.60 (AS_ECHO/AS_ECHO_N)
 AC_PREREQ([2.60])
 define(_CLIENT_VERSION_MAJOR, 5)
-define(_CLIENT_VERSION_MINOR, 1)
+define(_CLIENT_VERSION_MINOR, 3)
 define(_CLIENT_VERSION_REVISION, 0)
 define(_CLIENT_VERSION_BUILD, 0)
 define(_CLIENT_VERSION_IS_RELEASE, true)
 define(_COPYRIGHT_YEAR, 2018)
-AC_INIT([Luxcore],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_REVISION],[www.luxcore.io],[lux])
+define(_COPYRIGHT_HOLDERS,[The %s developers])
+define(_COPYRIGHT_HOLDERS_SUBSTITUTION,[[Luxcore]])
+AC_INIT([Luxcore],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_REVISION],[https://github.com/lux-core/lux/issues],[lux],[https://luxcore.io/])
 AC_CONFIG_SRCDIR([src/main.cpp])
 AC_CONFIG_HEADERS([src/config/lux-config.h])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -127,6 +129,14 @@ AC_ARG_ENABLE([wallet],
   [enable_wallet=$enableval],
   [enable_wallet=yes])
 
+#enable auto-update feature
+AC_ARG_ENABLE([updater],
+  [AS_HELP_STRING([--enable-updater],
+  [enable auto-update (default is no)])],
+  [enable_updater=$enableval],
+  [enable_updater=no])
+
+
 AC_ARG_WITH([miniupnpc],
   [AS_HELP_STRING([--with-miniupnpc],
   [enable UPNP (default is yes if libminiupnpc is found)])],
@@ -190,6 +200,16 @@ AC_ARG_ENABLE([glibc-back-compat],
   [use_glibc_compat=$enableval],
   [use_glibc_compat=no])
 
+AC_ARG_ENABLE([asm],
+  [AS_HELP_STRING([--enable-asm],
+  [Enable assembly routines (default is yes)])],
+  [use_asm=$enableval],
+  [use_asm=yes])
+
+if test "x$use_asm" = xyes; then
+  AC_DEFINE(USE_ASM, 1, [Define this symbol to build in assembly routines])
+fi
+
 AC_ARG_ENABLE([zmq],
   [AS_HELP_STRING([--disable-zmq],
   [disable ZMQ notifications])],
@@ -208,6 +228,7 @@ AC_ARG_ENABLE([debug],
 if test "x$enable_debug" = xyes; then
     if test "x$GCC" = xyes; then
         CFLAGS="-g -ggdb -DDEBUG"
+        CPPFLAGS="-g -ggdb -DDEBUG"
     fi
     if test "x$GXX" = xyes; then
         CXXFLAGS="-g -ggdb -DDEBUG"
@@ -228,6 +249,33 @@ if test "x$enable_debug_xdump" = xyes; then
         CXXFLAGS="$CXXFLAGS -DDEBUG_DUMP_STAKING_INFO"
     fi
 fi
+
+# Check for optional instruction set support. Enabling these does _not_ imply that all code will
+# be compiled with them, rather that specific objects/libs may use them after checking for runtime
+# compatibility.
+AX_CHECK_COMPILE_FLAG([-msse4.2],[[SSE42_CXXFLAGS="-msse -msse2 -msse4.1 -msse4.2"]],,[[$CXXFLAG_WERROR]])
+
+TEMP_CXXFLAGS="$CXXFLAGS"
+CXXFLAGS="$CXXFLAGS $SSE42_CXXFLAGS"
+AC_MSG_CHECKING(for assembler crc32 support)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+    #include <stdint.h>
+    #if defined(_MSC_VER)
+    #include <intrin.h>
+    #elif defined(__GNUC__) && defined(__SSE4_2__)
+    #include <nmmintrin.h>
+    #endif
+  ]],[[
+    uint64_t l = 0;
+    l = _mm_crc32_u8(l, 0);
+    l = _mm_crc32_u32(l, 0);
+    l = _mm_crc32_u64(l, 0);
+    return l;
+  ]])],
+ [ AC_MSG_RESULT(yes); enable_hwcrc32=yes],
+ [ AC_MSG_RESULT(no)]
+)
+CXXFLAGS="$TEMP_CXXFLAGS"
 
 ## TODO: Remove these hard-coded paths and flags. They are here for the sake of
 ##       compatibility with the legacy buildsystem.
@@ -300,7 +348,7 @@ case $host in
      fi
 
      CPPFLAGS="$CPPFLAGS -D_MT -DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB"
-     LEVELDB_TARGET_FLAGS="TARGET_OS=OS_WINDOWS_CROSSCOMPILE"
+      LEVELDB_TARGET_FLAGS="-DOS_WINDOWS"
      if test "x$CXXFLAGS_overridden" = "xno"; then
        CXXFLAGS="$CXXFLAGS -w"
      fi
@@ -322,7 +370,7 @@ case $host in
      ;;
   *darwin*)
      TARGET_OS=darwin
-     LEVELDB_TARGET_FLAGS="TARGET_OS=Darwin"
+     LEVELDB_TARGET_FLAGS="-DOS_MACOSX"
      if  test x$cross_compiling != xyes; then
        BUILD_OS=darwin
        AC_CHECK_PROG([PORT],port, port)
@@ -387,20 +435,22 @@ case $host in
      CPPFLAGS="$CPPFLAGS -DMAC_OSX"
      OBJCXXFLAGS="$CXXFLAGS"
      ;;
-   *linux*)
-     TARGET_OS=linux
-     ;;
-   *)
-     CPPFLAGS="$CPPFLAGS"
+     *linux*)
+        LEVELDB_TARGET_FLAGS="-DOS_LINUX"
+        ;;
+      *)
+        OTHER_OS=`echo ${host_os} | awk '{print toupper($0)}'`
+        LEVELDB_TARGET_FLAGS="-DOS_${OTHER_OS}"
+        CPPFLAGS="$CPPFLAGS"
      ;;
 esac
 
 if test x$TARGET_OS = xwindows; then
-	CPPFLAGS="-Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-cpp $CPPFLAGS -DLUX_BUILD"
-	CXXFLAGS="-Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-cpp $CXXFLAGS"
+	CPPFLAGS="-Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-deprecated -Wno-cpp $CPPFLAGS -DLUX_BUILD"
+	CXXFLAGS="-Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-deprecated -Wno-cpp $CXXFLAGS"
 elif test x$TARGET_OS = xdarwin; then
-	CPPFLAGS="-Wno-inconsistent-missing-override -Wno-deprecated-declarations -Wno-cpp -Wno-unknown-pragmas -Wno-implicit-fallthrough $CPPFLAGS -DLUX_BUILD"
-	CXXFLAGS="-Wno-inconsistent-missing-override -Wno-deprecated-declarations -Wno-cpp -Wno-unknown-pragmas -Wno-implicit-fallthrough $CXXFLAGS"
+	CPPFLAGS="-Wno-inconsistent-missing-override -Wno-deprecated-declarations -Wno-unknown-pragmas -Wno-implicit-fallthrough $CPPFLAGS -DLUX_BUILD"
+	CXXFLAGS="-Wno-inconsistent-missing-override -Wno-deprecated-declarations -Wno-unknown-pragmas -Wno-implicit-fallthrough $CXXFLAGS"
 else
 	CPPFLAGS="-Wno-unknown-pragmas -Wno-deprecated -Wno-deprecated-declarations -Wno-cpp -Wno-implicit-fallthrough $CPPFLAGS -DLUX_BUILD"
 	CXXFLAGS="-Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-cpp $CXXFLAGS"
@@ -555,16 +605,23 @@ if test x$TARGET_OS = xdarwin; then
   AX_CHECK_LINK_FLAG([[-Wl,-dead_strip]], [LDFLAGS="$LDFLAGS -Wl,-dead_strip"])
 fi
 
-AC_CHECK_HEADERS([endian.h stdio.h stdlib.h unistd.h strings.h sys/types.h sys/stat.h sys/select.h sys/prctl.h])
+AC_CHECK_HEADERS([endian.h sys/endian.h byteswap.h stdio.h stdlib.h unistd.h strings.h sys/types.h sys/stat.h sys/select.h sys/prctl.h])
 
 AC_CHECK_DECLS([strnlen])
 
 # Check for daemon(3), unrelated to --with-daemon (although used by it)
 AC_CHECK_DECLS([daemon])
 
-AC_CHECK_DECLS([le32toh, le64toh, htole32, htole64, be32toh, be64toh, htobe32, htobe64],,,
+AC_CHECK_DECLS([le16toh, le32toh, le64toh, htole16, htole32, htole64, be16toh, be32toh, be64toh, htobe16, htobe32, htobe64],,,
 		[#if HAVE_ENDIAN_H
                  #include <endian.h>
+                 #elif HAVE_SYS_ENDIAN_H
+                 #include <sys/endian.h>
+                 #endif])
+
+AC_CHECK_DECLS([bswap_16, bswap_32, bswap_64],,,
+		[#if HAVE_BYTESWAP_H
+                 #include <byteswap.h>
                  #endif])
 
 dnl Check for MSG_NOSIGNAL
@@ -595,7 +652,7 @@ AC_LINK_IFELSE([AC_LANG_SOURCE([
       use_reduce_exports=no
   ]
 )
-
+# Check thread_local
 TEMP_LDFLAGS="$LDFLAGS"
 LDFLAGS="$TEMP_LDFLAGS $PTHREAD_CFLAGS"
 AC_MSG_CHECKING([for thread_local support])
@@ -623,6 +680,18 @@ if test x$use_reduce_exports = xyes; then
   AX_CHECK_COMPILE_FLAG([-fvisibility=hidden],[RE_CXXFLAGS="-fvisibility=hidden"],
   [AC_MSG_ERROR([Cannot set default symbol visibility. Use --disable-reduce-exports.])])
 fi
+
+dnl This can go away when we require c++11
+TEMP_CXXFLAGS="$CXXFLAGS"
+CXXFLAGS="$CXXFLAGS -std=c++0x"
+AC_MSG_CHECKING(for c++11 atomics)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  #include <atomic>
+  ]],[[]])],
+  [ AC_MSG_RESULT(yes); LEVELDB_ATOMIC_CPPFLAGS="-DLEVELDB_ATOMIC_PRESENT"; LEVELDB_ATOMIC_CXXFLAGS="-std=c++0x"],
+  [ AC_MSG_RESULT(no)]
+)
+CXXFLAGS="$TEMP_CXXFLAGS"
 
 LEVELDB_CPPFLAGS=
 LIBLEVELDB=
@@ -1012,6 +1081,17 @@ else
   AC_MSG_RESULT(no)
 fi
 
+dnl enable updater
+AC_MSG_CHECKING([if updater should be enabled])
+if test x$enable_updater != xno; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE_UNQUOTED([ENABLE_UPDATER],[1],[Define to 1 to enable auto-update functions])
+
+else
+  AC_MSG_RESULT(no)
+fi
+
+
 dnl enable upnp support
 AC_MSG_CHECKING([whether to build with support for UPnP])
 if test x$have_miniupnpc = xno; then
@@ -1104,6 +1184,7 @@ AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
 AM_CONDITIONAL([BUILD_DARWIN], [test x$BUILD_OS = xdarwin])
 AM_CONDITIONAL([TARGET_WINDOWS], [test x$TARGET_OS = xwindows])
 AM_CONDITIONAL([ENABLE_WALLET],[test x$enable_wallet = xyes])
+AM_CONDITIONAL([ENABLE_UPDATER],[test x$enable_updater = xyes])
 AM_CONDITIONAL([ENABLE_TESTS],[test x$use_tests = xyes])
 AM_CONDITIONAL([ENABLE_QT],[test x$bitcoin_enable_qt = xyes])
 AM_CONDITIONAL([HAVE_QT5], [test x$bitcoin_qt_got_major_vers = x5])
@@ -1113,22 +1194,36 @@ AM_CONDITIONAL([USE_LCOV],[test x$use_lcov = xyes])
 AM_CONDITIONAL([USE_COMPARISON_TOOL],[test x$use_comparison_tool != xno])
 AM_CONDITIONAL([USE_COMPARISON_TOOL_REORG_TESTS],[test x$use_comparison_tool_reorg_test != xno])
 AM_CONDITIONAL([GLIBC_BACK_COMPAT],[test x$use_glibc_compat = xyes])
+AM_CONDITIONAL([ENABLE_HWCRC32],[test x$enable_hwcrc32 = xyes])
 AM_CONDITIONAL([USE_LIBSECP256K1],[test x$use_libsecp256k1 = xyes])
+AM_CONDITIONAL([USE_ASM],[test x$use_asm = xyes])
 
 AC_DEFINE(CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MAJOR, [Major version])
 AC_DEFINE(CLIENT_VERSION_MINOR, _CLIENT_VERSION_MINOR, [Minor version])
 AC_DEFINE(CLIENT_VERSION_REVISION, _CLIENT_VERSION_REVISION, [Build revision])
 AC_DEFINE(CLIENT_VERSION_BUILD, _CLIENT_VERSION_BUILD, [Version Build])
 AC_DEFINE(CLIENT_VERSION_IS_RELEASE, _CLIENT_VERSION_IS_RELEASE, [Version is release])
-AC_DEFINE(COPYRIGHT_YEAR, _COPYRIGHT_YEAR, [Version is release])
+AC_DEFINE(COPYRIGHT_YEAR, _COPYRIGHT_YEAR, [Copyright year])
+AC_DEFINE(COPYRIGHT_HOLDERS, "_COPYRIGHT_HOLDERS", [Copyright holder(s) before %s replacement])
+AC_DEFINE(COPYRIGHT_HOLDERS_SUBSTITUTION, "_COPYRIGHT_HOLDERS_SUBSTITUTION", [Replacement for %s in copyright holders string])
+define(_COPYRIGHT_HOLDERS_FINAL, [patsubst(_COPYRIGHT_HOLDERS, [%s], [_COPYRIGHT_HOLDERS_SUBSTITUTION])])
+AC_DEFINE(COPYRIGHT_HOLDERS_FINAL, "_COPYRIGHT_HOLDERS_FINAL", [Copyright holder(s)])
 AC_SUBST(CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MAJOR)
 AC_SUBST(CLIENT_VERSION_MINOR, _CLIENT_VERSION_MINOR)
 AC_SUBST(CLIENT_VERSION_REVISION, _CLIENT_VERSION_REVISION)
 AC_SUBST(CLIENT_VERSION_BUILD, _CLIENT_VERSION_BUILD)
 AC_SUBST(CLIENT_VERSION_IS_RELEASE, _CLIENT_VERSION_IS_RELEASE)
 AC_SUBST(COPYRIGHT_YEAR, _COPYRIGHT_YEAR)
+AC_SUBST(COPYRIGHT_HOLDERS, "_COPYRIGHT_HOLDERS")
+AC_SUBST(COPYRIGHT_HOLDERS_SUBSTITUTION, "_COPYRIGHT_HOLDERS_SUBSTITUTION")
+AC_SUBST(COPYRIGHT_HOLDERS_FINAL, "_COPYRIGHT_HOLDERS_FINAL")
+AC_SUBST(BITCOIN_DAEMON_NAME)
+AC_SUBST(BITCOIN_GUI_NAME)
+AC_SUBST(BITCOIN_CLI_NAME)
+AC_SUBST(BITCOIN_TX_NAME)
 
 AC_SUBST(RELDFLAGS)
+AC_SUBST(SSE42_CXXFLAGS)
 AC_SUBST(LIBTOOL_APP_LDFLAGS)
 AC_SUBST(USE_UPNP)
 AC_SUBST(USE_QRCODE)
@@ -1142,6 +1237,8 @@ AC_SUBST(EVENT_PTHREADS_LIBS)
 AC_SUBST(BUILD_TEST_QT)
 AC_SUBST(MINIUPNPC_CPPFLAGS)
 AC_SUBST(MINIUPNPC_LIBS)
+AC_SUBST(LEVELDB_ATOMIC_CPPFLAGS)
+AC_SUBST(LEVELDB_ATOMIC_CXXFLAGS)
 AC_CONFIG_FILES([Makefile src/Makefile share/setup.nsi share/qt/Info.plist src/test/buildenv.py])
 AC_CONFIG_FILES([qa/pull-tester/run-bitcoind-for-test.sh],[chmod +x qa/pull-tester/run-bitcoind-for-test.sh])
 AC_CONFIG_FILES([qa/pull-tester/tests-config.sh],[chmod +x qa/pull-tester/tests-config.sh])
@@ -1170,7 +1267,10 @@ PKGCONFIG_LIBDIR_TEMP="$PKG_CONFIG_LIBDIR"
 unset PKG_CONFIG_LIBDIR
 PKG_CONFIG_LIBDIR="$PKGCONFIG_LIBDIR_TEMP"
 
-ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery --enable-module-ecdh --enable-experimental"
+ac_configure_args="${ac_configure_args} --disable-shared --with-bignum=no --enable-module-recovery --enable-module-ecdh --enable-experimental --disable-jni"
+if test "$TARGET_OS" = "windows"; then
+ac_configure_args="$ac_configure_args --with-asm=no --with-field=32bit --with-scalar=32bit"
+fi
 AC_CONFIG_SUBDIRS([src/secp256k1])
 
 AC_OUTPUT
@@ -1196,27 +1296,30 @@ esac
 
 echo
 echo "Options used to compile and link:"
-echo "  with wallet   = $enable_wallet"
-echo "  with gui / qt = $bitcoin_enable_qt"
+echo "  with wallet          = $enable_wallet"
+echo "  with auto-update     = $enable_updater"
+echo "  with gui / qt        = $bitcoin_enable_qt"
 if test x$bitcoin_enable_qt != xno; then
-    echo "    qt version  = $bitcoin_qt_got_major_vers"
-    echo "    with qr     = $use_qr"
+echo "  qt version           = $bitcoin_qt_got_major_vers"
+echo "  with qr              = $use_qr"
 fi
-echo "  with zmq      = $use_zmq"
-echo "  with test     = $use_tests"
-echo "  with bench    = $use_bench"
-echo "  with upnp     = $use_upnp"
-echo "  debug enabled = $enable_debug"
-echo "  werror        = $enable_werror"
+echo "  with zmq             = $use_zmq"
+echo "  with test            = $use_tests"
+echo "  with bench           = $use_bench"
+echo "  with upnp            = $use_upnp"
+echo "  use asm              = $use_asm"
+echo "  use hardware CRC32   = $enable_hwcrc32"
+echo "  debug enabled        = $enable_debug"
+echo "  werror               = $enable_werror"
 echo
-echo "  target os     = $TARGET_OS"
-echo "  build os      = $BUILD_OS"
+echo "  target os            = $TARGET_OS"
+echo "  build os             = $BUILD_OS"
 echo
-echo "  CC            = $CC"
-echo "  CFLAGS        = $CFLAGS"
-echo "  CPPFLAGS      = $CPPFLAGS"
-echo "  CXX           = $CXX"
-echo "  CXXFLAGS      = $CXXFLAGS"
-echo "  LDFLAGS       = $LDFLAGS"
-echo "  ARFLAGS       = $ARFLAGS"
+echo "  CC                   = $CC"
+echo "  CFLAGS               = $CFLAGS"
+echo "  CPPFLAGS             = $CPPFLAGS"
+echo "  CXX                  = $CXX"
+echo "  CXXFLAGS             = $CXXFLAGS"
+echo "  LDFLAGS              = $LDFLAGS"
+echo "  ARFLAGS              = $ARFLAGS"
 echo

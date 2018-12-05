@@ -3,6 +3,15 @@
 bin_PROGRAMS += qt/lux-qt
 EXTRA_LIBRARIES += qt/libbitcoinqt.a
 
+if ENABLE_UPDATER
+if !TARGET_WINDOWS
+CXXFLAGS += -fPIC -Wno-unused-result -Wno-unused-but-set-variable
+
+LIBS += -lutil
+endif
+endif
+
+
 # lux qt core #
 QT_TS = \
   qt/locale/lux_ca.ts \
@@ -11,12 +20,13 @@ QT_TS = \
   qt/locale/lux_en.ts \
   qt/locale/lux_en_US.ts \
   qt/locale/lux_es.ts \
-  qt/locale/lux_fr_FR.ts \
+  qt/locale/lux_fr.ts \
   qt/locale/lux_it.ts \
   qt/locale/lux_ja.ts \
   qt/locale/lux_pt.ts \
   qt/locale/lux_ro_RO.ts \
   qt/locale/lux_ru.ts \
+  qt/locale/lux_vn.ts \
   qt/locale/lux_zh_TW.ts
 
 QT_FORMS_UI = \
@@ -35,6 +45,7 @@ QT_FORMS_UI = \
   qt/forms/editcontractinfodialog.ui \
   qt/forms/helpmessagedialog.ui \
   qt/forms/intro.ui \
+  qt/forms/modaloverlay.ui \
   qt/forms/eula.ui \
   qt/forms/masternodemanager.ui \
   qt/forms/addeditluxnode.ui \
@@ -57,7 +68,13 @@ QT_FORMS_UI = \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/smartcontract.ui \
   qt/forms/tokendescdialog.ui \
-  qt/forms/transactiondescdialog.ui
+  qt/forms/transactiondescdialog.ui \
+  qt/forms/hexaddressconverter.ui
+
+if ENABLE_UPDATER
+ QT_FORMS_UI += lux-installer/src/forms/updateinfodialog.ui \
+                lux-installer/src/forms/progressdialog.ui 
+endif
 
 QT_MOC_CPP = \
   qt/moc_abifunctionfield.cpp \
@@ -72,6 +89,7 @@ QT_MOC_CPP = \
   qt/moc_addresstablemodel.cpp \
   qt/moc_addtokenpage.cpp \
   qt/moc_askpassphrasedialog.cpp \
+  qt/moc_bantablemodel.cpp \
   qt/moc_bip38tooldialog.cpp \
   qt/moc_bitcoinaddressvalidator.cpp \
   qt/moc_bitcoinamountfield.cpp \
@@ -95,6 +113,7 @@ QT_MOC_CPP = \
   qt/moc_eula.cpp \
   qt/moc_macdockiconhandler.cpp \
   qt/moc_macnotificationhandler.cpp \
+  qt/moc_modaloverlay.cpp \
   qt/moc_masternodemanager.cpp \
   qt/moc_addeditluxnode.cpp \
   qt/moc_luxnodeconfigdialog.cpp \
@@ -141,9 +160,21 @@ QT_MOC_CPP = \
   qt/moc_transactiontablemodel.cpp \
   qt/moc_transactionview.cpp \
   qt/moc_utilitydialog.cpp \
+  qt/moc_updatedialog.cpp \
   qt/moc_walletframe.cpp \
   qt/moc_walletmodel.cpp \
-  qt/moc_walletview.cpp
+  qt/moc_walletview.cpp \
+  qt/moc_hexaddressconverter.cpp
+
+if ENABLE_UPDATER
+  QT_MOC_CPP += lux-installer/src/luxupdater/moc_luxupdater.cpp \
+                lux-installer/src/luxupdater/moc_simplescheduler_p.cpp \
+                lux-installer/src/luxupdater/moc_atomfeeder.cpp \
+                lux-installer/src/luxupdater/moc_downloadmanager.cpp \
+                lux-installer/src/moc_progressdialog_p.cpp \
+                lux-installer/src/moc_updatecontroller.cpp \
+                lux-installer/src/moc_updateinfodialog_p.cpp
+endif
 
 BITCOIN_MM = \
   qt/macdockiconhandler.mm \
@@ -181,6 +212,7 @@ BITCOIN_QT_H = \
   qt/addresstablemodel.h \
   qt/addtokenpage.h \
   qt/askpassphrasedialog.h \
+  qt/bantablemodel.h \
   qt/bip38tooldialog.h \
   qt/bitcoinaddressvalidator.h \
   qt/bitcoinamountfield.h \
@@ -209,6 +241,7 @@ BITCOIN_QT_H = \
   qt/eula.h \
   qt/macdockiconhandler.h \
   qt/macnotificationhandler.h \
+  qt/modaloverlay.h \
   qt/masternodemanager.h \
   qt/addeditluxnode.h \
   qt/luxnodeconfigdialog.h \
@@ -230,15 +263,18 @@ BITCOIN_QT_H = \
   qt/qvaluecombobox.h \
   qt/receivecoinsdialog.h \
   qt/receiverequestdialog.h \
+  qt/receivetokenpage.h \
   qt/recentrequeststablemodel.h \
   qt/restoredialog.h \
   qt/rpcconsole.h \
   qt/sendcoinsdialog.h \
   qt/sendcoinsentry.h \
   qt/sendtocontract.h \
+  qt/sendtokenpage.h \
   qt/signverifymessagedialog.h \
   qt/smartcontract.h \
   qt/splashscreen.h \
+  qt/trafficgraphdata.h \
   qt/tabbarinfo.h \
   qt/token.h \
   qt/tokenamountfield.h \
@@ -257,16 +293,31 @@ BITCOIN_QT_H = \
   qt/transactiontablemodel.h \
   qt/transactionview.h \
   qt/utilitydialog.h \
+  qt/updatedialog.h \
   qt/walletframe.h \
   qt/walletmodel.h \
   qt/walletmodeltransaction.h \
   qt/walletview.h \
   qt/winshutdownmonitor.h \
-  qt/qcustomplot.h
+  qt/qcustomplot.h \
+  qt/hexaddressconverter.h \
+  qt/tokenslistview.h
+if ENABLE_UPDATER
+  BITCOIN_QT_H += lux-installer/src/luxupdater/luxupdater.h \
+                  lux-installer/src/luxupdater/simplescheduler_p.h \
+                  lux-installer/src/luxupdater/atomfeeder.h \
+                  lux-installer/src/luxupdater/downloadmanager.h \
+                  lux-installer/src/progressdialog_p.h \
+                  lux-installer/src/updatecontroller.h \
+                  lux-installer/src/updateinfodialog_p.h
+endif
+
 
 RES_ICONS = \
   qt/res/icons/add.png \
   qt/res/icons/address-book.png \
+  qt/res/icons/auto_backup.png \
+  qt/res/icons/backup.png \
   qt/res/icons/bitcoin.ico \
   qt/res/icons/bitcoin.png \
   qt/res/icons/bitcoin_testnet.ico \
@@ -278,6 +329,7 @@ RES_ICONS = \
   qt/res/icons/clock3.png \
   qt/res/icons/clock4.png \
   qt/res/icons/clock5.png \
+  qt/res/icons/conf.png \
   qt/res/icons/configure.png \
   qt/res/icons/connect0_16.png \
   qt/res/icons/connect1_16.png \
@@ -296,19 +348,30 @@ RES_ICONS = \
   qt/res/icons/filesave.png \
   qt/res/icons/fontbigger.png \
   qt/res/icons/fontsmaller.png \
+  qt/res/icons/hd_disabled.png \
+  qt/res/icons/hd_enabled.png \
+  qt/res/icons/hex.png \
   qt/res/icons/history.png \
   qt/res/icons/key.png \
   qt/res/icons/lock_closed.png \
-  qt/res/icons/lock_open.png \
-  qt/res/icons/masternodes.png \
-  qt/res/icons/overview.png \
-  qt/res/icons/smartcontract.png \
-  qt/res/icons/qrcode.png \
+  qt/res/icons/lock_closed_black.png \
+  qt/res/icons/luxcoin_black.png \
   qt/res/icons/lsrtoken.png \
+  qt/res/icons/lock_open.png \
+  qt/res/icons/luxupdate-loader.gif \
+  qt/res/icons/masternodes.png \
+  qt/res/icons/network_monitor.png \
+  qt/res/icons/options.png \
+  qt/res/icons/overview.png \
+  qt/res/icons/peer.png \
+  qt/res/icons/qrcode.png \
   qt/res/icons/quit.png \
   qt/res/icons/receive.png \
   qt/res/icons/remove.png \
+  qt/res/icons/restore.png \
   qt/res/icons/send.png \
+  qt/res/icons/sign.png \
+  qt/res/icons/smartcontract.png \
   qt/res/icons/staking_active.png \
   qt/res/icons/staking_inactive.png \
   qt/res/icons/synced.png \
@@ -316,6 +379,7 @@ RES_ICONS = \
   qt/res/icons/trade.png \
   qt/res/icons/transaction0.png \
   qt/res/icons/transaction2.png \
+  qt/res/icons/transaction_abandoned.png \
   qt/res/icons/transaction_conflicted.png \
   qt/res/icons/tx_inout.png \
   qt/res/icons/tx_input.png \
@@ -326,9 +390,15 @@ RES_ICONS = \
   qt/res/icons/unit_ulux.png \
   qt/res/icons/unit_tlux.png \
   qt/res/icons/unit_tmlux.png \
-  qt/res/icons/unit_tulux.png
+  qt/res/icons/unit_tulux.png \
+  qt/res/icons/update.ico \
+  qt/res/icons/update_black.png \
+  qt/res/icons/verified.png \
+  qt/res/icons/wallet_repair.png \
+  qt/res/icons/warning.png
 
 BITCOIN_QT_CPP = \
+  qt/bantablemodel.cpp \
   qt/bitcoinaddressvalidator.cpp \
   qt/bitcoinamountfield.cpp \
   qt/bitcoingui.cpp \
@@ -338,6 +408,7 @@ BITCOIN_QT_CPP = \
   qt/csvmodelwriter.cpp \
   qt/guiutil.cpp \
   qt/intro.cpp \
+  qt/modaloverlay.cpp \
   qt/eula.cpp \
   qt/masternodemanager.cpp \
   qt/addeditluxnode.cpp \
@@ -354,12 +425,16 @@ BITCOIN_QT_CPP = \
   qt/qvaluecombobox.cpp \
   qt/rpcconsole.cpp \
   qt/splashscreen.cpp \
+  qt/trafficgraphdata.cpp \
   qt/tabbarinfo.cpp \
   qt/tokenitemmodel.cpp \
   qt/tokenamountfield.cpp \
   qt/trafficgraphwidget.cpp \
   qt/utilitydialog.cpp \
-  qt/winshutdownmonitor.cpp
+  qt/updatedialog.cpp \
+  qt/winshutdownmonitor.cpp \
+  qt/hexaddressconverter.cpp \
+  qt/tokenslistview.cpp
 
 if ENABLE_WALLET
 BITCOIN_QT_CPP += \
@@ -429,6 +504,24 @@ BITCOIN_QT_CPP += \
   qt/walletmodeltransaction.cpp \
   qt/walletview.cpp
 
+if ENABLE_UPDATER
+  BITCOIN_QT_CPP += lux-installer/src/luxupdater/simplescheduler.cpp \
+                    lux-installer/src/luxupdater/luxupdater_p.cpp \
+                    lux-installer/src/luxupdater/luxupdater.cpp \
+                    lux-installer/src/luxupdater/atomfeeder.cpp \
+                    lux-installer/src/luxupdater/downloadmanager.cpp \
+                    lux-installer/src/dialogmaster.cpp \
+                    lux-installer/src/progressdialog.cpp \
+                    lux-installer/src/updatecontroller.cpp \
+                    lux-installer/src/updateinfodialog.cpp
+if TARGET_WINDOWS
+  BITCOIN_QT_CPP += lux-installer/src/adminauthorization_win.cpp
+else
+  BITCOIN_QT_CPP += lux-installer/src/adminauthorization_x11.cpp
+endif
+
+endif
+
 endif
 
 RES_IMAGES = \
@@ -451,7 +544,9 @@ RES_CSS = \
 
 RES_MOVIES = $(wildcard $(srcdir)/qt/res/movies/spinner-*.png)
 
+if TARGET_WINDOWS
 BITCOIN_RC = qt/res/lux-qt-res.rc
+endif
 
 BITCOIN_QT_INCLUDES = -I$(builddir)/qt -I$(srcdir)/qt -I$(srcdir)/qt/forms \
   -I$(builddir)/qt/forms

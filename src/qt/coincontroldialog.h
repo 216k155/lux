@@ -14,10 +14,12 @@
 #include <QMenu>
 #include <QPoint>
 #include <QString>
+#include <QStringList>
 #include <QTreeWidgetItem>
 
 class WalletModel;
 class ClientModel;
+class PlatformStyle;
 
 class CCoinControl;
 class CTxMemPool;
@@ -27,14 +29,24 @@ namespace Ui
 class CoinControlDialog;
 }
 
+class CCoinControlWidgetItem : public QTreeWidgetItem
+{
+public:
+    CCoinControlWidgetItem(QTreeWidget *parent, int type = Type) : QTreeWidgetItem(parent, type) {}
+    CCoinControlWidgetItem(int type = Type) : QTreeWidgetItem(type) {}
+    CCoinControlWidgetItem(QTreeWidgetItem *parent, int type = Type) : QTreeWidgetItem(parent, type) {}
+
+    bool operator<(const QTreeWidgetItem &other) const;
+};
+
 class CoinControlDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit CoinControlDialog(QWidget* parent = 0);
+    explicit CoinControlDialog(const PlatformStyle *platformStyle, QWidget* parent = 0);
     ~CoinControlDialog();
-
+    void CheckDialogLablesUpdated();
     void setModel(WalletModel* model);
     void setClientModel(ClientModel* clientModel);
 
@@ -45,6 +57,7 @@ public:
     static QList<CAmount> payAmounts;
     static CCoinControl* coinControl;
     static int nSplitBlockDummy;
+    static bool fSubtractFeeFromAmount;
 
 private:
     Ui::CoinControlDialog* ui;
@@ -58,50 +71,30 @@ private:
     QAction* copyTransactionHashAction;
     QAction* lockAction;
     QAction* unlockAction;
-
+    const PlatformStyle* platformStyle;
+    QStringList toogleLockList;
     QString strPad(QString, int, QString);
     void sortView(int, Qt::SortOrder);
     void updateView();
 
     enum {
-        COLUMN_CHECKBOX,
+        COLUMN_CHECKBOX = 0,
         COLUMN_AMOUNT,
         COLUMN_LABEL,
         COLUMN_ADDRESS,
-        COLUMN_DARKSEND_ROUNDS,
         COLUMN_DATE,
         COLUMN_CONFIRMATIONS,
         COLUMN_PRIORITY,
         COLUMN_TXHASH,
         COLUMN_VOUT_INDEX,
-        COLUMN_AMOUNT_INT64,
         COLUMN_PRIORITY_INT64,
+        COLUMN_DARKSEND_ROUNDS,
         COLUMN_DATE_INT64
     };
 
-    // some columns have a hidden column containing the value used for sorting
-    int getMappedColumn(int column, bool fVisibleColumn = true)
-    {
-        if (fVisibleColumn) {
-            if (column == COLUMN_AMOUNT_INT64)
-                return COLUMN_AMOUNT;
-            else if (column == COLUMN_PRIORITY_INT64)
-                return COLUMN_PRIORITY;
-            else if (column == COLUMN_DATE_INT64)
-                return COLUMN_DATE;
-        } else {
-            if (column == COLUMN_AMOUNT)
-                return COLUMN_AMOUNT_INT64;
-            else if (column == COLUMN_PRIORITY)
-                return COLUMN_PRIORITY_INT64;
-            else if (column == COLUMN_DATE)
-                return COLUMN_DATE_INT64;
-        }
+    friend class CCoinControlWidgetItem;
 
-        return column;
-    }
-
-private slots:
+private Q_SLOTS:
     void showMenu(const QPoint&);
     void copyAmount();
     void copyLabel();
@@ -126,7 +119,7 @@ private slots:
     void buttonToggleLockClicked();
     void updateLabelLocked();
 
-public slots:
+public Q_SLOTS:
     void updateInfoInDialog();
 };
 
